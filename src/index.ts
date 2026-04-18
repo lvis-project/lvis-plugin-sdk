@@ -1,23 +1,85 @@
-/**
- * @lvis/plugin-sdk — type-only public surface of the LVIS plugin contract.
- *
- * Plugin repos import their contract from this single entry point so the
- * host's type updates propagate via a standard npm/bun dependency rather
- * than cross-repo copy/paste.
- *
- * This file mirrors the exports of `lvis-app/src/plugins/types.ts`. Keep
- * them in lock-step — the sdk is a read-only view over the host contract.
- */
+// AUTO-GENERATED from lvis-app/src/plugins/types.ts — DO NOT EDIT. Run: bun run sync:from-host
+//
+// @lvis/plugin-sdk — type-only public surface of the LVIS plugin contract.
+// This file mirrors the exports of `lvis-app/src/plugins/types.ts`.
 
+/**
+ * Plugin Deployment Mode — §9.6
+ *
+ * - **managed**: 회사(LGE IT)가 원격으로 배포/업데이트/삭제 제어.
+ *   사용자는 UI에서 제거·비활성화 불가 (PluginDeploymentGuard가 차단).
+ * - **user**: 사용자가 자율적으로 설치. 회사 정책(userInstallPolicy)에 따라 제어.
+ */
+/**
+ * Plugin Deployment Mode — §9.6
+ *
+ * - **managed**: 회사(LGE IT)가 원격으로 배포/업데이트/삭제 제어.
+ *   사용자는 UI에서 제거·비활성화 불가 (PluginDeploymentGuard가 차단).
+ * - **user**: 사용자가 자율적으로 설치. 회사 정책(userInstallPolicy)에 따라 제어.
+ */
 export type DeploymentMode = "managed" | "user";
 
 export interface PluginManifest {
+  /** 플러그인 고유 식별자. 도트(`.`) 형식 권장: `com.lge.meeting-recorder`. */
   id: string;
   name: string;
   version: string;
-  description?: string;
   entry: string;
+  /**
+   * LLM에 노출되는 도구 이름 배열. `^[a-zA-Z_][a-zA-Z0-9_]*$` 필수 — 도트/하이픈 금지.
+   * 런타임이 이 값을 그대로 tool name으로 사용한다.
+   */
   tools: string[];
+  /** 플러그인 한 줄 설명 — LLM 카탈로그 및 UI에 표시 */
+  description?: string;
+  config?: Record<string, unknown>;
+  ui?: PluginUiExtension[];
+  keywords?: Array<{ keyword: string; skillId: string }>;
+  /**
+   * 플러그인이 요구/제공하는 capability 태그. 정책·UI·게이팅에 사용되며
+   * kebab-case 컨벤션을 따른다.
+   *
+   * 현재 사용 중인 capability:
+   * - `meeting-recorder` — 실시간 음성 캡처 및 STT (meeting)
+   * - `mail-source` — 이메일 소스 연결 (email)
+   * - `calendar-source` — 캘린더 소스 연결 (calendar)
+   * - `background-watcher` — `startupTools` 로 백그라운드 폴러/감시자 기동 (email, calendar)
+   * - `worker-client` — 외부 프로세스(Python 등) 워커 래퍼 (pageindex)
+   * - `knowledge-index` — 문서 인덱스/검색 기능 제공 (pageindex)
+   * - `ms-graph-consumer` — HostApi 의 MS Graph 메서드(`getMsGraphToken`,
+   *   `startMsGraphAuth`, `isMsGraphAuthenticated`, `getMsGraphAccount`,
+   *   `onMsGraphAuthChange`) 사용. §9.4a 참고. (email, calendar)
+   */
+  capabilities?: string[];
+  startupTools?: string[];
+  eventSubscriptions?: string[];
+  /**
+   * H2: UI가 ipcRenderer 를 통해 직접 호출할 수 있는 plugin method 의 allowlist.
+   * 이 배열에 없는 method 는 `lvis:plugins:call` IPC 를 통해 호출할 수 없다.
+   * (ConversationLoop 의 permission/scope/expansion cap 을 우회하는 경로 차단.)
+   */
+  uiCallable?: string[];
+  /**
+   * OS 네이티브 알림으로 표시할 이벤트 선언.
+   * titleField / bodyField 는 이벤트 데이터의 점(.) 경로.
+   */
+  notificationEvents?: Array<{
+    event: string;
+    titleField?: string;
+    bodyField?: string;
+  }>;
+  deployment?: DeploymentMode;
+  publisher?: string;
+  /**
+   * Sprint 1-A A1 — optional hard startup timeout (ms, positive integer).
+   * When declared, PluginRuntime enforces a `Promise.race`-based timeout on
+   * the plugin's `start()` call — the running task is NOT cancelled
+   * (no AbortController is wired through); the host simply drops the slow
+   * plugin fail-soft while leaving other plugins untouched. When absent, the
+   * runtime still emits a slow-plugin warning after a default threshold
+   * (5000ms).
+   */
+  startupTimeoutMs?: number;
   /**
    * LLM이 도구를 호출할 때 사용하는 JSON Schema (draft-07).
    * 키: tool 이름 (tools 배열 내 값과 동일), 값: { description, inputSchema }
@@ -35,24 +97,6 @@ export interface PluginManifest {
       };
     }
   >;
-  startupTools?: string[];
-  /**
-   * Optional hard startup timeout (ms, positive integer). Host enforces via
-   * Promise.race; slow plugins are fail-soft dropped without cancellation.
-   */
-  startupTimeoutMs?: number;
-  eventSubscriptions?: string[];
-  keywords?: Array<{ keyword: string; skillId: string }>;
-  capabilities?: string[];
-  notificationEvents?: Array<{
-    event: string;
-    titleField?: string;
-    bodyField?: string;
-  }>;
-  ui?: PluginUiExtension[];
-  config?: Record<string, unknown>;
-  deployment?: DeploymentMode;
-  publisher?: string;
 }
 
 export interface PluginUiExtension {
@@ -68,10 +112,46 @@ export interface PluginUiExtension {
   page?: string;
 }
 
+export interface PluginRegistryEntry {
+  id: string;
+  manifestPath: string;
+  enabled?: boolean;
+}
+
+export interface PluginRegistry {
+  version: number;
+  plugins: PluginRegistryEntry[];
+}
+
+export interface PluginMarketplaceItem {
+  id: string;
+  name: string;
+  description: string;
+  packageSpec: string;
+  packageName: string;
+  tools: string[];
+  defaultConfig?: Record<string, unknown>;
+  ui?: PluginUiExtension[];
+  deployment?: DeploymentMode;
+  publisher?: string;
+}
+
+/**
+ * Host API — 플러그인이 호스트 서비스에 접근하는 인터페이스.
+ * 플러그인 제거 시 해당 플러그인이 등록한 모든 것이 자동 정리된다.
+ */
+/**
+ * Host API — 플러그인이 호스트 서비스에 접근하는 인터페이스.
+ * 플러그인 제거 시 해당 플러그인이 등록한 모든 것이 자동 정리된다.
+ */
 export interface PluginHostApi {
   registerKeywords(keywords: Array<{ keyword: string; skillId: string }>): void;
   emitEvent(eventType: string, data?: unknown): void;
-  onEvent(eventType: string, handler: (data: unknown) => void): void;
+  /**
+   * Subscribes to a host event. Returns an `unsubscribe()` disposer so callers
+   * (and PluginRuntime.onDisable) can clean up handlers deterministically.
+   */
+  onEvent(eventType: string, handler: (data: unknown) => void): () => void;
   addTask(task: {
     title: string;
     description?: string;
@@ -82,42 +162,62 @@ export interface PluginHostApi {
   saveNote(title: string, content: string): void;
   getSecret(key: string): string | null;
 
-  // Microsoft Graph
+  // Microsoft Graph 공유 인증 (메일·캘린더 플러그인)
   getMsGraphToken(): Promise<string | null>;
   startMsGraphAuth(openBrowser: (url: string) => Promise<void>): Promise<void>;
   isMsGraphAuthenticated(): boolean;
   getMsGraphAccount(): string | null;
   onMsGraphAuthChange(handler: () => void): void;
 
-  // LLM + lifecycle + logging
+  // ─── LLM 접근 (선제성 기능용) ────────────────────────────────────────
+  /**
+   * 호스트 LLM 프로바이더를 통한 텍스트 생성.
+   * 플러그인이 직접 LLM 키를 관리하지 않고도 인텔리전트 기능 구현 가능.
+   * LLM이 준비되지 않은 경우 에러를 던진다.
+   */
   callLlm(prompt: string, options?: { maxTokens?: number; systemPrompt?: string }): Promise<string>;
+
+  /**
+   * Sprint 1-A A3 — structured log event routed through AuditLogger.
+   * Automatically tagged with `plugin:${pluginId}` context (sessionId = "plugin").
+   */
   logEvent(level: "info" | "warn" | "error", message: string, data?: unknown): void;
+
+  /**
+   * Sprint 1-A A3 — register a handler fired before app shutdown (Electron
+   * `before-quit`). Host enforces a 5s timeout on each handler; slow handlers
+   * are logged but do not block quit.
+   */
   onShutdown(handler: () => void | Promise<void>): void;
 }
 
+/**
+ * Sprint 1-A A2 — canonical alias for the tool-handler function type exposed
+ * through `@lvis/plugin-sdk`. Kept identical to `PluginToolHandler` so the SDK
+ * surface can evolve without breaking the existing runtime name.
+ */
+/**
+ * Sprint 1-A A2 — canonical alias for the tool-handler function type exposed
+ * through `@lvis/plugin-sdk`. Kept identical to `PluginToolHandler` so the SDK
+ * surface can evolve without breaking the existing runtime name.
+ */
+export type PluginMethodHandler = PluginToolHandler;
+
 export interface PluginRuntimeContext {
   pluginId: string;
-  hostRoot: string;
   pluginRoot: string;
+  hostRoot: string;
   config?: Record<string, unknown>;
   log: (message: string, meta?: unknown) => void;
   hostApi: PluginHostApi;
 }
 
 export type PluginToolHandler = (payload?: unknown) => Promise<unknown> | unknown;
-export type PluginMethodHandler = PluginToolHandler;
 
 export interface RuntimePlugin {
+  start?: () => Promise<void> | void;
+  stop?: () => Promise<void> | void;
   handlers: Record<string, PluginToolHandler>;
-  start?: () => void | Promise<void>;
-  stop?: () => void | Promise<void>;
 }
 
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
-
-export interface PluginCard {
-  id: string;
-  name: string;
-  description: string;
-  sampleTools: string[];
-}
