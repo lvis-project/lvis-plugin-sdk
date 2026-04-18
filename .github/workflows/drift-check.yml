@@ -1,0 +1,69 @@
+name: drift-check
+on:
+  schedule:
+    - cron: '17 3 * * *'   # nightly ~03:17 UTC
+  workflow_dispatch: {}
+concurrency:
+  group: drift-check
+  cancel-in-progress: true
+jobs:
+  check:
+    if: github.repository == 'lvis-project/lvis-plugin-sdk'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout SDK
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Checkout host repo (private)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          repository: lvis-project/lvis-app
+          token: ${{ secrets.HOST_READ_TOKEN }}
+          path: .host
+          sparse-checkout: |
+            src/plugins/types.ts
+          sparse-checkout-cone-mode: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
+        with:
+          bun-version: '1.1.38'
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Run sync against host types
+        env:
+          LVIS_HOST_TYPES_PATH: ${{ github.workspace }}/.host/src/plugins/types.ts
+          LVIS_HOST_REPO_URL: https://github.com/lvis-project/lvis-app.git
+        run: node scripts/sync-from-host.mjs
+      - name: Check for drift
+        id: diff
+        run: |
+          if git diff --quiet -- src/index.ts; then
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Open PR on drift
+        if: steps.diff.outputs.drift == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/auto-drift-sync
+          title: 'chore: auto-sync types from host SoT'
+          commit-message: 'chore: auto-sync types from host SoT'
+          body: |
+            Nightly drift-check detected divergence between `lvis-app/src/plugins/types.ts` and this SDK.
+            Auto-regenerated via `scripts/sync-from-host.mjs`.
+
+            Please review the diff in `src/index.ts` before merging.
+          base: main
+          delete-branch: true
+      - name: Open issue on workflow failure
+        if: failure()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          script: |
+            const title = `drift-check failed on ${context.sha.slice(0,7)}`;
+            const body = `Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\nLikely causes:\n- HOST_READ_TOKEN expired/revoked\n- Host repo types.ts moved\n- Network or checkout failure`;
+            await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body, labels: ['ci','drift-check'] });
