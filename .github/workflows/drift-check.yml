@@ -12,11 +12,12 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: write
     steps:
       - name: Checkout SDK
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
       - name: Checkout host repo (private)
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           repository: lvis-project/lvis-app
           token: ${{ secrets.HOST_READ_TOKEN }}
@@ -24,7 +25,7 @@ jobs:
           sparse-checkout: |
             src/plugins/types.ts
           sparse-checkout-cone-mode: false
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@f4d14e03ff726c06358e5557344e1da148b56cf7  # v1
         with:
           bun-version: '1.1.38'
       - name: Install
@@ -43,7 +44,7 @@ jobs:
           fi
       - name: Open PR on drift
         if: steps.diff.outputs.drift == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676  # v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: chore/auto-drift-sync
@@ -56,7 +57,11 @@ jobs:
             Please review the diff in `src/index.ts` before merging.
           base: main
           delete-branch: true
-      - name: Fail-soft alert on error
+      - name: Open issue on workflow failure
         if: failure()
-        run: |
-          echo "::warning::drift-check failed — consider adding issue creation step"
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
+        with:
+          script: |
+            const title = `drift-check failed on ${context.sha.slice(0,7)}`;
+            const body = `Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\nLikely causes:\n- HOST_READ_TOKEN expired/revoked\n- Host repo types.ts moved\n- Network or checkout failure`;
+            await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body, labels: ['ci','drift-check'] });
