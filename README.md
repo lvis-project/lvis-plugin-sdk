@@ -18,7 +18,16 @@ const createPlugin: RuntimePluginFactory = ({ pluginId, hostApi, config }) => ({
 export default createPlugin;
 ```
 
-No runtime code — the package emits `.d.ts` declarations only (`emitDeclarationOnly: true`, no `main` export). Plugin repos add `@lvis/plugin-sdk` to their `devDependencies` and rely on the host repo publishing updates when the plugin contract changes.
+No runtime code — the package emits `.d.ts` declarations only (`emitDeclarationOnly: true`, no `main` export).
+
+Plugin repos attach this SDK as a **git submodule** at `plugin-sdk/` and reference it via a tsconfig path alias:
+
+```json
+// plugin-repo tsconfig.json
+"paths": { "@lvis/plugin-sdk": ["./plugin-sdk/src/index.ts"] }
+```
+
+See `lvis-plugin-template` for the canonical scaffold.
 
 ## Tag Policy (manual discipline — no ruleset enforcement)
 
