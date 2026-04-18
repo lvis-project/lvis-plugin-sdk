@@ -22,11 +22,13 @@
  */
 export const MARKETPLACE_PUBLIC_KEYS: Readonly<Record<string, string>> = Object.freeze({
   "dev-v1": "POA+RSsCG9akcaH6z410Jssk1FAy1ajA1Q0IWTRjZxg=",
-  "prod-v1": "Qm3FUAMek2r5OkXCurgX6dNYSqiT1GRnjb5fWfuOoao=",
+  "poc-v1": "Qm3FUAMek2r5OkXCurgX6dNYSqiT1GRnjb5fWfuOoao=",
 });
 
 /**
- * Canonical key_id of the current production signing key. Clients that only
- * want to trust a single key for hardened deployments can rely on this.
+ * Canonical key_id of the current POC signing key. This is NOT a real
+ * production key — the marketplace server refuses to boot with it loaded
+ * when `LVIS_ENV=production`. A future SDK major will rotate this to the
+ * real prod key once provisioned.
  */
-export const MARKETPLACE_PRIMARY_KEY_ID = "prod-v1" as const;
+export const MARKETPLACE_PRIMARY_KEY_ID = "poc-v1" as const;
