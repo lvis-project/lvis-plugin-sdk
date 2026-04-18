@@ -27,6 +27,8 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
+let CLONE_TMP_DIR = null;
+
 function resolveHostTypesPath() {
   const envPath = process.env.LVIS_HOST_TYPES_PATH;
   if (envPath && fs.existsSync(envPath)) {
@@ -36,6 +38,7 @@ function resolveHostTypesPath() {
   if (fs.existsSync(local)) return { path: local, source: "local-sibling" };
   const ref = process.env.HOST_REF || "main";
   const tmp = fs.mkdtempSync("/tmp/lvis-host-");
+  CLONE_TMP_DIR = tmp;
   execSync(
     `git clone --depth 1 --branch ${ref} https://github.com/lvis-project/lvis-app.git ${tmp}`,
     { stdio: "inherit" }
@@ -93,7 +96,9 @@ function extract(srcPath) {
 
     const leading = ts.getLeadingCommentRanges(text, stmt.pos) ?? [];
     const commentText = leading.map((r) => text.slice(r.pos, r.end)).join("\n");
-    const declText = text.slice(stmt.pos, stmt.end).trimStart();
+    // stmt.getStart(sf) skips leading trivia (comments/whitespace) so we don't
+    // duplicate JSDoc that we already captured via getLeadingCommentRanges.
+    const declText = text.slice(stmt.getStart(sf), stmt.end);
     chunks.push((commentText ? commentText.trim() + "\n" : "") + declText);
   }
 
@@ -109,19 +114,27 @@ function render(body) {
 ${body}`;
 }
 
-const { path: hostPath, source } = resolveHostTypesPath();
-const output = render(extract(hostPath));
-const target = path.join(ROOT, "src/index.ts");
+try {
+  const { path: hostPath, source } = resolveHostTypesPath();
+  const output = render(extract(hostPath));
+  const target = path.join(ROOT, "src/index.ts");
 
-if (process.argv.includes("--check")) {
-  const current = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : "";
-  if (current !== output) {
-    console.error("DRIFT DETECTED: src/index.ts differs from regenerated output.");
-    process.exit(1);
+  // Normalize line endings so CRLF/LF differences don't trigger false drift.
+  const normalize = (s) => s.replace(/\r\n/g, "\n");
+
+  if (process.argv.includes("--check")) {
+    const current = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : "";
+    if (normalize(current) !== normalize(output)) {
+      console.error("DRIFT DETECTED: src/index.ts differs from regenerated output.");
+      process.exit(1);
+    }
+    console.log("No drift.");
+  } else {
+    fs.writeFileSync(target, output);
+    console.log(`Wrote ${target} (${output.length} bytes) from ${source}`);
   }
-  console.log("No drift.");
-} else {
-  fs.writeFileSync(target, output);
-  console.log(`Wrote ${target} (${output.length} bytes) from ${source}`);
-  void source;
+} finally {
+  if (CLONE_TMP_DIR) {
+    fs.rmSync(CLONE_TMP_DIR, { recursive: true, force: true });
+  }
 }
