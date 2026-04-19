@@ -14,6 +14,7 @@
 
 import ts from "typescript";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -36,7 +37,7 @@ function resolveHostTypesPath() {
     process.exit(1);
   }
   const ref = process.env.HOST_REF || "main";
-  const tmp = fs.mkdtempSync("/tmp/host-types-");
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "host-types-"));
   CLONE_TMP_DIR = tmp;
   try {
     execSync(`git clone --depth 1 --branch ${ref} ${url} ${tmp}`, {
