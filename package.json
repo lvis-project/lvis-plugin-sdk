@@ -13,9 +13,11 @@
       "types": "./dist/keys.d.ts",
       "import": "./dist/keys.js",
       "default": "./dist/keys.js"
-    }
+    },
+    "./schemas/plugin-manifest.schema.json": "./schemas/plugin-manifest.schema.json",
+    "./schemas/*": "./schemas/*"
   },
-  "files": ["dist", "src/keys.ts"],
+  "files": ["dist", "src/keys.ts", "schemas"],
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.keys.json",
     "clean": "rm -rf dist",

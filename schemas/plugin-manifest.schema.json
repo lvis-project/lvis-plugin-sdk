@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lvis-project.github.io/schemas/plugin-manifest.schema.json",
+  "title": "LVIS Plugin Manifest",
+  "description": "JSON Schema for LVIS plugin.json manifests. Validated in each plugin's CI via ajv.",
+  "type": "object",
+  "required": ["id", "name", "version", "entry"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique plugin identifier (slug or reverse-DNS)."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable plugin display name."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+].+)?$",
+      "description": "Semver version (major.minor.patch with optional pre-release/build)."
+    },
+    "entry": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Relative path to the compiled plugin entry module."
+    },
+    "description": { "type": "string" },
+    "publisher": { "type": "string" },
+    "deployment": {
+      "type": "string",
+      "enum": ["managed", "user", "system"]
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["core", "official", "community", "experimental"]
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9_-]+$"
+      },
+      "uniqueItems": true,
+      "description": "Tool names. Must match ^[a-zA-Z0-9_-]+$ (no dots, per OpenAI/Gemini/Claude constraints)."
+    },
+    "startupTools": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$" },
+      "uniqueItems": true
+    },
+    "uiCallable": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$" },
+      "uniqueItems": true
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "eventPublishes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "eventSubscriptions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "emittedEvents": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "notificationEvents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["event"],
+        "properties": {
+          "event": { "type": "string" },
+          "titleField": { "type": "string" },
+          "bodyField": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["keyword", "skillId"],
+        "properties": {
+          "keyword": { "type": "string", "minLength": 1 },
+          "skillId": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "uiSlots": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "ui": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "slot", "kind", "entry"],
+        "properties": {
+          "id": { "type": "string" },
+          "slot": { "type": "string" },
+          "kind": { "type": "string" },
+          "displayName": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "entry": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "toolSchemas": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string" },
+          "inputSchema": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "startupTimeoutMs": { "type": "integer", "minimum": 0 },
+    "python": {
+      "type": "object",
+      "properties": {
+        "managedBy": { "type": "string" },
+        "requirementsLock": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "config": { "type": "object" }
+  },
+  "additionalProperties": true
+}
