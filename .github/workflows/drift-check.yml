@@ -44,6 +44,8 @@ jobs:
           LVIS_HOST_TYPES_PATH: ${{ github.workspace }}/.host/src/plugins/types.ts
           LVIS_HOST_REPO_URL: https://github.com/lvis-project/lvis-app.git
         run: node scripts/sync-from-host.mjs
+      - name: Remove host checkout
+        run: rm -rf .host
       - name: Check for drift
         id: diff
         run: |
