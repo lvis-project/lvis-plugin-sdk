@@ -15,6 +15,31 @@
 export type DeploymentMode = "managed" | "user";
 
 /**
+ * Optional structured hint attached to an event subscription. Allows the host
+ * to surface contextual metadata (category, priority, title) alongside the
+ * subscription without requiring a separate registration call.
+ */
+export interface EventSubscriptionHint {
+  /** Broad category the event falls into. */
+  category: "task" | "note" | "session" | "meeting" | "email" | "calendar" | "system";
+  /** Relative importance used by the host to order or filter subscriptions. */
+  priority: "high" | "medium" | "low";
+  /** Short human-readable label shown in the host UI for this subscription. */
+  title: string;
+}
+
+/**
+ * Object form of an event subscription entry. Use when you need to attach a
+ * `hint` to a subscription; otherwise prefer the plain string form.
+ */
+export interface EventSubscription {
+  /** Event type name. Must match the string form used in `eventPublishes`. */
+  type: string;
+  /** Optional structured hint shown by the host alongside the subscription. @optional */
+  hint?: EventSubscriptionHint;
+}
+
+/**
  * Declarative metadata for a plugin. Describes the tools, capabilities, UI
  * extensions, lifecycle, and permissions a plugin exposes to the host.
  *
@@ -59,7 +84,7 @@ export interface PluginManifest {
   /** Tools that should be invoked once during plugin startup, before the first user interaction. @optional */
   startupTools?: string[];
   /** Event type names this plugin subscribes to. The host delivers matching events via `PluginHostApi.onEvent`. @optional */
-  eventSubscriptions?: string[];
+  eventSubscriptions?: string[] | EventSubscription[];
   
   /** Tools that the UI is permitted to invoke directly (bypassing the LLM). Use sparingly — prefer LLM-mediated calls. @optional */
   uiCallable?: string[];
