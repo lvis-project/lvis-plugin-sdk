@@ -66,9 +66,35 @@
       "uniqueItems": true
     },
     "eventSubscriptions": {
-      "type": "array",
-      "items": { "type": "string" },
-      "uniqueItems": true
+      "oneOf": [
+        {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "type": "string", "minLength": 1 },
+              "hint": {
+                "type": "object",
+                "required": ["category", "priority", "title"],
+                "additionalProperties": false,
+                "properties": {
+                  "category": { "type": "string", "enum": ["task", "note", "session", "meeting", "email", "calendar", "system"] },
+                  "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+                  "title": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          },
+          "uniqueItems": true
+        }
+      ]
     },
     "emittedEvents": {
       "type": "array",
