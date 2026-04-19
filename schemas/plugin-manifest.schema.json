@@ -66,11 +66,15 @@
       "uniqueItems": true
     },
     "eventSubscriptions": {
-      "type": "array",
-      "items": {
-        "oneOf": [
-          { "type": "string" },
-          {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        {
+          "type": "array",
+          "items": {
             "type": "object",
             "required": ["type"],
             "additionalProperties": false,
@@ -87,10 +91,10 @@
                 }
               }
             }
-          }
-        ]
-      },
-      "uniqueItems": true
+          },
+          "uniqueItems": true
+        }
+      ]
     },
     "emittedEvents": {
       "type": "array",
