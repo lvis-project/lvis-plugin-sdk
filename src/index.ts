@@ -14,10 +14,29 @@
  */
 export type DeploymentMode = "managed" | "user";
 
+export type InstallPolicy = "admin" | "user";
+
+export type PluginDeliveryMode = "marketplace" | "bundle";
+
+export interface BundleDependencySpec {
+  pluginId: string;
+  versionRange?: string;
+  required?: boolean;
+}
+
+export interface PluginAccessTarget {
+  pluginId: string;
+  tools?: string[];
+  events?: string[];
+}
+
+export interface PluginAccessSpec {
+  plugins: PluginAccessTarget[];
+}
+
 /**
  * Optional structured hint attached to an event subscription. Allows the host
- * to surface contextual metadata (category, priority, title) alongside the
- * subscription without requiring a separate registration call.
+ * to surface contextual metadata alongside the subscription.
  */
 export interface EventSubscriptionHint {
   /** Broad category the event falls into. */
@@ -30,10 +49,10 @@ export interface EventSubscriptionHint {
 
 /**
  * Object form of an event subscription entry. Use when you need to attach a
- * `hint` to a subscription; otherwise prefer the plain string form.
+ * hint to a subscription; otherwise prefer the plain string form.
  */
 export interface EventSubscription {
-  /** Event type name. Must match the string form used in `eventPublishes`. */
+  /** Event type name. Must match the string form used in published event declarations. */
   type: string;
   /** Optional structured hint shown by the host alongside the subscription. @optional */
   hint?: EventSubscriptionHint;
@@ -57,7 +76,7 @@ export interface EventSubscription {
  * };
  */
 export interface PluginManifest {
-  
+
   /** Globally unique identifier. Reverse-DNS style recommended (for example `com.example.my-plugin`). Must be stable across versions. */
   id: string;
   /** Human-readable display name shown in the host UI and plugin pickers. */
@@ -66,10 +85,10 @@ export interface PluginManifest {
   version: string;
   /** Path (relative to the plugin root) to the JavaScript module whose default export is a `RuntimePluginFactory`. */
   entry: string;
-  
+
   /** Tool names exposed to the host LLM. Each name must match `^[a-zA-Z_][a-zA-Z0-9_]*$` — dots and hyphens are not allowed. */
   tools: string[];
-  
+
   /** One-line description shown in plugin catalogues and tool pickers. @optional */
   description?: string;
   /** Arbitrary JSON configuration merged into `PluginRuntimeContext.config` at startup. Treat as untrusted user data. @optional */
@@ -78,37 +97,55 @@ export interface PluginManifest {
   ui?: PluginUiExtension[];
   /** Skill keywords registered with the host keyword engine. Each entry binds a surface keyword to a `skillId` the plugin handles. @optional */
   keywords?: Array<{ keyword: string; skillId: string }>;
-  
+
   /** Free-form capability tags declared by the plugin (for example `"calendar"`, `"email"`). Hosts may gate features on these. @optional */
   capabilities?: string[];
   /** Tools that should be invoked once during plugin startup, before the first user interaction. @optional */
   startupTools?: string[];
+
   /** Event type names this plugin subscribes to. The host delivers matching events via `PluginHostApi.onEvent`. @optional */
   eventSubscriptions?: string[] | EventSubscription[];
-  
+
   /** Tools that the UI is permitted to invoke directly (bypassing the LLM). Use sparingly — prefer LLM-mediated calls. @optional */
   uiCallable?: string[];
-  
+
+  /** Event type names this plugin may emit. Hosts can use this for validation and ownership checks. @optional */
+  eventPublishes?: string[];
+  /** Alias of `eventPublishes` accepted by host bridge paths. @optional */
+  emittedEvents?: string[];
+
   /** Events that should be surfaced as host notifications. Each entry names the event and maps fields of its payload to notification title and body. @optional */
   notificationEvents?: Array<{
     event: string;
     titleField?: string;
     bodyField?: string;
   }>;
+  installPolicy?: InstallPolicy;
   /** Deployment channel. Defaults to `"user"` when omitted. @optional */
   deployment?: DeploymentMode;
+  deliveryMode?: PluginDeliveryMode;
+  bundleDependencies?: Array<string | BundleDependencySpec>;
+  pluginAccess?: PluginAccessSpec;
+  requires?: RequiresSpec;
   /** Display string identifying the plugin publisher (for example an organization or author). @optional */
   publisher?: string;
-  
+
   /** Maximum time in milliseconds the host will wait for `RuntimePlugin.start` to resolve. Plugins exceeding this are considered failed. @optional */
   startupTimeoutMs?: number;
-  
+
   /** JSON Schema descriptions of each tool's input. Used by the host to advertise tools to the LLM and to validate arguments before dispatch. Keys must appear in `tools`. @optional */
   toolSchemas?: Record<
     string,
     {
       /** One-line description shown in plugin catalogues and tool pickers. @optional */
       description: string;
+
+      /** SemVer version string (for example `1.2.3`). Used by the host to detect updates and enforce compatibility. */
+      version?: string;
+
+      deprecatedSince?: string;
+
+      replacedBy?: string;
       inputSchema: {
         $schema?: string;
         type: "object";
@@ -165,6 +202,9 @@ export interface PluginRegistryEntry {
   manifestPath: string;
   /** Whether the plugin should be loaded at host startup. Defaults to `true` when omitted. @optional */
   enabled?: boolean;
+  installedBy?: InstallPolicy;
+  bundleRefs?: string[];
+  approvedPluginAccess?: PluginAccessSpec;
 }
 
 /**
@@ -178,6 +218,41 @@ export interface PluginRegistry {
   plugins: PluginRegistryEntry[];
 }
 
+export interface SignatureEnvelope {
+  version: 1;
+
+  iat: number;
+
+  artifact_sha256: string;
+  signatures: Array<{
+    key_id: string;
+    alg: "ed25519";
+
+    sig: string;
+  }>;
+}
+
+export interface VerifyResult {
+  ok: boolean;
+  key_id?: string;
+  reason?: string;
+}
+
+export interface RequiresSpec {
+  capabilities: string[];
+}
+
+export class MissingDependenciesError extends Error {
+  readonly missing: string[];
+  constructor(missing: string[]) {
+    super(
+      `Plugin requires capabilities not provided by installed plugins: ${missing.join(", ")}`,
+    );
+    this.missing = missing;
+    this.name = "MissingDependenciesError";
+  }
+}
+
 /**
  * Catalog entry describing a plugin available for installation through the
  * host marketplace. This is the user-facing summary of a plugin before it is
@@ -186,6 +261,8 @@ export interface PluginRegistry {
 export interface PluginMarketplaceItem {
   /** Plugin identifier, matching the `PluginManifest.id` the plugin will declare once installed. */
   id: string;
+
+  slug?: string;
   /** Human-readable display name. */
   name: string;
   /** Marketing description shown in the marketplace UI. */
@@ -196,14 +273,36 @@ export interface PluginMarketplaceItem {
   packageName: string;
   /** Tools the plugin will expose — mirrors `PluginManifest.tools` for preview purposes. */
   tools: string[];
+
+  version?: string;
+
+  channel?: "stable" | "canary";
   /** Default configuration seeded into the plugin on first install. Users may override this. @optional */
   defaultConfig?: Record<string, unknown>;
   /** UI extensions the plugin will contribute once installed. @optional */
   ui?: PluginUiExtension[];
+  capabilities?: string[];
+  keywords?: Array<{ keyword: string; skillId: string }>;
+  startupTools?: string[];
+  uiCallable?: string[];
+  eventPublishes?: string[];
+  emittedEvents?: string[];
+  notificationEvents?: Array<{
+    event: string;
+    titleField?: string;
+    bodyField?: string;
+  }>;
+  installPolicy?: InstallPolicy;
   /** Deployment channel. @optional */
   deployment?: DeploymentMode;
+  deliveryMode?: PluginDeliveryMode;
+  bundleDependencies?: Array<string | BundleDependencySpec>;
+  pluginAccess?: PluginAccessSpec;
   /** Display string identifying the publisher. @optional */
   publisher?: string;
+  toolSchemas?: PluginManifest["toolSchemas"];
+
+  requires?: RequiresSpec;
 }
 
 /**
@@ -218,7 +317,7 @@ export interface PluginMarketplaceItem {
 export interface PluginHostApi {
   registerKeywords(keywords: Array<{ keyword: string; skillId: string }>): void;
   emitEvent(eventType: string, data?: unknown): void;
-  
+
   onEvent(eventType: string, handler: (data: unknown) => void): () => void;
   addTask(task: {
     title: string;
@@ -227,26 +326,47 @@ export interface PluginHostApi {
     sourceRef?: string;
     priority?: "high" | "medium" | "low";
   }): void;
-  saveNote(title: string, content: string): void;
   getSecret(key: string): string | null;
+
 
   getMsGraphToken(): Promise<string | null>;
   startMsGraphAuth(openBrowser: (url: string) => Promise<void>): Promise<void>;
   isMsGraphAuthenticated(): boolean;
   getMsGraphAccount(): string | null;
   onMsGraphAuthChange(handler: () => void): void;
+  callTool<T = unknown>(toolName: string, payload?: unknown): Promise<T>;
 
-  
+
   withMsGraphRetry<T>(fn: (token: string) => Promise<T>): Promise<T>;
 
-  
+
+
   callLlm(prompt: string, options?: { maxTokens?: number; systemPrompt?: string }): Promise<string>;
 
-  
+
   logEvent(level: "info" | "warn" | "error", message: string, data?: unknown): void;
 
-  
+
   onShutdown(handler: () => void | Promise<void>): void;
+
+
+
+  openAuthWindow(options: {
+    url: string;
+    completionUrlPatterns: string[];
+    cookieHosts: string[];
+    timeoutMs?: number;
+    windowTitle?: string;
+    persistPartition?: string;
+  }): Promise<Array<{
+    name: string;
+    value: string;
+    domain?: string;
+    path?: string;
+    secure?: boolean;
+    httpOnly?: boolean;
+    expirationDate?: number;
+  }>>;
 }
 
 /**

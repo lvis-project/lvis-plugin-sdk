@@ -162,6 +162,27 @@ const JSDOC_CATALOG = {
  *   user. Receives a narrower trust scope by default.
  */`,
   },
+  EventSubscriptionHint: {
+    leading: `/**
+ * Optional structured hint attached to an event subscription. Allows the host
+ * to surface contextual metadata alongside the subscription.
+ */`,
+    fields: {
+      category: `/** Broad category the event falls into. */`,
+      priority: `/** Relative importance used by the host to order or filter subscriptions. */`,
+      title: `/** Short human-readable label shown in the host UI for this subscription. */`,
+    },
+  },
+  EventSubscription: {
+    leading: `/**
+ * Object form of an event subscription entry. Use when you need to attach a
+ * hint to a subscription; otherwise prefer the plain string form.
+ */`,
+    fields: {
+      type: `/** Event type name. Must match the string form used in published event declarations. */`,
+      hint: `/** Optional structured hint shown by the host alongside the subscription. @optional */`,
+    },
+  },
   PluginManifest: {
     leading: `/**
  * Declarative metadata for a plugin. Describes the tools, capabilities, UI
@@ -193,6 +214,8 @@ const JSDOC_CATALOG = {
       capabilities: `/** Free-form capability tags declared by the plugin (for example \`"calendar"\`, \`"email"\`). Hosts may gate features on these. @optional */`,
       startupTools: `/** Tools that should be invoked once during plugin startup, before the first user interaction. @optional */`,
       eventSubscriptions: `/** Event type names this plugin subscribes to. The host delivers matching events via \`PluginHostApi.onEvent\`. @optional */`,
+      eventPublishes: `/** Event type names this plugin may emit. Hosts can use this for validation and ownership checks. @optional */`,
+      emittedEvents: `/** Alias of \`eventPublishes\` accepted by host bridge paths. @optional */`,
       uiCallable: `/** Tools that the UI is permitted to invoke directly (bypassing the LLM). Use sparingly — prefer LLM-mediated calls. @optional */`,
       notificationEvents: `/** Events that should be surfaced as host notifications. Each entry names the event and maps fields of its payload to notification title and body. @optional */`,
       deployment: `/** Deployment channel. Defaults to \`"user"\` when omitted. @optional */`,
@@ -560,7 +583,9 @@ try {
   const { path: hostPath, source } = resolveHostTypesPath();
   const rendered = render(extract(hostPath));
   const sanitized = sanitizeForPublic(rendered);
-  const output = enrichWithJsDoc(sanitized, JSDOC_CATALOG);
+  const output = enrichWithJsDoc(sanitized, JSDOC_CATALOG)
+    .replace(/^[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n");
   const target = path.join(ROOT, "src/index.ts");
 
   // Normalize line endings so CRLF/LF differences don't trigger false drift.

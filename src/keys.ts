@@ -21,9 +21,29 @@
  * Values are base64-encoded raw 32-byte ed25519 public keys.
  */
 export const MARKETPLACE_PUBLIC_KEYS: Readonly<Record<string, string>> = Object.freeze({
-  "dev-v1": "POA+RSsCG9akcaH6z410Jssk1FAy1ajA1Q0IWTRjZxg=",
+  "dev-v1": "gDzzn5UcdQTwFIxXkXdhZU4k85eUyyyFKfd+fvooDhM=",
   "poc-v1": "Qm3FUAMek2r5OkXCurgX6dNYSqiT1GRnjb5fWfuOoao=",
 });
+
+/**
+ * Non-production signing keys retained only for local/dev transition workflows.
+ * Runtime consumers should exclude them unless they explicitly opt in.
+ */
+export const MARKETPLACE_TEST_KEY_IDS = Object.freeze(["dev-v1", "poc-v1"] as const);
+
+const TEST_KEY_ID_SET = new Set<string>(MARKETPLACE_TEST_KEY_IDS);
+
+const PROD_MARKETPLACE_PUBLIC_KEYS: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(
+    Object.entries(MARKETPLACE_PUBLIC_KEYS).filter(([keyId]) => !TEST_KEY_ID_SET.has(keyId)),
+  ),
+);
+
+export function getTrustedMarketplacePublicKeys(
+  options?: { includeTestKeys?: boolean },
+): Readonly<Record<string, string>> {
+  return options?.includeTestKeys ? MARKETPLACE_PUBLIC_KEYS : PROD_MARKETPLACE_PUBLIC_KEYS;
+}
 
 /**
  * Canonical key_id of the current POC signing key. This is NOT a real
