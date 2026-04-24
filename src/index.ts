@@ -4,7 +4,7 @@
 // This file mirrors the host plugin type contract.
 
 /**
- * Deployment channel for a plugin.
+ * Deployment mode for a plugin.
  *
  * - `"managed"` — curated, reviewed plugin distributed through the official
  *   marketplace. The host may apply stricter permissioning and automatic
@@ -27,12 +27,6 @@ export interface PluginAccessTarget {
 }
 export interface PluginAccessSpec {
   plugins: PluginAccessTarget[];
-}
-export interface RoutineMailActionItem {
-  title: string;
-  sourceId?: string;
-  dueAt?: string;
-  summary?: string;
 }
 
 /**
@@ -118,7 +112,7 @@ export interface PluginManifest {
   }>;
   /** Install policy. Defaults to `"user"` when omitted. @optional */
   installPolicy?: InstallPolicy;
-  /** Legacy deployment policy. @optional */
+  /** Legacy deployment mode. @optional */
   deployment?: DeploymentMode;
   /** Delivery mode. @optional */
   deliveryMode?: PluginDeliveryMode;
@@ -235,7 +229,7 @@ export interface PluginMarketplaceItem {
   ui?: PluginUiExtension[];
   /** Install policy. @optional */
   installPolicy?: InstallPolicy;
-  /** Legacy deployment channel. @optional */
+  /** Legacy deployment mode. @optional */
   deployment?: DeploymentMode;
   /** Delivery mode. @optional */
   deliveryMode?: PluginDeliveryMode;
