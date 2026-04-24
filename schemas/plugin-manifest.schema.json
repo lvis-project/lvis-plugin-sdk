@@ -28,9 +28,63 @@
     },
     "description": { "type": "string" },
     "publisher": { "type": "string" },
+    "installPolicy": {
+      "type": "string",
+      "enum": ["admin", "user"]
+    },
     "deployment": {
       "type": "string",
       "enum": ["managed", "user", "system"]
+    },
+    "deliveryMode": {
+      "type": "string",
+      "enum": ["marketplace", "bundle", "bundled"]
+    },
+    "bundleDependencies": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string", "minLength": 1 },
+          {
+            "type": "object",
+            "required": ["pluginId"],
+            "properties": {
+              "pluginId": { "type": "string", "minLength": 1 },
+              "versionRange": { "type": "string", "minLength": 1 },
+              "required": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "pluginAccess": {
+      "type": "object",
+      "required": ["plugins"],
+      "properties": {
+        "plugins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["pluginId"],
+            "properties": {
+              "pluginId": { "type": "string", "minLength": 1 },
+              "tools": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 },
+                "uniqueItems": true
+              },
+              "events": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 },
+                "uniqueItems": true
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
     },
     "tier": {
       "type": "string",

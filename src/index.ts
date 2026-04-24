@@ -13,15 +13,20 @@
  *   user. Receives a narrower trust scope by default.
  */
 export type DeploymentMode = "managed" | "user";
-export type PluginDeliveryMode = "marketplace" | "bundled";
+export type InstallPolicy = "admin" | "user";
+export type PluginDeliveryMode = "marketplace" | "bundle";
 export interface BundleDependencySpec {
   pluginId: string;
   versionRange?: string;
+  required?: boolean;
 }
-export interface RoutineToolBindings {
-  wakeupBriefing?: string;
-  shutdownSummary?: string;
-  heartbeat?: string;
+export interface PluginAccessTarget {
+  pluginId: string;
+  tools?: string[];
+  events?: string[];
+}
+export interface PluginAccessSpec {
+  plugins: PluginAccessTarget[];
 }
 export interface RoutineMailActionItem {
   title: string;
@@ -97,7 +102,6 @@ export interface PluginManifest {
   
   /** Free-form capability tags declared by the plugin (for example `"calendar"`, `"email"`). Hosts may gate features on these. @optional */
   capabilities?: string[];
-  routineTools?: RoutineToolBindings;
   /** Tools that should be invoked once during plugin startup, before the first user interaction. @optional */
   startupTools?: string[];
   /** Event type names this plugin subscribes to. The host delivers matching events via `PluginHostApi.onEvent`. @optional */
@@ -112,12 +116,16 @@ export interface PluginManifest {
     titleField?: string;
     bodyField?: string;
   }>;
-  /** Deployment policy. Defaults to `"user"` when omitted. @optional */
+  /** Install policy. Defaults to `"user"` when omitted. @optional */
+  installPolicy?: InstallPolicy;
+  /** Legacy deployment policy. @optional */
   deployment?: DeploymentMode;
   /** Delivery mode. @optional */
   deliveryMode?: PluginDeliveryMode;
   /** Companion plugins that should be installed alongside a bundled root plugin. @optional */
   bundleDependencies?: Array<string | BundleDependencySpec>;
+  /** Explicit cross-plugin access declarations for orchestrator-style plugins. @optional */
+  pluginAccess?: PluginAccessSpec;
   /** Display string identifying the plugin publisher (for example an organization or author). @optional */
   publisher?: string;
   
@@ -186,6 +194,10 @@ export interface PluginRegistryEntry {
   manifestPath: string;
   /** Whether the plugin should be loaded at host startup. Defaults to `true` when omitted. @optional */
   enabled?: boolean;
+  /** Who initiated the install. @optional */
+  installedBy?: InstallPolicy;
+  /** Bundles that currently reference this installed plugin. @optional */
+  bundleRefs?: string[];
 }
 
 /**
@@ -221,12 +233,16 @@ export interface PluginMarketplaceItem {
   defaultConfig?: Record<string, unknown>;
   /** UI extensions the plugin will contribute once installed. @optional */
   ui?: PluginUiExtension[];
-  /** Deployment channel. @optional */
+  /** Install policy. @optional */
+  installPolicy?: InstallPolicy;
+  /** Legacy deployment channel. @optional */
   deployment?: DeploymentMode;
   /** Delivery mode. @optional */
   deliveryMode?: PluginDeliveryMode;
   /** Companion plugins that should be installed alongside a bundled root plugin. @optional */
   bundleDependencies?: Array<string | BundleDependencySpec>;
+  /** Explicit cross-plugin access declarations. @optional */
+  pluginAccess?: PluginAccessSpec;
   /** Display string identifying the publisher. @optional */
   publisher?: string;
 }
@@ -252,7 +268,7 @@ export interface PluginHostApi {
     sourceRef?: string;
     priority?: "high" | "medium" | "low";
   }): void;
-  saveNote(title: string, content: string): void;
+  saveMemory(title: string, content: string): Promise<void>;
   getSecret(key: string): string | null;
 
   getMsGraphToken(): Promise<string | null>;
