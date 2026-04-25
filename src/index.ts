@@ -309,7 +309,6 @@ export interface PluginHostApi {
   }): void;
   getSecret(key: string): string | null;
 
-
   getMsGraphToken(): Promise<string | null>;
   startMsGraphAuth(openBrowser: (url: string) => Promise<void>): Promise<void>;
   isMsGraphAuthenticated(): boolean;
@@ -317,20 +316,13 @@ export interface PluginHostApi {
   onMsGraphAuthChange(handler: () => void): void;
   callTool<T = unknown>(toolName: string, payload?: unknown): Promise<T>;
 
-
   withMsGraphRetry<T>(fn: (token: string) => Promise<T>): Promise<T>;
-
-
 
   callLlm(prompt: string, options?: { maxTokens?: number; systemPrompt?: string }): Promise<string>;
 
-
   logEvent(level: "info" | "warn" | "error", message: string, data?: unknown): void;
 
-
   onShutdown(handler: () => void | Promise<void>): void;
-
-
 
   openAuthWindow(options: {
     url: string;
@@ -348,6 +340,37 @@ export interface PluginHostApi {
     httpOnly?: boolean;
     expirationDate?: number;
   }>>;
+
+  triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
+}
+
+export interface ConversationTriggerSpec {
+
+  prompt: string;
+
+  source: string;
+
+  context?: Record<string, unknown>;
+
+  visibility?: "silent" | "summary-only" | "user-visible";
+
+  priority?: "low" | "normal" | "high";
+
+  dedupeKey?: string;
+}
+
+export interface ConversationTriggerResult {
+
+  accepted: boolean;
+
+  reason?:
+    | "capability_denied"
+    | "invalid_source"
+    | "duplicate"
+    | "loop_unavailable"
+    | "disabled";
+
+  source: string;
 }
 
 /**
