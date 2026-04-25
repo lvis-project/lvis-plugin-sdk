@@ -151,16 +151,26 @@ function sanitizeForPublic(text) {
  *     the matching field line inside an interface body.
  */
 const JSDOC_CATALOG = {
-  DeploymentMode: {
+  EventSubscriptionHint: {
     leading: `/**
- * Deployment channel for a plugin.
- *
- * - \`"managed"\` — curated, reviewed plugin distributed through the official
- *   marketplace. The host may apply stricter permissioning and automatic
- *   updates.
- * - \`"user"\` — locally installed or side-loaded plugin authored by the end
- *   user. Receives a narrower trust scope by default.
+ * Optional structured hint attached to an event subscription. Allows the host
+ * to surface contextual metadata alongside the subscription.
  */`,
+    fields: {
+      category: `/** Broad category the event falls into. */`,
+      priority: `/** Relative importance used by the host to order or filter subscriptions. */`,
+      title: `/** Short human-readable label shown in the host UI for this subscription. */`,
+    },
+  },
+  EventSubscription: {
+    leading: `/**
+ * Object form of an event subscription entry. Use when you need to attach a
+ * hint to a subscription; otherwise prefer the plain string form.
+ */`,
+    fields: {
+      type: `/** Event type name. Must match the string form used in published event declarations. */`,
+      hint: `/** Optional structured hint shown by the host alongside the subscription. @optional */`,
+    },
   },
   PluginManifest: {
     leading: `/**
@@ -193,9 +203,10 @@ const JSDOC_CATALOG = {
       capabilities: `/** Free-form capability tags declared by the plugin (for example \`"calendar"\`, \`"email"\`). Hosts may gate features on these. @optional */`,
       startupTools: `/** Tools that should be invoked once during plugin startup, before the first user interaction. @optional */`,
       eventSubscriptions: `/** Event type names this plugin subscribes to. The host delivers matching events via \`PluginHostApi.onEvent\`. @optional */`,
+      eventPublishes: `/** Event type names this plugin may emit. Hosts can use this for validation and ownership checks. @optional */`,
+      emittedEvents: `/** Alias of \`eventPublishes\` accepted by host bridge paths. @optional */`,
       uiCallable: `/** Tools that the UI is permitted to invoke directly (bypassing the LLM). Use sparingly — prefer LLM-mediated calls. @optional */`,
       notificationEvents: `/** Events that should be surfaced as host notifications. Each entry names the event and maps fields of its payload to notification title and body. @optional */`,
-      deployment: `/** Deployment channel. Defaults to \`"user"\` when omitted. @optional */`,
       publisher: `/** Display string identifying the plugin publisher (for example an organization or author). @optional */`,
       startupTimeoutMs: `/** Maximum time in milliseconds the host will wait for \`RuntimePlugin.start\` to resolve. Plugins exceeding this are considered failed. @optional */`,
       toolSchemas: `/** JSON Schema descriptions of each tool's input. Used by the host to advertise tools to the LLM and to validate arguments before dispatch. Keys must appear in \`tools\`. @optional */`,
@@ -262,7 +273,6 @@ const JSDOC_CATALOG = {
       tools: `/** Tools the plugin will expose — mirrors \`PluginManifest.tools\` for preview purposes. */`,
       defaultConfig: `/** Default configuration seeded into the plugin on first install. Users may override this. @optional */`,
       ui: `/** UI extensions the plugin will contribute once installed. @optional */`,
-      deployment: `/** Deployment channel. @optional */`,
       publisher: `/** Display string identifying the publisher. @optional */`,
     },
   },
@@ -556,11 +566,28 @@ function enrichWithJsDoc(text, catalog) {
   return out;
 }
 
+function removeSdkOnlyDeprecatedDeployment(text) {
+  return text
+    .replace(/^export type DeploymentMode = "managed" \| "user";\r?\n+/m, "")
+    .replace(/^export type PluginDeliveryMode = "marketplace" \| "bundle";\r?\n+/m, "")
+    .replace(
+      /^\s*deployment\?: DeploymentMode;\r?\n/gm,
+      "",
+    )
+    .replace(
+      /^\s*deliveryMode\?: PluginDeliveryMode;\r?\n/gm,
+      "",
+    );
+}
+
 try {
   const { path: hostPath, source } = resolveHostTypesPath();
   const rendered = render(extract(hostPath));
   const sanitized = sanitizeForPublic(rendered);
-  const output = enrichWithJsDoc(sanitized, JSDOC_CATALOG);
+  const output = removeSdkOnlyDeprecatedDeployment(enrichWithJsDoc(sanitized, JSDOC_CATALOG))
+    .replace(/\r(?!\n)/g, "\n")
+    .replace(/^[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n");
   const target = path.join(ROOT, "src/index.ts");
 
   // Normalize line endings so CRLF/LF differences don't trigger false drift.

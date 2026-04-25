@@ -28,9 +28,55 @@
     },
     "description": { "type": "string" },
     "publisher": { "type": "string" },
-    "deployment": {
+    "installPolicy": {
       "type": "string",
-      "enum": ["managed", "user", "system"]
+      "enum": ["admin", "user"]
+    },
+    "bundleDependencies": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string", "minLength": 1 },
+          {
+            "type": "object",
+            "required": ["pluginId"],
+            "properties": {
+              "pluginId": { "type": "string", "minLength": 1 },
+              "versionRange": { "type": "string", "minLength": 1 },
+              "required": { "type": "boolean" }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "pluginAccess": {
+      "type": "object",
+      "required": ["plugins"],
+      "properties": {
+        "plugins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["pluginId"],
+            "properties": {
+              "pluginId": { "type": "string", "minLength": 1 },
+              "tools": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 },
+                "uniqueItems": true
+              },
+              "events": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 },
+                "uniqueItems": true
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
     },
     "tier": {
       "type": "string",
@@ -66,35 +112,37 @@
       "uniqueItems": true
     },
     "eventSubscriptions": {
-      "oneOf": [
-        {
-          "type": "array",
-          "items": { "type": "string" },
-          "uniqueItems": true
-        },
-        {
-          "type": "array",
-          "items": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string", "minLength": 1 },
+          {
             "type": "object",
             "required": ["type"],
-            "additionalProperties": false,
             "properties": {
               "type": { "type": "string", "minLength": 1 },
               "hint": {
                 "type": "object",
                 "required": ["category", "priority", "title"],
-                "additionalProperties": false,
                 "properties": {
-                  "category": { "type": "string", "enum": ["task", "note", "session", "meeting", "email", "calendar", "system"] },
-                  "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+                  "category": {
+                    "type": "string",
+                    "enum": ["task", "note", "session", "meeting", "email", "calendar", "system"]
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": ["high", "medium", "low"]
+                  },
                   "title": { "type": "string", "minLength": 1 }
-                }
+                },
+                "additionalProperties": false
               }
-            }
-          },
-          "uniqueItems": true
-        }
-      ]
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "uniqueItems": true
     },
     "emittedEvents": {
       "type": "array",

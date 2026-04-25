@@ -9,7 +9,12 @@
  *  - The object cannot be mutated at runtime
  */
 import { describe, expect, it } from "vitest";
-import { MARKETPLACE_PUBLIC_KEYS, MARKETPLACE_PRIMARY_KEY_ID } from "../src/keys.js";
+import {
+  getTrustedMarketplacePublicKeys,
+  MARKETPLACE_PRIMARY_KEY_ID,
+  MARKETPLACE_PUBLIC_KEYS,
+  MARKETPLACE_TEST_KEY_IDS,
+} from "../src/keys.js";
 
 describe("MARKETPLACE_PUBLIC_KEYS", () => {
   it("is frozen (Object.isFrozen)", () => {
@@ -60,6 +65,22 @@ describe("MARKETPLACE_PUBLIC_KEYS", () => {
 
   it("contains the 'poc-v1' key", () => {
     expect(MARKETPLACE_PUBLIC_KEYS["poc-v1"]).toBeDefined();
+  });
+
+  it("marks dev and poc keys as test-only", () => {
+    expect(MARKETPLACE_TEST_KEY_IDS).toEqual(["dev-v1", "poc-v1"]);
+  });
+
+  it("excludes test keys from the trusted runtime set by default", () => {
+    const trusted = getTrustedMarketplacePublicKeys();
+    expect(trusted["dev-v1"]).toBeUndefined();
+    expect(trusted["poc-v1"]).toBeUndefined();
+  });
+
+  it("includes test keys only when explicitly requested", () => {
+    const trusted = getTrustedMarketplacePublicKeys({ includeTestKeys: true });
+    expect(trusted["dev-v1"]).toBeDefined();
+    expect(trusted["poc-v1"]).toBeDefined();
   });
 });
 
