@@ -32,8 +32,9 @@
       "type": "string",
       "enum": ["admin", "user"]
     },
-    "bundleDependencies": {
+    "dependencies": {
       "type": "array",
+      "description": "Plugin dependencies. This is not a delivery mode.",
       "items": {
         "oneOf": [
           { "type": "string", "minLength": 1 },
