@@ -344,32 +344,86 @@ export interface PluginHostApi {
   triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
 }
 
+/**
+ * Spec for `PluginHostApi.triggerConversation()`. Passed by a brain plugin
+ * when it decides a signal warrants starting a conversation.
+ *
+ * Treat all string fields as plugin-owned: do NOT inline raw third-party
+ * content (mail bodies, transcripts) into `prompt` or `context` — the host
+ * will record both into its audit chain.
+ */
 export interface ConversationTriggerSpec {
 
+  /** Templated message — NEVER raw third-party content. See safety contract on `PluginHostApi.triggerConversation`. */
   prompt: string;
 
+  /** Origin tag identifying the signal. Must match `^proactive:[a-z][a-z0-9-]*$` (for example `proactive:meeting-detection`). */
   source: string;
 
+  /**
+   * Side-channel metadata (IDs, references) recorded with the trigger.
+   *
+   * **P0 limitation:** the host currently records `context` only into the
+   * audit chain — the ConversationLoop pipeline (system-prompt builder, tools,
+   * history) does NOT receive it. Plugins that need the LLM or tools to act on
+   * an ID (for example `emailId`) MUST embed the ID in `prompt` itself so it
+   * survives the trip into the loop. A future P2 will wire `context` into
+   * per-turn metadata; the field is kept now so adding plumbing later is
+   * non-breaking.
+   *
+   * @optional
+   */
   context?: Record<string, unknown>;
 
+  /**
+   * UI behaviour:
+   *  - `silent` — run without surfacing to the user; only audit + result tools.
+   *  - `summary-only` — show one-line completion notice (default).
+   *  - `user-visible` — surface as if the user opened a turn, modal-style.
+   *
+   * **P0 limitation:** all three values currently produce identical UI
+   * behaviour — recorded into audit only. P2 will add the actual UI branching.
+   *
+   * @optional
+   */
   visibility?: "silent" | "summary-only" | "user-visible";
 
+  /** Routing hint for queueing when multiple triggers compete (audit-only in P0). @optional */
   priority?: "low" | "normal" | "high";
 
+  /** Suppress duplicate triggers for the same observation. The dedupe window is enforced by the host. @optional */
   dedupeKey?: string;
 }
 
+/**
+ * Outcome of a `PluginHostApi.triggerConversation()` call. When `accepted`
+ * is `false`, `reason` describes why; `source` is echoed back so callers can
+ * correlate logs across plugin and host.
+ */
 export interface ConversationTriggerResult {
 
+  /** Whether the trigger was accepted for execution. */
   accepted: boolean;
 
+  /**
+   * When `accepted` is `false`, the cause:
+   *  - `capability_denied` — plugin lacks `conversation-trigger`.
+   *  - `invalid_source` — `source` does not match `^proactive:[a-z][a-z0-9-]*$`,
+   *    `prompt` empty, or other shape problem.
+   *  - `duplicate` — `dedupeKey` matched a recent trigger.
+   *  - `rate_limited` — per-plugin call cap exceeded (sliding window).
+   *  - `loop_unavailable` — ConversationLoop not yet bound (boot ordering).
+   *
+   * @optional
+   */
   reason?:
     | "capability_denied"
     | "invalid_source"
     | "duplicate"
-    | "loop_unavailable"
-    | "disabled";
+    | "rate_limited"
+    | "loop_unavailable";
 
+  /** Echoed back from the request so callers can correlate logs across plugin and host. */
   source: string;
 }
 

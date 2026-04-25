@@ -1,10 +1,15 @@
 name: drift-check
 on:
+  pull_request:
+    paths:
+      - 'src/index.ts'
+      - 'scripts/sync-from-host.mjs'
+      - '.github/workflows/drift-check.yml'
   schedule:
     - cron: '17 3 * * *'   # nightly ~03:17 UTC
   workflow_dispatch: {}
 concurrency:
-  group: drift-check
+  group: drift-check-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   check:
@@ -54,8 +59,14 @@ jobs:
           else
             echo "drift=true" >> "$GITHUB_OUTPUT"
           fi
+      - name: Fail on drift (PR mode)
+        if: github.event_name == 'pull_request' && steps.diff.outputs.drift == 'true'
+        run: |
+          echo "::error::Drift detected between src/index.ts and host types.ts. Run 'bun run sync:from-host' locally and commit the result."
+          git --no-pager diff -- src/index.ts | head -200
+          exit 1
       - name: Open PR on drift
-        if: steps.diff.outputs.drift == 'true'
+        if: github.event_name != 'pull_request' && steps.diff.outputs.drift == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -70,7 +81,7 @@ jobs:
           base: main
           delete-branch: true
       - name: Open issue on workflow failure
-        if: failure()
+        if: failure() && github.event_name != 'pull_request'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
           script: |
