@@ -387,6 +387,43 @@ const JSDOC_CATALOG = {
  * for returned promises to resolve before exiting, giving the plugin a
  * chance to flush state.
  */`,
+      triggerConversation: `/**
+ * Start a conversation turn from a proactive plugin signal.
+ *
+ * Capability-gated by \`conversation-trigger\` in the plugin manifest; missing
+ * capability returns \`{ accepted: false, reason: "capability_denied" }\` (no
+ * exception). \`spec.prompt\` MUST be a templated, plugin-owned message — NOT
+ * raw third-party content (mail body, transcript). \`spec.source\` MUST match
+ * \`^proactive:[a-z][a-z0-9-]*$\`.
+ */`,
+    },
+  },
+  ConversationTriggerSpec: {
+    leading: `/** Spec for \`PluginHostApi.triggerConversation()\`. */`,
+    fields: {
+      prompt: `/** Templated, plugin-owned message. NEVER raw third-party content (mail body, transcript). Recorded into audit. */`,
+      source: `/** Origin tag. Must match \`^proactive:[a-z][a-z0-9-]*$\`. */`,
+      context: `/** Audit-only side-channel. NOT plumbed into the conversation loop — embed any ID needed by the LLM or tools in \`prompt\` instead. @optional */`,
+      visibility: `/** UI mode: \`silent\` / \`summary-only\` (default) / \`user-visible\`. P0 treats all three identically. @optional */`,
+      priority: `/** Queueing hint when multiple triggers compete. Audit-only in P0. @optional */`,
+      dedupeKey: `/** Suppress duplicate triggers for the same observation; dedupe window enforced by host. @optional */`,
+    },
+  },
+  ConversationTriggerResult: {
+    leading: `/** Outcome of \`PluginHostApi.triggerConversation()\`. */`,
+    fields: {
+      accepted: `/** Whether the trigger was accepted for execution. */`,
+      reason: `/**
+ * Cause when \`accepted\` is \`false\`:
+ *  - \`capability_denied\` — plugin lacks \`conversation-trigger\`.
+ *  - \`invalid_source\` — \`source\` does not match \`^proactive:[a-z][a-z0-9-]*$\`, or \`prompt\` empty/oversized.
+ *  - \`duplicate\` — \`dedupeKey\` matched a recent trigger.
+ *  - \`rate_limited\` — per-plugin call cap exceeded.
+ *  - \`loop_unavailable\` — ConversationLoop not yet bound at boot.
+ *
+ * @optional
+ */`,
+      source: `/** Echoed from the request so callers can correlate logs. */`,
     },
   },
   PluginMethodHandler: {
