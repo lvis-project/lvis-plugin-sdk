@@ -309,7 +309,6 @@ export interface PluginHostApi {
   }): void;
   getSecret(key: string): string | null;
 
-
   getMsGraphToken(): Promise<string | null>;
   startMsGraphAuth(openBrowser: (url: string) => Promise<void>): Promise<void>;
   isMsGraphAuthenticated(): boolean;
@@ -317,20 +316,13 @@ export interface PluginHostApi {
   onMsGraphAuthChange(handler: () => void): void;
   callTool<T = unknown>(toolName: string, payload?: unknown): Promise<T>;
 
-
   withMsGraphRetry<T>(fn: (token: string) => Promise<T>): Promise<T>;
-
-
 
   callLlm(prompt: string, options?: { maxTokens?: number; systemPrompt?: string }): Promise<string>;
 
-
   logEvent(level: "info" | "warn" | "error", message: string, data?: unknown): void;
 
-
   onShutdown(handler: () => void | Promise<void>): void;
-
-
 
   openAuthWindow(options: {
     url: string;
@@ -348,6 +340,57 @@ export interface PluginHostApi {
     httpOnly?: boolean;
     expirationDate?: number;
   }>>;
+
+  triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
+}
+
+/** Spec for `PluginHostApi.triggerConversation()`. */
+export interface ConversationTriggerSpec {
+
+  /** Templated, plugin-owned message. NEVER raw third-party content (mail body, transcript). Recorded into audit. */
+  prompt: string;
+
+  /** Origin tag. Must match `^proactive:[a-z][a-z0-9-]*$`. */
+  source: string;
+
+  /** Audit-only side-channel. NOT plumbed into the conversation loop — embed any ID needed by the LLM or tools in `prompt` instead. @optional */
+  context?: Record<string, unknown>;
+
+  /** UI mode: `silent` / `summary-only` (default) / `user-visible`. P0 treats all three identically. @optional */
+  visibility?: "silent" | "summary-only" | "user-visible";
+
+  /** Queueing hint when multiple triggers compete. Audit-only in P0. @optional */
+  priority?: "low" | "normal" | "high";
+
+  /** Suppress duplicate triggers for the same observation; dedupe window enforced by host. @optional */
+  dedupeKey?: string;
+}
+
+/** Outcome of `PluginHostApi.triggerConversation()`. */
+export interface ConversationTriggerResult {
+
+  /** Whether the trigger was accepted for execution. */
+  accepted: boolean;
+
+  /**
+   * Cause when `accepted` is `false`:
+   *  - `capability_denied` — plugin lacks `conversation-trigger`.
+   *  - `invalid_source` — `source` does not match `^proactive:[a-z][a-z0-9-]*$`, or `prompt` empty/oversized.
+   *  - `duplicate` — `dedupeKey` matched a recent trigger.
+   *  - `rate_limited` — per-plugin call cap exceeded.
+   *  - `loop_unavailable` — ConversationLoop not yet bound at boot.
+   *
+   * @optional
+   */
+  reason?:
+    | "capability_denied"
+    | "invalid_source"
+    | "duplicate"
+    | "rate_limited"
+    | "loop_unavailable";
+
+  /** Echoed from the request so callers can correlate logs. */
+  source: string;
 }
 
 /**
