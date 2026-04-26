@@ -21,7 +21,7 @@
  * Values are base64-encoded raw 32-byte ed25519 public keys.
  */
 export const MARKETPLACE_PUBLIC_KEYS: Readonly<Record<string, string>> = Object.freeze({
-  "dev-v1": "gDzzn5UcdQTwFIxXkXdhZU4k85eUyyyFKfd+fvooDhM=",
+  "dev-v1": "POA+RSsCG9akcaH6z410Jssk1FAy1ajA1Q0IWTRjZxg=",
   "poc-v1": "Qm3FUAMek2r5OkXCurgX6dNYSqiT1GRnjb5fWfuOoao=",
 });
 
