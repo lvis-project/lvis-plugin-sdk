@@ -309,14 +309,7 @@ export interface PluginHostApi {
   }): void;
   getSecret(key: string): string | null;
 
-  getMsGraphToken(): Promise<string | null>;
-  startMsGraphAuth(openBrowser: (url: string) => Promise<void>): Promise<void>;
-  isMsGraphAuthenticated(): boolean;
-  getMsGraphAccount(): string | null;
-  onMsGraphAuthChange(handler: () => void): void;
   callTool<T = unknown>(toolName: string, payload?: unknown): Promise<T>;
-
-  withMsGraphRetry<T>(fn: (token: string) => Promise<T>): Promise<T>;
 
   callLlm(prompt: string, options?: { maxTokens?: number; systemPrompt?: string }): Promise<string>;
 
