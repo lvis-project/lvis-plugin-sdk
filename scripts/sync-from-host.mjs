@@ -337,36 +337,6 @@ const JSDOC_CATALOG = {
  * @param key - Secret key.
  * @returns The secret value, or \`null\` if no secret exists for \`key\`.
  */`,
-      getMsGraphToken: `/**
- * Fetch a cached Microsoft Graph OAuth access token, if the user has
- * completed authentication. Returns \`null\` when no valid token is cached.
- */`,
-      startMsGraphAuth: `/**
- * Begin the Microsoft Graph OAuth authorization flow. The host generates
- * the authorization URL and hands it to \`openBrowser\` so the plugin or UI
- * can open it in the user's default browser.
- *
- * @param openBrowser - Opens the supplied URL for user consent.
- */`,
-      isMsGraphAuthenticated: `/**
- * @returns \`true\` when the host currently holds a valid Microsoft Graph
- *          authentication context for the user.
- */`,
-      getMsGraphAccount: `/**
- * @returns The authenticated Microsoft Graph account identifier (typically
- *          the user principal name), or \`null\` when not authenticated.
- */`,
-      onMsGraphAuthChange: `/**
- * Subscribe to Microsoft Graph authentication state changes. The handler is
- * invoked whenever the user signs in, signs out, or tokens are refreshed.
- */`,
-      withMsGraphRetry: `/**
- * Execute \`fn\` with a freshly acquired Microsoft Graph access token,
- * automatically retrying once on a 401 response with a refreshed token.
- *
- * @param fn - Receives a valid bearer token and performs a Graph call.
- * @returns Whatever \`fn\` returns on success.
- */`,
       callLlm: `/**
  * Invoke the host's configured language model.
  *
