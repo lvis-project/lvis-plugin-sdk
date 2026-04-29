@@ -307,8 +307,7 @@ export interface PluginMarketplaceItem {
 
 /**
  * Supported text encodings for PluginStorage read/write operations.
- * Defined explicitly to avoid a dependency on `@types/node`'s `BufferEncoding`
- * in the SDK's public type surface.
+ * Defined explicitly to avoid a dependency on @types/node in the SDK public surface.
  */
 export type StorageEncoding =
   | "utf-8"
@@ -368,13 +367,20 @@ export interface PluginHostApi {
   }): void;
   getSecret(key: string): string | null;
 
+
   callTool<T = unknown>(toolName: string, payload?: unknown): Promise<T>;
+
+
 
   callLlm(prompt: string, options?: { maxTokens?: number; systemPrompt?: string }): Promise<string>;
 
+
   logEvent(level: "info" | "warn" | "error", message: string, data?: unknown): void;
 
+
   onShutdown(handler: () => void | Promise<void>): void;
+
+
 
   openAuthWindow(options: {
     url: string;
@@ -392,6 +398,7 @@ export interface PluginHostApi {
     httpOnly?: boolean;
     expirationDate?: number;
   }>>;
+
 
   triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
 }
