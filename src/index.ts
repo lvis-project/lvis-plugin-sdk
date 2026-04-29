@@ -237,6 +237,21 @@ export class MissingDependenciesError extends Error {
   }
 }
 
+export type McpRuntimeSpec =
+  | {
+      transport: "stdio";
+      command: string;
+      args?: string[];
+      env?: Record<string, string>;
+      auth?: "none" | "api-key" | "sso";
+    }
+  | {
+      transport: "http";
+      url: string;
+      auth?: "none" | "api-key" | "sso";
+      allowPrivateNetworks?: boolean;
+    };
+
 /**
  * Catalog entry describing a plugin available for installation through the
  * host marketplace. This is the user-facing summary of a plugin before it is
@@ -284,6 +299,10 @@ export interface PluginMarketplaceItem {
   toolSchemas?: PluginManifest["toolSchemas"];
 
   requires?: RequiresSpec;
+
+  pluginType?: "plugin" | "mcp";
+
+  mcpRuntime?: McpRuntimeSpec;
 }
 
 /**
