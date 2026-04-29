@@ -8,8 +8,10 @@
  *
  * Host source resolution (in order):
  *   1. LVIS_HOST_TYPES_PATH env var pointing to a local types.ts file.
- *   2. Git clone via LVIS_HOST_REPO_URL + HOST_REF (default branch: main).
- * If neither is set, the script errors out.
+ *   2. Local LVIS workspace sibling (`../lvis-app/src/plugins/types.ts`).
+ *   3. Vendored app package location (`../../src/plugins/types.ts`).
+ *   4. Git clone via LVIS_HOST_REPO_URL + HOST_REF (default branch: main).
+ * If none is available, the script errors out.
  */
 
 import ts from "typescript";
@@ -29,10 +31,21 @@ function resolveHostTypesPath() {
   if (envPath && fs.existsSync(envPath)) {
     return { path: envPath, source: `env:${envPath}` };
   }
+
+  const localCandidates = [
+    path.resolve(ROOT, "..", "lvis-app", "src", "plugins", "types.ts"),
+    path.resolve(ROOT, "..", "..", "src", "plugins", "types.ts"),
+  ];
+  for (const candidate of localCandidates) {
+    if (fs.existsSync(candidate)) {
+      return { path: candidate, source: `local:${candidate}` };
+    }
+  }
+
   const url = process.env.LVIS_HOST_REPO_URL;
   if (!url) {
     console.error(
-      "ERROR: host types source not configured. Set LVIS_HOST_TYPES_PATH to a local file, or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository."
+      "ERROR: host types source not configured. Set LVIS_HOST_TYPES_PATH to a local file, place lvis-app next to this repository, or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository."
     );
     process.exit(1);
   }
