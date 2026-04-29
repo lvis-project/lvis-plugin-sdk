@@ -17,9 +17,12 @@
     "./schemas/plugin-manifest.schema.json": "./schemas/plugin-manifest.schema.json",
     "./schemas/*": "./schemas/*"
   },
-  "files": ["dist", "src/keys.ts", "schemas"],
+  "files": [
+    "dist",
+    "src/keys.ts",
+    "schemas"
+  ],
   "scripts": {
-    "prepare": "bun run build",
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.keys.json",
     "clean": "rm -rf dist",
     "sync:from-host": "node scripts/sync-from-host.mjs",
