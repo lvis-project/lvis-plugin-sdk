@@ -586,8 +586,8 @@ function enrichWithJsDoc(text, catalog) {
   return out;
 }
 
-function removeSdkOnlyDeprecatedDeployment(text) {
-  return text
+function normalizeSdkTypeOnlySurface(text) {
+  let out = text
     .replace(/^export type DeploymentMode = "managed" \| "user";\r?\n+/m, "")
     .replace(/^export type PluginDeliveryMode = "marketplace" \| "bundle";\r?\n+/m, "")
     .replace(
@@ -598,13 +598,42 @@ function removeSdkOnlyDeprecatedDeployment(text) {
       /^\s*deliveryMode\?: PluginDeliveryMode;\r?\n/gm,
       "",
     );
+
+  out = out.replace(
+    /^export class PluginStorageError extends Error \{\r?\n(?:.*\r?\n)*?^\}\r?\n+/m,
+    "",
+  );
+
+  if (out.includes("BufferEncoding")) {
+    out = out.replace(/\bBufferEncoding\b/g, "StorageEncoding");
+    if (!out.includes("export type StorageEncoding")) {
+      const storageEncoding = `/**
+ * Supported text encodings for PluginStorage read/write operations.
+ * Defined explicitly to avoid a dependency on @types/node in the SDK public surface.
+ */
+export type StorageEncoding =
+  | "utf-8"
+  | "utf8"
+  | "ascii"
+  | "base64"
+  | "base64url"
+  | "hex"
+  | "latin1"
+  | "binary";
+
+`;
+      out = out.replace(/^export interface PluginStorage/m, storageEncoding + "export interface PluginStorage");
+    }
+  }
+
+  return out;
 }
 
 try {
   const { path: hostPath, source } = resolveHostTypesPath();
   const rendered = render(extract(hostPath));
   const sanitized = sanitizeForPublic(rendered);
-  const output = removeSdkOnlyDeprecatedDeployment(enrichWithJsDoc(sanitized, JSDOC_CATALOG))
+  const output = normalizeSdkTypeOnlySurface(enrichWithJsDoc(sanitized, JSDOC_CATALOG))
     .replace(/\r(?!\n)/g, "\n")
     .replace(/^[ \t]+$/gm, "")
     .replace(/\n{3,}/g, "\n\n");
