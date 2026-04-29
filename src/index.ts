@@ -305,17 +305,32 @@ export interface PluginMarketplaceItem {
   mcpRuntime?: McpRuntimeSpec;
 }
 
+/**
+ * Supported text encodings for PluginStorage read/write operations.
+ * Defined explicitly to avoid a dependency on `@types/node`'s `BufferEncoding`
+ * in the SDK's public type surface.
+ */
+export type StorageEncoding =
+  | "utf-8"
+  | "utf8"
+  | "ascii"
+  | "base64"
+  | "base64url"
+  | "hex"
+  | "latin1"
+  | "binary";
+
 export interface PluginStorage {
 
   resolve(...segments: string[]): string;
 
   read(relPath: string): Promise<Uint8Array>;
 
-  readText(relPath: string, encoding?: BufferEncoding): Promise<string>;
+  readText(relPath: string, encoding?: StorageEncoding): Promise<string>;
 
   readJson<T = unknown>(relPath: string): Promise<T | null>;
 
-  write(relPath: string, data: string | Uint8Array, encoding?: BufferEncoding): Promise<void>;
+  write(relPath: string, data: string | Uint8Array, encoding?: StorageEncoding): Promise<void>;
 
   writeJson<T>(relPath: string, value: T, indent?: number): Promise<void>;
 
