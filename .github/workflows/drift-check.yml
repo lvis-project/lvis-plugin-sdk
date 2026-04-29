@@ -14,7 +14,7 @@ concurrency:
 jobs:
   check:
     if: github.repository == 'lvis-project/lvis-plugin-sdk'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, arm64, oracle]
     permissions:
       contents: write
       pull-requests: write
