@@ -424,6 +424,8 @@ export interface PluginRuntimeContext {
   pluginRoot: string;
   /** Absolute filesystem path to the host's working directory. Plugins should avoid writing here directly. */
   hostRoot: string;
+
+  pluginDataDir: string;
   /** Merged configuration (manifest defaults + user overrides) for this plugin instance. @optional */
   config?: Record<string, unknown>;
   /**
