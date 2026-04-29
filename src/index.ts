@@ -305,6 +305,29 @@ export interface PluginMarketplaceItem {
   mcpRuntime?: McpRuntimeSpec;
 }
 
+export interface PluginStorage {
+
+  resolve(...segments: string[]): string;
+
+  read(relPath: string): Promise<Uint8Array>;
+
+  readText(relPath: string, encoding?: BufferEncoding): Promise<string>;
+
+  readJson<T = unknown>(relPath: string): Promise<T | null>;
+
+  write(relPath: string, data: string | Uint8Array, encoding?: BufferEncoding): Promise<void>;
+
+  writeJson<T>(relPath: string, value: T, indent?: number): Promise<void>;
+
+  rm(relPath: string, options?: { recursive?: boolean }): Promise<void>;
+
+  list(relPath?: string): Promise<string[]>;
+
+  exists(relPath: string): Promise<boolean>;
+
+  mkdir(relPath: string): Promise<void>;
+}
+
 /**
  * Services exposed by the host to a running plugin. An instance is provided
  * on `PluginRuntimeContext.hostApi` when the host calls the plugin's
@@ -315,6 +338,8 @@ export interface PluginMarketplaceItem {
  * keep references across the plugin's lifetime.
  */
 export interface PluginHostApi {
+
+  storage: PluginStorage;
   registerKeywords(keywords: Array<{ keyword: string; skillId: string }>): void;
   emitEvent(eventType: string, data?: unknown): void;
 
