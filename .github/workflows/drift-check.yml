@@ -14,7 +14,10 @@ concurrency:
 jobs:
   check:
     if: github.repository == 'lvis-project/lvis-plugin-sdk'
-    runs-on: [self-hosted, linux, arm64, oracle]
+    # pull_request runs on a GitHub-hosted runner to avoid executing
+    # PR-controlled code (bun install + node script) on the self-hosted
+    # Oracle machine. schedule/workflow_dispatch use the self-hosted runner.
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || fromJSON('["self-hosted","linux","arm64","oracle"]') }}
     permissions:
       contents: write
       pull-requests: write

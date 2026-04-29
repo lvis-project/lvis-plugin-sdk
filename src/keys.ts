@@ -22,7 +22,12 @@ export const MARKETPLACE_PUBLIC_KEYS: Readonly<Record<string, string>> = Object.
  * pre-prod still uses POC keys, prod rotation is handled by shipping a new
  * SDK major (additive add, then remove the old key in a later major).
  */
-export function getTrustedMarketplacePublicKeys(): Readonly<Record<string, string>> {
+export function getTrustedMarketplacePublicKeys(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _options?: { includeTestKeys?: boolean },
+): Readonly<Record<string, string>> {
+  // Single-key model: options parameter retained for backwards-compatibility
+  // with TypeScript consumers that pass { includeTestKeys } — ignored at runtime.
   return MARKETPLACE_PUBLIC_KEYS;
 }
 
