@@ -56,7 +56,7 @@ describe("MARKETPLACE_PUBLIC_KEYS", () => {
   });
 
   it("getTrustedMarketplacePublicKeys returns the same map", () => {
-    expect(getTrustedMarketplacePublicKeys()).toEqual(MARKETPLACE_PUBLIC_KEYS);
+    expect(getTrustedMarketplacePublicKeys()).toBe(MARKETPLACE_PUBLIC_KEYS);
   });
 });
 
