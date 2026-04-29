@@ -441,12 +441,6 @@ export interface ConversationTriggerResult {
 }
 
 /**
- * Alias of `PluginToolHandler` retained for older call sites that describe
- * the same function in method-style terminology.
- */
-export type PluginMethodHandler = PluginToolHandler;
-
-/**
  * Execution context supplied by the host when instantiating a plugin through
  * its `RuntimePluginFactory`. The context gives the plugin access to its
  * configuration, its filesystem roots, a scoped logger, and the full host
