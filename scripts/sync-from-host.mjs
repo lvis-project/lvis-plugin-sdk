@@ -8,9 +8,7 @@
  *
  * Host source resolution (in order):
  *   1. LVIS_HOST_TYPES_PATH env var pointing to a local types.ts file.
- *   2. Local LVIS workspace sibling (`../lvis-app/src/plugins/types.ts`).
- *   3. Vendored app package location (`../../src/plugins/types.ts`).
- *   4. Git clone via LVIS_HOST_REPO_URL + HOST_REF (default branch: main).
+ *   2. Git clone via LVIS_HOST_REPO_URL + HOST_REF (default branch: main).
  * If none is available, the script errors out.
  */
 
@@ -30,16 +28,6 @@ function resolveHostTypesPath() {
   const envPath = process.env.LVIS_HOST_TYPES_PATH;
   if (envPath && fs.existsSync(envPath)) {
     return { path: envPath, source: `env:${envPath}` };
-  }
-
-  const localCandidates = [
-    path.resolve(ROOT, "..", "lvis-app", "src", "plugins", "types.ts"),
-    path.resolve(ROOT, "..", "..", "src", "plugins", "types.ts"),
-  ];
-  for (const candidate of localCandidates) {
-    if (fs.existsSync(candidate)) {
-      return { path: candidate, source: `local:${candidate}` };
-    }
   }
 
   const url = process.env.LVIS_HOST_REPO_URL;
@@ -409,12 +397,6 @@ const JSDOC_CATALOG = {
       source: `/** Echoed from the request so callers can correlate logs. */`,
     },
   },
-  PluginMethodHandler: {
-    leading: `/**
- * Alias of \`PluginToolHandler\` retained for older call sites that describe
- * the same function in method-style terminology.
- */`,
-  },
   PluginRuntimeContext: {
     leading: `/**
  * Execution context supplied by the host when instantiating a plugin through
@@ -597,7 +579,11 @@ function normalizeSdkTypeOnlySurface(text) {
     .replace(
       /^\s*deliveryMode\?: PluginDeliveryMode;\r?\n/gm,
       "",
-    );
+    )
+    // PluginMethodHandler was a backward-compat alias for PluginToolHandler.
+    // The plugins-no-longer-submodules milestone removed all consumers; drop
+    // it from the SDK public surface while keeping the host source unchanged.
+    .replace(/^export type PluginMethodHandler = PluginToolHandler;\r?\n+/m, "");
 
   out = out.replace(
     /^export class PluginStorageError extends Error \{\r?\n(?:.*\r?\n)*?^\}\r?\n+/m,
