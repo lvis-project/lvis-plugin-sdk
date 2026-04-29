@@ -634,7 +634,8 @@ try {
   const rendered = render(extract(hostPath));
   const sanitized = sanitizeForPublic(rendered);
   const output = normalizeSdkTypeOnlySurface(enrichWithJsDoc(sanitized, JSDOC_CATALOG))
-    .replace(/\r(?!\n)/g, "\n")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
     .replace(/^[ \t]+$/gm, "")
     .replace(/\n{3,}/g, "\n\n");
   const target = path.join(ROOT, "src/index.ts");

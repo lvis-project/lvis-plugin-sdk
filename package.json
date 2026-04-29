@@ -16,5 +16,8 @@
   "scripts": {
     "sync:from-host": "node scripts/sync-from-host.mjs",
     "check:drift": "node scripts/sync-from-host.mjs --check"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
   }
 }
