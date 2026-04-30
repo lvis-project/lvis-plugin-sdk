@@ -1,52 +1,167 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://lvis-project.github.io/schemas/plugin-manifest.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://lvis.lge.com/schemas/plugin.schema.json",
   "title": "LVIS Plugin Manifest",
-  "description": "JSON Schema for LVIS plugin.json manifests. Validated in each plugin's CI via ajv.",
+  "description": "Validates plugin.json manifest files for LVIS plugins (§9)",
   "type": "object",
-  "required": ["id", "name", "version", "entry"],
+  "required": ["id", "name", "version", "entry", "tools"],
+  "additionalProperties": true,
   "properties": {
     "id": {
       "type": "string",
-      "minLength": 1,
-      "description": "Unique plugin identifier (slug or reverse-DNS)."
+      "description": "Plugin unique identifier (dot-format recommended)",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9._-]*$",
+      "minLength": 3,
+      "maxLength": 128
     },
-    "name": {
+    "name": { "type": "string", "minLength": 1 },
+    "description": {
       "type": "string",
-      "minLength": 1,
-      "description": "Human-readable plugin display name."
+      "maxLength": 280,
+      "description": "Short human-readable summary used in the inactive-plugin catalog LLM sees in the system prompt."
     },
     "version": {
       "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+].+)?$",
-      "description": "Semver version (major.minor.patch with optional pre-release/build)."
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[\\w.]+)?(\\+[\\w.]+)?$",
+      "description": "Anchored semver (MAJOR.MINOR.PATCH with optional -prerelease / +build metadata)"
     },
-    "entry": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Relative path to the compiled plugin entry module."
+    "entry": { "type": "string", "minLength": 1 },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+        "maxLength": 64
+      },
+      "description": "Tool name list — underscore format required"
     },
-    "description": { "type": "string" },
-    "publisher": { "type": "string" },
-    "installPolicy": {
-      "type": "string",
-      "enum": ["admin", "user"]
+    "config": { "type": "object" },
+    "ui": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "slot", "kind", "title"],
+        "properties": {
+          "id": { "type": "string" },
+          "slot": { "enum": ["sidebar"] },
+          "kind": { "enum": ["embedded-module", "embedded-page", "info-card"] },
+          "displayName": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "defaults": { "type": "object" },
+          "entry": { "type": "string" },
+          "exportName": { "type": "string" },
+          "page": { "type": "string" }
+        }
+      },
+      "description": "UI extensions. Kind-specific required fields (embedded-module: entry+exportName; embedded-page: page) are enforced at runtime with soft-fallback — invalid entries are dropped with a console warning, the plugin continues to load."
     },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["keyword", "skillId"],
+        "additionalProperties": false,
+        "properties": {
+          "keyword": { "type": "string", "minLength": 1 },
+          "skillId": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "Closed vocabulary — see src/plugins/capabilities.ts (KNOWN_CAPABILITIES). Unknown values fail validation so typos don't silently grant nothing.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "ms-graph-consumer",
+          "external-auth-consumer",
+           "mail-source",
+           "calendar-source",
+           "routine-provider",
+           "meeting-recorder",
+           "knowledge-index",
+           "background-watcher",
+          "worker-client",
+          "document-indexer",
+          "conversation-trigger"
+        ]
+      }
+    },
+    "startupTools": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "eventSubscriptions": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "required": ["type"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "type": "string", "minLength": 1 },
+              "hint": {
+                "type": "object",
+                "required": ["category", "priority", "title"],
+                "additionalProperties": false,
+                "properties": {
+                  "category": { "type": "string", "enum": ["task", "note", "session", "meeting", "email", "calendar", "system"] },
+                  "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+                  "title": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "startupTimeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 60000,
+      "description": "Hard startup() timeout (ms). Exceeding plugins are fail-soft dropped. Default slow warning threshold is 5000ms."
+    },
+    "uiCallable": {
+      "type": "array",
+      "description": "Method allowlist invokable directly from renderer UI via lvis:plugins:call IPC. Methods not listed must go through ConversationLoop (permission / scope / expansion caps).",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+        "maxLength": 64
+      }
+    },
+    "notificationEvents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["event"],
+        "additionalProperties": false,
+        "properties": {
+          "event": { "type": "string", "minLength": 1 },
+          "titleField": { "type": "string" },
+          "bodyField": { "type": "string" }
+        }
+      }
+    },
+    "installPolicy": { "enum": ["admin", "user"] },
     "dependencies": {
       "type": "array",
-      "description": "Plugin dependencies. This is not a delivery mode.",
+      "description": "Plugin dependencies that should be installed or considered with this plugin. This is not a delivery mode.",
       "items": {
         "oneOf": [
           { "type": "string", "minLength": 1 },
           {
             "type": "object",
             "required": ["pluginId"],
+            "additionalProperties": false,
             "properties": {
               "pluginId": { "type": "string", "minLength": 1 },
               "versionRange": { "type": "string", "minLength": 1 },
               "required": { "type": "boolean" }
-            },
-            "additionalProperties": false
+            }
           }
         ]
       }
@@ -54,12 +169,14 @@
     "pluginAccess": {
       "type": "object",
       "required": ["plugins"],
+      "additionalProperties": false,
       "properties": {
         "plugins": {
           "type": "array",
           "items": {
             "type": "object",
             "required": ["pluginId"],
+            "additionalProperties": false,
             "properties": {
               "pluginId": { "type": "string", "minLength": 1 },
               "tools": {
@@ -72,161 +189,56 @@
                 "items": { "type": "string", "minLength": 1 },
                 "uniqueItems": true
               }
-            },
-            "additionalProperties": false
+            }
           }
+        }
+      }
+    },
+    "requires": {
+      "type": "object",
+      "description": "Runtime prerequisites declared by the plugin",
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       },
       "additionalProperties": false
     },
-    "tier": {
-      "type": "string",
-      "enum": ["core", "official", "community", "experimental"]
-    },
-    "tools": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "pattern": "^[a-zA-Z0-9_-]+$"
-      },
-      "uniqueItems": true,
-      "description": "Tool names. Must match ^[a-zA-Z0-9_-]+$ (no dots, per OpenAI/Gemini/Claude constraints)."
-    },
-    "startupTools": {
-      "type": "array",
-      "items": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$" },
-      "uniqueItems": true
-    },
-    "uiCallable": {
-      "type": "array",
-      "items": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$" },
-      "uniqueItems": true
-    },
-    "capabilities": {
-      "type": "array",
-      "items": { "type": "string" },
-      "uniqueItems": true
-    },
-    "eventPublishes": {
-      "type": "array",
-      "items": { "type": "string" },
-      "uniqueItems": true
-    },
-    "eventSubscriptions": {
-      "type": "array",
-      "items": {
-        "oneOf": [
-          { "type": "string", "minLength": 1 },
-          {
-            "type": "object",
-            "required": ["type"],
-            "properties": {
-              "type": { "type": "string", "minLength": 1 },
-              "hint": {
-                "type": "object",
-                "required": ["category", "priority", "title"],
-                "properties": {
-                  "category": {
-                    "type": "string",
-                    "enum": ["task", "note", "session", "meeting", "email", "calendar", "system"]
-                  },
-                  "priority": {
-                    "type": "string",
-                    "enum": ["high", "medium", "low"]
-                  },
-                  "title": { "type": "string", "minLength": 1 }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
-      "uniqueItems": true
-    },
-    "emittedEvents": {
-      "type": "array",
-      "items": { "type": "string" },
-      "uniqueItems": true
-    },
-    "notificationEvents": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["event"],
-        "properties": {
-          "event": { "type": "string" },
-          "titleField": { "type": "string" },
-          "bodyField": { "type": "string" }
-        },
-        "additionalProperties": true
-      }
-    },
-    "keywords": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["keyword", "skillId"],
-        "properties": {
-          "keyword": { "type": "string", "minLength": 1 },
-          "skillId": { "type": "string", "minLength": 1 }
-        },
-        "additionalProperties": false
-      }
-    },
-    "permissions": {
-      "type": "array",
-      "items": { "type": "string" },
-      "uniqueItems": true
-    },
-    "uiSlots": {
-      "type": "array",
-      "items": { "type": "string" },
-      "uniqueItems": true
-    },
-    "ui": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "slot", "kind", "entry"],
-        "properties": {
-          "id": { "type": "string" },
-          "slot": { "type": "string" },
-          "kind": { "type": "string" },
-          "displayName": { "type": "string" },
-          "title": { "type": "string" },
-          "description": { "type": "string" },
-          "entry": { "type": "string" }
-        },
-        "additionalProperties": true
-      }
-    },
+    "publisher": { "type": "string" },
     "toolSchemas": {
       "type": "object",
+      "description": "LLM이 메서드를 호출할 때 사용하는 JSON Schema (draft-07). 키: method 이름, 값: { description, inputSchema }",
       "additionalProperties": {
         "type": "object",
+        "required": ["description", "inputSchema"],
+        "additionalProperties": false,
         "properties": {
-          "description": { "type": "string" },
-          "inputSchema": { "type": "object" }
-        },
-        "additionalProperties": true
+          "description": {
+            "type": "string",
+            "minLength": 10,
+            "description": "LLM이 이해할 메서드 설명 (when/what/returns)"
+          },
+          "inputSchema": {
+            "type": "object",
+            "required": ["type", "properties"],
+            "description": "JSON Schema draft-07 입력 스키마",
+            "properties": {
+              "$schema": { "type": "string" },
+              "type": { "const": "object" },
+              "properties": { "type": "object" },
+              "required": { "type": "array", "items": { "type": "string" } },
+              "additionalProperties": { "type": "boolean" }
+            }
+          }
+        }
       }
     },
-    "startupTimeoutMs": { "type": "integer", "minimum": 0 },
-    "python": {
-      "type": "object",
-      "properties": {
-        "managedBy": { "type": "string" },
-        "requirementsLock": { "type": "string" }
-      },
-      "additionalProperties": true
-    },
-    "config": { "type": "object" },
     "configSchema": {
       "type": "object",
-      "description": "Declarative settings schema. Properties are JSON-Schema-style fragments with optional UI hints (format: 'secret' routes to the host's encrypted keychain).",
+      "description": "§9.2 Track B — declarative settings schema. JSON Schema draft-07 subset rendered as a typed form in PluginConfigTab. format:'secret' routes the value through the encrypted keychain instead of cleartext pluginConfigs.",
       "required": ["properties"],
+      "additionalProperties": false,
       "properties": {
         "$schema": { "type": "string" },
         "properties": {
@@ -234,6 +246,7 @@
           "additionalProperties": {
             "type": "object",
             "required": ["type"],
+            "additionalProperties": false,
             "properties": {
               "type": { "type": "string", "enum": ["string", "number", "integer", "boolean", "array"] },
               "title": { "type": "string" },
@@ -249,14 +262,13 @@
               "items": {
                 "type": "object",
                 "required": ["type"],
+                "additionalProperties": false,
                 "properties": {
                   "type": { "type": "string", "enum": ["string", "number", "integer", "boolean"] },
                   "enum": { "type": "array" }
-                },
-                "additionalProperties": false
+                }
               }
-            },
-            "additionalProperties": false
+            }
           }
         },
         "required": {
@@ -267,15 +279,13 @@
         "customPanel": {
           "type": "object",
           "required": ["entry", "exportName"],
+          "additionalProperties": false,
           "properties": {
             "entry": { "type": "string", "minLength": 1 },
             "exportName": { "type": "string", "minLength": 1 }
-          },
-          "additionalProperties": false
+          }
         }
-      },
-      "additionalProperties": false
+      }
     }
-  },
-  "additionalProperties": true
+  }
 }
