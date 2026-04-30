@@ -222,7 +222,60 @@
       },
       "additionalProperties": true
     },
-    "config": { "type": "object" }
+    "config": { "type": "object" },
+    "configSchema": {
+      "type": "object",
+      "description": "Declarative settings schema. Properties are JSON-Schema-style fragments with optional UI hints (format: 'secret' routes to the host's encrypted keychain).",
+      "required": ["properties"],
+      "properties": {
+        "$schema": { "type": "string" },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": { "type": "string", "enum": ["string", "number", "integer", "boolean", "array"] },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "default": {},
+              "enum": { "type": "array" },
+              "minimum": { "type": "number" },
+              "maximum": { "type": "number" },
+              "minLength": { "type": "integer", "minimum": 0 },
+              "maxLength": { "type": "integer", "minimum": 0 },
+              "pattern": { "type": "string" },
+              "format": { "type": "string", "enum": ["secret", "uri", "email", "date-time"] },
+              "items": {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": { "type": "string", "enum": ["string", "number", "integer", "boolean"] },
+                  "enum": { "type": "array" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "customPanel": {
+          "type": "object",
+          "required": ["entry", "exportName"],
+          "properties": {
+            "entry": { "type": "string", "minLength": 1 },
+            "exportName": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
   },
   "additionalProperties": true
 }
