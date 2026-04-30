@@ -139,6 +139,88 @@ export interface PluginManifest {
       };
     }
   >;
+
+  /**
+   * Declarative settings schema. When present the host renders a typed
+   * configuration form (string → text input, number → number input,
+   * boolean → toggle, enum → select, array of strings → tag input,
+   * `format: "secret"` → masked secret input that lands in the encrypted
+   * keychain instead of cleartext `pluginConfigs`). Plugins without a
+   * `configSchema` keep the host's legacy raw key/value editor. @optional
+   */
+  configSchema?: PluginConfigSchema;
+}
+
+/**
+ * Declarative settings schema for a plugin. Each entry is a JSON Schema
+ * draft-07 fragment with optional UI hints (`format: "secret"` masks the
+ * value and routes it through the host's encrypted secret store).
+ *
+ * The host validates `configSchema` itself against `plugin.schema.json`
+ * during manifest load and again uses AJV to validate every saved value
+ * against its declared property schema before persisting.
+ */
+export interface PluginConfigSchema {
+  /** Optional `$schema` identifier; the host treats it as informational only. @optional */
+  $schema?: string;
+
+  /** Property declarations. Keys are config keys (must match the same `^[A-Za-z][A-Za-z0-9._-]{0,127}$` charset enforced by the host's plugin-config sanitizer). */
+  properties: Record<string, PluginConfigSchemaProperty>;
+
+  /** Property keys that must be present after merging defaults + saved values. @optional */
+  required?: string[];
+
+  /**
+   * Optional escape hatch — when declared the host renders an additional
+   * custom panel underneath the auto-generated form. The panel is loaded
+   * from a plugin-supplied module exporting a React component. Plugins
+   * SHOULD prefer schema fields and only reach for this when the
+   * declarative surface is genuinely insufficient. @optional
+   */
+  customPanel?: PluginConfigCustomPanel;
+}
+
+/** Schema for a single configuration property. */
+export interface PluginConfigSchemaProperty {
+  /** JSON-Schema-compatible value type. */
+  type: "string" | "number" | "integer" | "boolean" | "array";
+  /** Short human-readable label used as the form-field label. @optional */
+  title?: string;
+  /** Long-form description rendered as helper text below the field. @optional */
+  description?: string;
+  /** Default value used when the saved config has no entry for this key. @optional */
+  default?: unknown;
+  /** Closed list of allowed values; renders a select. @optional */
+  enum?: Array<string | number | boolean>;
+  /** Minimum value (for `number` / `integer`). @optional */
+  minimum?: number;
+  /** Maximum value (for `number` / `integer`). @optional */
+  maximum?: number;
+  /** Minimum string length (for `string`). @optional */
+  minLength?: number;
+  /** Maximum string length (for `string`). @optional */
+  maxLength?: number;
+  /** Regex pattern (for `string`). @optional */
+  pattern?: string;
+  /**
+   * UI/storage hint:
+   * - `"secret"` → masked input; saved via the host's encrypted secret store
+   *   (`hostApi.setSecret` / `getSecret`) under `plugin.<pluginId>.<key>` and
+   *   never written to cleartext `pluginConfigs`.
+   * - other formats are advisory and rendered as plain inputs today.
+   * @optional
+   */
+  format?: "secret" | "uri" | "email" | "date-time";
+  /** Item schema when `type === "array"`. Only `string` items are auto-rendered as a tag input. @optional */
+  items?: { type: "string" | "number" | "integer" | "boolean"; enum?: Array<string | number | boolean> };
+}
+
+/** Custom-panel escape hatch. */
+export interface PluginConfigCustomPanel {
+  /** Path (relative to the plugin root) of the JS module exporting the panel component. */
+  entry: string;
+  /** Named export within `entry` to mount. */
+  exportName: string;
 }
 
 /**
