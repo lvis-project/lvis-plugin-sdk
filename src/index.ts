@@ -189,6 +189,8 @@ export interface PluginRegistryEntry {
   installedBy?: InstallPolicy;
   bundleRefs?: string[];
   approvedPluginAccess?: PluginAccessSpec;
+
+  _devLinked?: boolean;
 }
 
 /**
@@ -370,6 +372,8 @@ export interface PluginHostApi {
   logEvent(level: "info" | "warn" | "error", message: string, data?: unknown): void;
 
   onShutdown(handler: () => void | Promise<void>): void;
+
+  onMsGraphAuthChange?(handler: () => void): void;
 
   openAuthWindow(options: {
     url: string;
