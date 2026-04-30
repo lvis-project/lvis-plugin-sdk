@@ -254,6 +254,16 @@ export interface PluginUiExtension {
   exportName?: string;
   /** Path (relative to the plugin root) of the HTML page to load for `embedded-page`. @optional */
   page?: string;
+  /**
+   * Window placement preference for this extension.
+   * - `"embedded"` (default) — rendered inline in the main window sidebar.
+   * - `"detached"` — the host opens the extension in a separate magnetic-snap
+   *   BrowserWindow when the user selects it from the sidebar.
+   * @optional
+   */
+  window?: {
+    defaultMode?: "embedded" | "detached";
+  };
 }
 
 /**
