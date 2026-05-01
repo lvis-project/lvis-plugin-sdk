@@ -45,6 +45,7 @@ import type {
   ConversationTriggerSpec,
   ConversationTriggerResult,
   MissingDependenciesError as MissingDepsErrorType,
+  PluginLifecycleEvent,
 } from "../index.js";
 
 import { MissingDependenciesError } from "../index.js";
@@ -711,9 +712,9 @@ describe("PluginHostApi — interface contract (structural)", () => {
     expect(ids[0]).toBe("com.lge.ms-graph");
   });
 
-  it("PluginHostApi.onPluginsChanged returns an unsubscribe function and accepts both event types", () => {
-    const events: Array<{ type: "installed" | "uninstalled"; pluginId: string }> = [];
-    const handlers: Array<(e: { type: "installed" | "uninstalled"; pluginId: string }) => void> = [];
+  it("PluginHostApi.onPluginsChanged delivers PluginLifecycleEvent discriminated union (installed.source + uninstalled)", () => {
+    const events: PluginLifecycleEvent[] = [];
+    const handlers: Array<(e: PluginLifecycleEvent) => void> = [];
     const api: Pick<PluginHostApi, "onPluginsChanged"> = {
       onPluginsChanged: (handler) => {
         handlers.push(handler);
@@ -725,11 +726,15 @@ describe("PluginHostApi — interface contract (structural)", () => {
     };
     const unsub = api.onPluginsChanged((e) => events.push(e));
     expect(unsub).toBeTypeOf("function");
-    handlers[0]({ type: "installed", pluginId: "com.lge.ms-graph" });
-    handlers[0]({ type: "uninstalled", pluginId: "com.lge.meeting-recorder" });
-    expect(events).toHaveLength(2);
-    expect(events[0].type).toBe("installed");
-    expect(events[1].type).toBe("uninstalled");
+    expect(handlers).toHaveLength(1);
+    handlers[0]!({ type: "installed", pluginId: "com.lge.ms-graph", source: "marketplace" });
+    handlers[0]!({ type: "installed", pluginId: "com.local.dev-fixture", source: "local-dev" });
+    handlers[0]!({ type: "uninstalled", pluginId: "com.lge.meeting-recorder" });
+    expect(events).toHaveLength(3);
+    if (events[0].type === "installed") expect(events[0].source).toBe("marketplace");
+    if (events[1].type === "installed") expect(events[1].source).toBe("local-dev");
+    expect(events[2].type).toBe("uninstalled");
+    unsub();
     unsub();
     expect(handlers).toHaveLength(0);
   });

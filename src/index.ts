@@ -381,6 +381,14 @@ export interface PluginStorage {
   mkdir(relPath: string): Promise<void>;
 }
 
+export type PluginLifecycleEvent =
+  | { type: "installed"; pluginId: string; source: "marketplace" | "local-dev" }
+  | { type: "uninstalled"; pluginId: string };
+
+export type PluginLifecycleEventPayload =
+  | { pluginId: string; source: "marketplace" | "local-dev" }
+  | { pluginId: string };
+
 /**
  * Services exposed by the host to a running plugin. An instance is provided
  * on `PluginRuntimeContext.hostApi` when the host calls the plugin's
@@ -409,7 +417,7 @@ export interface PluginHostApi {
 
   getInstalledPluginIds(): string[];
 
-  onPluginsChanged(handler: (event: { type: "installed" | "uninstalled"; pluginId: string }) => void): () => void;
+  onPluginsChanged(handler: (event: PluginLifecycleEvent) => void): () => void;
   addTask(task: {
     title: string;
     description?: string;
