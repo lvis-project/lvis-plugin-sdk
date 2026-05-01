@@ -163,6 +163,39 @@ const JSDOC_CATALOG = {
       title: `/** Short human-readable label shown in the host UI for this subscription. */`,
     },
   },
+  PluginAuthSpec: {
+    leading: `/**
+ * Optional declarative auth contract for plugins that own their OAuth /
+ * cookie / session flow but want the host to render a generic 미인증 /
+ * signed-in surface in Settings → 플러그인 설정. See lvis-app
+ * \`architecture.md\` §9.4a "Plugin-Owned OAuth — Host UI Surface".
+ *
+ * The three referenced tool names (\`statusTool\`, \`loginTool\`,
+ * \`logoutTool\`) MUST also appear in \`PluginManifest.uiCallable[]\`;
+ * the host validates this cross-field at load time. On state
+ * transitions the plugin SHOULD emit \`<pluginId>.auth.changed\` so
+ * the host UI refreshes without polling.
+ */`,
+    fields: {
+      label: `/** Human-readable label shown next to the badge (defaults to plugin \`name\`). @optional */`,
+      statusTool: `/** Name of a uiCallable tool returning {@link PluginAuthStatus}. */`,
+      loginTool: `/** Name of a uiCallable tool the host invokes when the user clicks "로그인". The plugin owns the actual auth flow (e.g. MSAL interactive, openAuthWindow). */`,
+      logoutTool: `/** Optional uiCallable tool the host invokes when the user clicks "로그아웃". Omit when the plugin has no programmatic sign-out path. @optional */`,
+    },
+  },
+  PluginAuthStatus: {
+    leading: `/**
+ * Recommended return shape of \`auth.statusTool\`. Plugins MAY return
+ * additional fields and the host ignores them. The host parses with a
+ * strict \`=== true\` check on \`authenticated\` — values like \`1\` or
+ * \`"true"\` are deliberately treated as unauthenticated to surface
+ * contract drift.
+ */`,
+    fields: {
+      authenticated: `/** Strict literal \`true\` when the plugin has a usable session; otherwise \`false\`. */`,
+      account: `/** Optional human-readable identity (email, login id) shown next to the green badge. Display only — not a stable id. @optional */`,
+    },
+  },
   EventSubscription: {
     leading: `/**
  * Object form of an event subscription entry. Use when you need to attach a
@@ -207,6 +240,7 @@ const JSDOC_CATALOG = {
       eventPublishes: `/** Event type names this plugin may emit. Hosts can use this for validation and ownership checks. @optional */`,
       emittedEvents: `/** Alias of \`eventPublishes\` accepted by host bridge paths. @optional */`,
       uiCallable: `/** Tools that the UI is permitted to invoke directly (bypassing the LLM). Use sparingly — prefer LLM-mediated calls. @optional */`,
+      auth: `/** Declarative auth contract — see {@link PluginAuthSpec}. When present, the host renders a generic 미인증 / signed-in badge + login/logout button in Settings. @optional */`,
       notificationEvents: `/** Events that should be surfaced as host notifications. Each entry names the event and maps fields of its payload to notification title and body. @optional */`,
       publisher: `/** Display string identifying the plugin publisher (for example an organization or author). @optional */`,
       startupTimeoutMs: `/** Maximum time in milliseconds the host will wait for \`RuntimePlugin.start\` to resolve. Plugins exceeding this are considered failed. @optional */`,
