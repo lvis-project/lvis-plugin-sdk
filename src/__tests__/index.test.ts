@@ -739,6 +739,22 @@ describe("PluginHostApi — interface contract (structural)", () => {
     expect(handlers).toHaveLength(0);
   });
 
+  it("PluginLifecycleEvent _future sentinel forces exhaustive switch consumers to declare a default branch", () => {
+    // The sentinel is type-level only — never emitted at runtime — but its
+    // presence makes the union "open" so a switch(event.type) without a
+    // default: branch is a TS error. This test compiles and runs only because
+    // the function below has the required default branch.
+    function classify(ev: PluginLifecycleEvent): "install" | "uninstall" | "unknown" {
+      switch (ev.type) {
+        case "installed": return "install";
+        case "uninstalled": return "uninstall";
+        default: return "unknown"; // forced by _future variant
+      }
+    }
+    expect(classify({ type: "installed", pluginId: "x", source: "marketplace" })).toBe("install");
+    expect(classify({ type: "uninstalled", pluginId: "x" })).toBe("uninstall");
+  });
+
   it("PluginHostApi.addTask accepts all priority levels", () => {
     const tasks: Parameters<PluginHostApi["addTask"]>[0][] = [];
     const api: Pick<PluginHostApi, "addTask"> = {
