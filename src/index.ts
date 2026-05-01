@@ -5,6 +5,8 @@
 
 export type InstallPolicy = "admin" | "user";
 
+export type PluginRegistryEntryInstallSource = "admin" | "user" | "local-dev" | "dev-link";
+
 export interface DependencySpec {
   pluginId: string;
   versionRange?: string;
@@ -273,11 +275,13 @@ export interface PluginRegistryEntry {
   manifestPath: string;
   /** Whether the plugin should be loaded at host startup. Defaults to `true` when omitted. @optional */
   enabled?: boolean;
+
   installedBy?: InstallPolicy;
   bundleRefs?: string[];
   approvedPluginAccess?: PluginAccessSpec;
 
   _devLinked?: boolean;
+  installSource?: PluginRegistryEntryInstallSource;
 }
 
 /**
@@ -457,14 +461,83 @@ export interface PluginHostApi {
 
     onChange<T = unknown>(key: string, callback: (value: T | undefined) => void): () => void;
   };
+  /**
+   * Register skill keywords with the host's keyword engine. When the user
+   * types or says one of the registered keywords the host routes the request
+   * to the associated `skillId`, which the plugin must handle via a tool
+   * dispatch.
+   *
+   * @param keywords - Keyword/skill pairs to register. Calling again appends;
+   *                   duplicate keywords are deduplicated by the host.
+   * @example
+   * hostApi.registerKeywords([
+   *   { keyword: "weather", skillId: "forecast.today" },
+   * ]);
+   */
   registerKeywords(keywords: Array<{ keyword: string; skillId: string }>): void;
+  /**
+   * Emit a host-wide event. Other plugins subscribed to `eventType` via
+   * `onEvent` receive the payload. The host also bridges events to its own
+   * internal listeners.
+   *
+   * @param eventType - Dot-delimited event name (for example `"calendar.updated"`).
+   * @param data - JSON-serializable payload. @optional
+   */
   emitEvent(eventType: string, data?: unknown): void;
 
+  /**
+   * Subscribe to host events. The returned function removes the subscription
+   * when invoked. Call it during `RuntimePlugin.stop` to avoid leaking
+   * handlers.
+   *
+   * @param eventType - Event name to listen for.
+   * @param handler - Invoked with the emitted payload.
+   * @returns Unsubscribe function.
+   */
   onEvent(eventType: string, handler: (data: unknown) => void): () => void;
 
+  /**
+   * Snapshot of plugin ids currently loaded into the host runtime, in insertion
+   * (load) order. The calling plugin's own id is excluded. Treat the result as
+   * a SET (`includes()`); insertion order is NOT priority and is subject to
+   * change. Pair with `onPluginsChanged` to react to lifecycle.
+   *
+   * Capability-gated by `lifecycle-observer` in the plugin manifest (advisory
+   * in v3.x — not enforced yet, but declare it to stay forward-compatible).
+   *
+   * @returns Plugin ids of all currently-loaded plugins except the caller.
+   */
   getInstalledPluginIds(): string[];
 
+  /**
+   * Subscribe to plugin install / uninstall lifecycle events. Returns an
+   * `unsubscribe()` disposer; the host also auto-clears the subscription when
+   * the calling plugin is disabled.
+   *
+   * Fires AFTER the host has finished mounting (install) or unmounting
+   * (uninstall) the subject plugin — `getInstalledPluginIds()` already
+   * reflects the new state when the handler runs. Self-events (this plugin
+   * being the subject) are filtered out.
+   *
+   * P0 only delivers `installed` and `uninstalled`. Future versions may add
+   * `updated` (version bump). Handlers SHOULD branch with a `default:` to
+   * stay forward-compatible.
+   *
+   * The `installed` event carries `source: "marketplace" | "local-dev"`.
+   * Production consumers SHOULD ignore `source: "local-dev"` to avoid
+   * letting a developer's local test plugin trigger downstream cascades.
+   *
+   * Capability-gated by `lifecycle-observer` in the plugin manifest (advisory
+   * in v3.x — not enforced yet, but declare it to stay forward-compatible).
+   */
   onPluginsChanged(handler: (event: PluginLifecycleEvent) => void): () => void;
+  /**
+   * Create a task in the host's task list.
+   *
+   * @param task - Task metadata. `source` identifies the originating plugin
+   *               or feature; `sourceRef` is an optional stable pointer back
+   *               to the originating entity (for example an email id).
+   */
   addTask(task: {
     title: string;
     description?: string;
@@ -472,14 +545,41 @@ export interface PluginHostApi {
     sourceRef?: string;
     priority?: "high" | "medium" | "low";
   }): void;
+  /**
+   * Retrieve an encrypted secret previously stored by the host or the user
+   * (for example an API key).
+   *
+   * @param key - Secret key.
+   * @returns The secret value, or `null` if no secret exists for `key`.
+   */
   getSecret(key: string): string | null;
 
   callTool<T = unknown>(toolName: string, payload?: unknown): Promise<T>;
 
+  /**
+   * Invoke the host's configured language model.
+   *
+   * @param prompt - User prompt string.
+   * @param options.maxTokens - Upper bound on completion tokens. @optional
+   * @param options.systemPrompt - System instructions prepended to the call. @optional
+   * @returns The model's completion text.
+   */
   callLlm(prompt: string, options?: { maxTokens?: number; systemPrompt?: string }): Promise<string>;
 
+  /**
+   * Emit a structured log entry to the host log pipeline.
+   *
+   * @param level - Severity.
+   * @param message - Human-readable message.
+   * @param data - Arbitrary structured payload. @optional
+   */
   logEvent(level: "info" | "warn" | "error", message: string, data?: unknown): void;
 
+  /**
+   * Register a handler invoked when the host is shutting down. The host waits
+   * for returned promises to resolve before exiting, giving the plugin a
+   * chance to flush state.
+   */
   onShutdown(handler: () => void | Promise<void>): void;
 
   onMsGraphAuthChange?(handler: () => void): void;
@@ -501,6 +601,15 @@ export interface PluginHostApi {
     expirationDate?: number;
   }>>;
 
+  /**
+   * Start a conversation turn from a proactive plugin signal.
+   *
+   * Capability-gated by `conversation-trigger` in the plugin manifest; missing
+   * capability returns `{ accepted: false, reason: "capability_denied" }` (no
+   * exception). `spec.prompt` MUST be a templated, plugin-owned message — NOT
+   * raw third-party content (mail body, transcript). `spec.source` MUST match
+   * `^proactive:[a-z][a-z0-9-]*$`.
+   */
   triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
 }
 
