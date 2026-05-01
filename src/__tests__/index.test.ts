@@ -206,6 +206,7 @@ describe("PluginManifest — window.defaultMode:detached (2c10491)", () => {
     version: "1.0.0",
     entry: "dist/index.js",
     tools: ["detach_ping"],
+    description: "Test fixture.",
     ui: [
       {
         id: "main-panel",
@@ -283,6 +284,7 @@ describe("PluginManifest — configSchema field (post-#76)", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: ["config_ping"],
+      description: "Test fixture.",
       configSchema: schema,
     };
     const { valid, errors } = validateManifest(manifest);
@@ -426,6 +428,7 @@ describe("EventSubscription — structural validation", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       eventSubscriptions: ["meeting:started", "email:received"],
     };
     expect(Array.isArray(manifest.eventSubscriptions)).toBe(true);
@@ -442,6 +445,7 @@ describe("EventSubscription — structural validation", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       eventSubscriptions: subs,
     };
     expect((manifest.eventSubscriptions as EventSubscription[])[0].type).toBe("meeting:started");
@@ -457,23 +461,23 @@ describe("PluginManifest — capability / event declarations", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       capabilities: ["calendar-source", "mail-source", "meeting-recorder", "conversation-trigger"],
     };
     expect(manifest.capabilities).toContain("calendar-source");
     expect(manifest.capabilities).toContain("conversation-trigger");
   });
 
-  it("eventPublishes and emittedEvents are both accepted", () => {
+  it("emittedEvents is accepted (v3 canonical field)", () => {
     const manifest: PluginManifest = {
       id: "com.example.evt",
       name: "Evt",
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
-      eventPublishes: ["plugin:data:ready"],
+      description: "Test fixture.",
       emittedEvents: ["plugin:data:ready"],
     };
-    expect(manifest.eventPublishes).toContain("plugin:data:ready");
     expect(manifest.emittedEvents).toContain("plugin:data:ready");
   });
 
@@ -484,6 +488,7 @@ describe("PluginManifest — capability / event declarations", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       notificationEvents: [
         { event: "meeting:started", titleField: "title", bodyField: "description" },
         { event: "email:received" },
@@ -500,6 +505,7 @@ describe("PluginManifest — capability / event declarations", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       requires: { capabilities: ["calendar", "email"] },
     };
     expect(manifest.requires?.capabilities).toContain("calendar");
@@ -719,6 +725,7 @@ describe("PluginManifest — edge cases", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
@@ -730,6 +737,7 @@ describe("PluginManifest — edge cases", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: ["tool_one", "tool_two", "tool_three"],
+      description: "Test fixture.",
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
@@ -752,6 +760,7 @@ describe("PluginManifest — edge cases", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
@@ -764,6 +773,7 @@ describe("PluginManifest — edge cases", () => {
         version: "1.0.0",
         entry: "dist/index.js",
         tools: [],
+        description: "Test fixture.",
         installPolicy: policy,
       };
       expect(manifest.installPolicy).toBe(policy);
@@ -777,6 +787,7 @@ describe("PluginManifest — edge cases", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       dependencies: [
         "com.example.simple-dep",
         { pluginId: "com.example.complex-dep", versionRange: ">=1.0.0", required: true },
