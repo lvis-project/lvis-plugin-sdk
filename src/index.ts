@@ -383,7 +383,8 @@ export interface PluginStorage {
 
 export type PluginLifecycleEvent =
   | { type: "installed"; pluginId: string; source: "marketplace" | "local-dev" }
-  | { type: "uninstalled"; pluginId: string };
+  | { type: "uninstalled"; pluginId: string }
+  | { type: "_future"; readonly __exhaustive: never };
 
 export type PluginLifecycleEventPayload =
   | { pluginId: string; source: "marketplace" | "local-dev" }

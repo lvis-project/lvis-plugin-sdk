@@ -36,21 +36,28 @@ No submodule is required.
 
 ### v3.1.0 Additions (additive — no migration)
 
-`PluginHostApi` gains plugin lifecycle introspection so brain plugins (e.g.
-`work-proactive`) can react to install/uninstall without a host restart:
+**`PluginHostApi.getInstalledPluginIds()` and `onPluginsChanged(handler)` are
+new.** Brain plugins (e.g. `work-proactive`) can now read the installed
+plugin set and subscribe to install/uninstall lifecycle without a host
+restart. `getInstalledPluginIds` returns ids in load order — treat as a SET
+(`includes()`); insertion order is NOT priority.
 
-- `getInstalledPluginIds(): string[]` — snapshot of currently-loaded plugin
-  ids (caller's own id excluded). Use as a SET; insertion order is NOT
-  priority.
-- `onPluginsChanged(handler): () => void` — subscribe to install/uninstall
-  events. Handler receives `PluginLifecycleEvent` (discriminated union with
-  `source: "marketplace" | "local-dev"` on installs). Self-events filtered.
-  P0 only delivers `installed` and `uninstalled`; branch with `default:`
-  for forward-compat with future `updated`.
+**`PluginLifecycleEvent` discriminated union is new.** Handlers receive
+`{type: "installed", pluginId, source: "marketplace" | "local-dev"}` or
+`{type: "uninstalled", pluginId}`. Self-events filtered by the host. The
+union also carries a `_future` sentinel variant — never produced at runtime,
+present only to force exhaustive `switch (event.type)` consumers to add a
+`default:` branch so future variants (e.g. `"updated"` for version bumps)
+don't silently break subscribers.
 
-Companion host PR adds `plugin.installed` / `plugin.uninstalled` event-bus
-emission and reserves `plugin.*` as a host-only namespace (plugin-side
-`emitEvent` rejected).
+**`source: "local-dev"` on installs marks the dev-mode local-folder install
+path** (LVIS_DEV=1 + Settings → 로컬 폴더에서 설치). Production consumers
+SHOULD ignore these so a developer's local test plugin doesn't trigger
+downstream cascades.
+
+The companion host change reserves `plugin.*` as a host-only event namespace
+— plugin-side `hostApi.emitEvent("plugin.installed", ...)` is rejected so a
+plugin cannot spoof lifecycle events to other subscribers.
 
 ### v3.0.0 Migration Guide (breaking)
 
