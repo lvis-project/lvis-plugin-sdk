@@ -60,7 +60,6 @@ export interface EventSubscription {
  *   version: "1.0.0",
  *   entry: "dist/index.js",
  *   tools: ["my_plugin_ping"],
- *   description: "One-line summary of what this plugin does.",
  * };
  */
 export interface PluginManifest {
@@ -77,7 +76,7 @@ export interface PluginManifest {
   /** Tool names exposed to the host LLM. Each name must match `^[a-zA-Z_][a-zA-Z0-9_]*$` — dots and hyphens are not allowed. */
   tools: string[];
 
-  /** One-line description shown in plugin catalogues and the inactive-plugin catalog the LLM sees. Required (MUST). */
+  /** One-line description shown in plugin catalogues and tool pickers. @optional */
   description: string;
   /** Arbitrary JSON configuration merged into `PluginRuntimeContext.config` at startup. Treat as untrusted user data. @optional */
   config?: Record<string, unknown>;
@@ -97,7 +96,7 @@ export interface PluginManifest {
   /** Tools that the UI is permitted to invoke directly (bypassing the LLM). Use sparingly — prefer LLM-mediated calls. @optional */
   uiCallable?: string[];
 
-  /** Event type names this plugin may emit. Used by the host for validation and ownership checks. @optional */
+  /** Alias of `eventPublishes` accepted by host bridge paths. @optional */
   emittedEvents?: string[];
 
   /** Events that should be surfaced as host notifications. Each entry names the event and maps fields of its payload to notification title and body. @optional */
@@ -139,101 +138,45 @@ export interface PluginManifest {
     }
   >;
 
-  /**
-   * Optional Python runtime co-deployment metadata. When present and
-   * `managedBy` is `"lvis-app"`, the host installs the declared Python
-   * requirements at plugin startup (e.g. pageindex). @optional
-   */
-  python?: {
-    /** Whether the host manages the Python environment (`"lvis-app"`) or the plugin handles it (`"self"`). */
-    managedBy?: "lvis-app" | "self";
-    /** Path to the pip-locked requirements file (relative to plugin root). */
-    requirementsLock?: string;
-    /** Python interpreter path override. Falls back to host default when absent. */
-    interpreter?: string;
-  };
-
-  /**
-   * Declarative settings schema. When present the host renders a typed
-   * configuration form (string → text input, number → number input,
-   * boolean → toggle, enum → select, array of strings → tag input,
-   * `format: "secret"` → masked secret input that lands in the encrypted
-   * keychain instead of cleartext `pluginConfigs`). Plugins without a
-   * `configSchema` keep the host's legacy raw key/value editor. @optional
-   */
   configSchema?: PluginConfigSchema;
 }
 
-/**
- * Declarative settings schema for a plugin. Each entry is a JSON Schema
- * draft-07 fragment with optional UI hints (`format: "secret"` masks the
- * value and routes it through the host's encrypted secret store).
- *
- * The host validates `configSchema` itself against `plugin.schema.json`
- * during manifest load and again uses AJV to validate every saved value
- * against its declared property schema before persisting.
- */
 export interface PluginConfigSchema {
-  /** Optional `$schema` identifier; the host treats it as informational only. @optional */
+
   $schema?: string;
 
-  /** Property declarations. Keys are config keys (must match the same `^[A-Za-z][A-Za-z0-9._-]{0,127}$` charset enforced by the host's plugin-config sanitizer). */
   properties: Record<string, PluginConfigSchemaProperty>;
 
-  /** Property keys that must be present after merging defaults + saved values. @optional */
   required?: string[];
 
-  /**
-   * Optional escape hatch — when declared the host renders an additional
-   * custom panel underneath the auto-generated form. The panel is loaded
-   * from a plugin-supplied module exporting a React component. Plugins
-   * SHOULD prefer schema fields and only reach for this when the
-   * declarative surface is genuinely insufficient. @optional
-   */
-  customPanel?: PluginConfigCustomPanel;
+  customPanel?: { entry: string; exportName: string };
 }
 
-/** Schema for a single configuration property. */
 export interface PluginConfigSchemaProperty {
-  /** JSON-Schema-compatible value type. */
-  type: "string" | "number" | "integer" | "boolean" | "array";
-  /** Short human-readable label used as the form-field label. @optional */
-  title?: string;
-  /** Long-form description rendered as helper text below the field. @optional */
-  description?: string;
-  /** Default value used when the saved config has no entry for this key. @optional */
-  default?: unknown;
-  /** Closed list of allowed values; renders a select. @optional */
-  enum?: Array<string | number | boolean>;
-  /** Minimum value (for `number` / `integer`). @optional */
-  minimum?: number;
-  /** Maximum value (for `number` / `integer`). @optional */
-  maximum?: number;
-  /** Minimum string length (for `string`). @optional */
-  minLength?: number;
-  /** Maximum string length (for `string`). @optional */
-  maxLength?: number;
-  /** Regex pattern (for `string`). @optional */
-  pattern?: string;
-  /**
-   * UI/storage hint:
-   * - `"secret"` → masked input; saved via the host's encrypted secret store
-   *   (`hostApi.setSecret` / `getSecret`) under `plugin.<pluginId>.<key>` and
-   *   never written to cleartext `pluginConfigs`.
-   * - other formats are advisory and rendered as plain inputs today.
-   * @optional
-   */
-  format?: "secret" | "uri" | "email" | "date-time";
-  /** Item schema when `type === "array"`. Only `string` items are auto-rendered as a tag input. @optional */
-  items?: { type: "string" | "number" | "integer" | "boolean"; enum?: Array<string | number | boolean> };
-}
 
-/** Custom-panel escape hatch. */
-export interface PluginConfigCustomPanel {
-  /** Path (relative to the plugin root) of the JS module exporting the panel component. */
-  entry: string;
-  /** Named export within `entry` to mount. */
-  exportName: string;
+  type: "string" | "number" | "integer" | "boolean" | "array";
+
+  title?: string;
+
+  description?: string;
+
+  default?: unknown;
+
+  enum?: Array<string | number | boolean>;
+
+  minimum?: number;
+
+  maximum?: number;
+
+  minLength?: number;
+
+  maxLength?: number;
+
+  pattern?: string;
+
+  format?: "secret" | "uri" | "email" | "date-time";
+
+  items?: { type: "string" | "number" | "integer" | "boolean"; enum?: Array<string | number | boolean> };
 }
 
 /**
@@ -267,13 +210,7 @@ export interface PluginUiExtension {
   exportName?: string;
   /** Path (relative to the plugin root) of the HTML page to load for `embedded-page`. @optional */
   page?: string;
-  /**
-   * Window placement preference for this extension.
-   * - `"embedded"` (default) — rendered inline in the main window sidebar.
-   * - `"detached"` — the host opens the extension in a separate magnetic-snap
-   *   BrowserWindow when the user selects it from the sidebar.
-   * @optional
-   */
+
   window?: {
     defaultMode?: "embedded" | "detached";
   };
@@ -294,6 +231,8 @@ export interface PluginRegistryEntry {
   installedBy?: InstallPolicy;
   bundleRefs?: string[];
   approvedPluginAccess?: PluginAccessSpec;
+
+  _devLinked?: boolean;
 }
 
 /**
@@ -442,6 +381,15 @@ export interface PluginStorage {
   mkdir(relPath: string): Promise<void>;
 }
 
+export type PluginLifecycleEvent =
+  | { type: "installed"; pluginId: string; source: "marketplace" | "local-dev" }
+  | { type: "uninstalled"; pluginId: string }
+  | { type: "_future"; readonly __exhaustive: never };
+
+export type PluginLifecycleEventPayload =
+  | { pluginId: string; source: "marketplace" | "local-dev" }
+  | { pluginId: string };
+
 /**
  * Services exposed by the host to a running plugin. An instance is provided
  * on `PluginRuntimeContext.hostApi` when the host calls the plugin's
@@ -454,10 +402,23 @@ export interface PluginStorage {
 export interface PluginHostApi {
 
   storage: PluginStorage;
+
+  config: {
+
+    get<T = unknown>(key: string): T | undefined;
+
+    set<T = unknown>(key: string, value: T): Promise<void>;
+
+    onChange<T = unknown>(key: string, callback: (value: T | undefined) => void): () => void;
+  };
   registerKeywords(keywords: Array<{ keyword: string; skillId: string }>): void;
   emitEvent(eventType: string, data?: unknown): void;
 
   onEvent(eventType: string, handler: (data: unknown) => void): () => void;
+
+  getInstalledPluginIds(): string[];
+
+  onPluginsChanged(handler: (event: PluginLifecycleEvent) => void): () => void;
   addTask(task: {
     title: string;
     description?: string;
@@ -474,6 +435,8 @@ export interface PluginHostApi {
   logEvent(level: "info" | "warn" | "error", message: string, data?: unknown): void;
 
   onShutdown(handler: () => void | Promise<void>): void;
+
+  onMsGraphAuthChange?(handler: () => void): void;
 
   openAuthWindow(options: {
     url: string;

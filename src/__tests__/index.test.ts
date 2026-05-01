@@ -45,6 +45,7 @@ import type {
   ConversationTriggerSpec,
   ConversationTriggerResult,
   MissingDependenciesError as MissingDepsErrorType,
+  PluginLifecycleEvent,
 } from "../index.js";
 
 import { MissingDependenciesError } from "../index.js";
@@ -699,6 +700,59 @@ describe("PluginHostApi — interface contract (structural)", () => {
     };
     expect(api.getSecret("found-key")).toBe("secret-value");
     expect(api.getSecret("missing-key")).toBeNull();
+  });
+
+  it("PluginHostApi.getInstalledPluginIds returns string[]", () => {
+    const api: Pick<PluginHostApi, "getInstalledPluginIds"> = {
+      getInstalledPluginIds: () => ["com.lge.ms-graph", "com.lge.meeting-recorder"],
+    };
+    const ids = api.getInstalledPluginIds();
+    expect(Array.isArray(ids)).toBe(true);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBe("com.lge.ms-graph");
+  });
+
+  it("PluginHostApi.onPluginsChanged delivers PluginLifecycleEvent discriminated union (installed.source + uninstalled)", () => {
+    const events: PluginLifecycleEvent[] = [];
+    const handlers: Array<(e: PluginLifecycleEvent) => void> = [];
+    const api: Pick<PluginHostApi, "onPluginsChanged"> = {
+      onPluginsChanged: (handler) => {
+        handlers.push(handler);
+        return () => {
+          const idx = handlers.indexOf(handler);
+          if (idx >= 0) handlers.splice(idx, 1);
+        };
+      },
+    };
+    const unsub = api.onPluginsChanged((e) => events.push(e));
+    expect(unsub).toBeTypeOf("function");
+    expect(handlers).toHaveLength(1);
+    handlers[0]!({ type: "installed", pluginId: "com.lge.ms-graph", source: "marketplace" });
+    handlers[0]!({ type: "installed", pluginId: "com.local.dev-fixture", source: "local-dev" });
+    handlers[0]!({ type: "uninstalled", pluginId: "com.lge.meeting-recorder" });
+    expect(events).toHaveLength(3);
+    if (events[0].type === "installed") expect(events[0].source).toBe("marketplace");
+    if (events[1].type === "installed") expect(events[1].source).toBe("local-dev");
+    expect(events[2].type).toBe("uninstalled");
+    unsub();
+    unsub();
+    expect(handlers).toHaveLength(0);
+  });
+
+  it("PluginLifecycleEvent _future sentinel forces exhaustive switch consumers to declare a default branch", () => {
+    // The sentinel is type-level only — never emitted at runtime — but its
+    // presence makes the union "open" so a switch(event.type) without a
+    // default: branch is a TS error. This test compiles and runs only because
+    // the function below has the required default branch.
+    function classify(ev: PluginLifecycleEvent): "install" | "uninstall" | "unknown" {
+      switch (ev.type) {
+        case "installed": return "install";
+        case "uninstalled": return "uninstall";
+        default: return "unknown"; // forced by _future variant
+      }
+    }
+    expect(classify({ type: "installed", pluginId: "x", source: "marketplace" })).toBe("install");
+    expect(classify({ type: "uninstalled", pluginId: "x" })).toBe("uninstall");
   });
 
   it("PluginHostApi.addTask accepts all priority levels", () => {
