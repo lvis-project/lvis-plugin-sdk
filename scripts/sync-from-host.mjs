@@ -602,7 +602,8 @@ function enrichWithJsDoc(text, catalog) {
         for (const [fieldName, fieldDoc] of Object.entries(entry.fields)) {
           // Match both property form   `  name?: type`
           // and TS method form         `  name(...): ReturnType`
-          const fieldRe = new RegExp(`^(\\s+)(${fieldName})(\\?)?\\s*(?::|\\()`);
+          const escapedName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const fieldRe = new RegExp(`^(\\s+)(${escapedName})(\\?)?\\s*(?::|\\()`);
           const fm = line.match(fieldRe);
           if (!fm) continue;
 
