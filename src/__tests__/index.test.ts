@@ -701,6 +701,39 @@ describe("PluginHostApi — interface contract (structural)", () => {
     expect(api.getSecret("missing-key")).toBeNull();
   });
 
+  it("PluginHostApi.getInstalledPluginIds returns string[]", () => {
+    const api: Pick<PluginHostApi, "getInstalledPluginIds"> = {
+      getInstalledPluginIds: () => ["com.lge.ms-graph", "com.lge.meeting-recorder"],
+    };
+    const ids = api.getInstalledPluginIds();
+    expect(Array.isArray(ids)).toBe(true);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBe("com.lge.ms-graph");
+  });
+
+  it("PluginHostApi.onPluginsChanged returns an unsubscribe function and accepts both event types", () => {
+    const events: Array<{ type: "installed" | "uninstalled"; pluginId: string }> = [];
+    const handlers: Array<(e: { type: "installed" | "uninstalled"; pluginId: string }) => void> = [];
+    const api: Pick<PluginHostApi, "onPluginsChanged"> = {
+      onPluginsChanged: (handler) => {
+        handlers.push(handler);
+        return () => {
+          const idx = handlers.indexOf(handler);
+          if (idx >= 0) handlers.splice(idx, 1);
+        };
+      },
+    };
+    const unsub = api.onPluginsChanged((e) => events.push(e));
+    expect(unsub).toBeTypeOf("function");
+    handlers[0]({ type: "installed", pluginId: "com.lge.ms-graph" });
+    handlers[0]({ type: "uninstalled", pluginId: "com.lge.meeting-recorder" });
+    expect(events).toHaveLength(2);
+    expect(events[0].type).toBe("installed");
+    expect(events[1].type).toBe("uninstalled");
+    unsub();
+    expect(handlers).toHaveLength(0);
+  });
+
   it("PluginHostApi.addTask accepts all priority levels", () => {
     const tasks: Parameters<PluginHostApi["addTask"]>[0][] = [];
     const api: Pick<PluginHostApi, "addTask"> = {
