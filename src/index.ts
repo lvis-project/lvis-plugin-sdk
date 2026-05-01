@@ -140,6 +140,20 @@ export interface PluginManifest {
   >;
 
   /**
+   * Optional Python runtime co-deployment metadata. When present and
+   * `managedBy` is `"lvis-app"`, the host installs the declared Python
+   * requirements at plugin startup (e.g. pageindex). @optional
+   */
+  python?: {
+    /** Whether the host manages the Python environment (`"lvis-app"`) or the plugin handles it (`"self"`). */
+    managedBy?: "lvis-app" | "self";
+    /** Path to the pip-locked requirements file (relative to plugin root). */
+    requirementsLock?: string;
+    /** Python interpreter path override. Falls back to host default when absent. */
+    interpreter?: string;
+  };
+
+  /**
    * Declarative settings schema. When present the host renders a typed
    * configuration form (string → text input, number → number input,
    * boolean → toggle, enum → select, array of strings → tag input,

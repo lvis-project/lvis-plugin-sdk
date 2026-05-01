@@ -57,6 +57,7 @@ describe("PluginManifest — schema validation", () => {
     version: "1.0.0",
     entry: "dist/index.js",
     tools: ["my_plugin_ping"],
+    description: "One-line summary of what this plugin does.",
   };
 
   it("accepts a minimal valid manifest (all required fields)", () => {
@@ -72,7 +73,6 @@ describe("PluginManifest — schema validation", () => {
       capabilities: ["calendar-source", "mail-source"],
       startupTools: ["my_plugin_init"],
       eventSubscriptions: ["meeting:started", "meeting:ended"],
-      eventPublishes: ["plugin:event:fired"],
       emittedEvents: ["plugin:event:fired"],
       uiCallable: ["my_plugin_ping"],
       keywords: [{ keyword: "example", skillId: "example-skill" }],
@@ -113,6 +113,17 @@ describe("PluginManifest — schema validation", () => {
   it("rejects manifest missing required field: tools", () => {
     const { tools: _, ...noTools } = VALID_MINIMAL;
     const { valid } = validateManifest(noTools);
+    expect(valid).toBe(false);
+  });
+
+  it("rejects manifest missing required field: description", () => {
+    const { description: _, ...noDesc } = VALID_MINIMAL;
+    const { valid } = validateManifest(noDesc);
+    expect(valid).toBe(false);
+  });
+
+  it("rejects manifest with empty description", () => {
+    const { valid } = validateManifest({ ...VALID_MINIMAL, description: "" });
     expect(valid).toBe(false);
   });
 
