@@ -27,12 +27,35 @@ Consume the SDK as a Git dependency pinned to a release tag:
 ```json
 {
   "devDependencies": {
-    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v2.1.0"
+    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v3.0.0"
   }
 }
 ```
 
 No submodule is required.
+
+### v3.0.0 Migration Guide (breaking)
+
+**`description` is now a required MUST field** (was optional). Add a one-line
+description to every `plugin.json` if not already present.
+
+**`eventPublishes` is removed** — use `emittedEvents` exclusively. Rename any
+`eventPublishes` fields in `plugin.json` to `emittedEvents`. No compat shim.
+
+**`permissions` top-level field is no longer allowed** (`additionalProperties: false`
+enforced). Remove any `permissions` arrays from `plugin.json` manifests.
+
+**`additionalProperties: false`** — the schema now rejects unknown manifest keys.
+Any undocumented fields in `plugin.json` will cause host load failure. This
+includes the previously-accepted `permissions[]` field.
+
+**`python` field added** — the `PluginManifest` interface now includes an
+optional `python?: { managedBy?, requirementsLock?, interpreter? }` field for
+Python co-deployment metadata (e.g. pageindex). This was already supported at
+runtime but was previously undeclared in the type.
+
+**`publisher` requires `minLength: 1`** — an empty-string publisher now fails
+schema validation. Either omit the field or provide a non-empty value.
 
 ### Upgrading
 
@@ -42,10 +65,10 @@ To pull in a new SDK release, update the tag in your `package.json` and reinstal
 # bun (recommended)
 bun update @lvis/plugin-sdk
 # or pin explicitly:
-bun add -d github:lvis-project/lvis-plugin-sdk#v2.1.0
+bun add -d github:lvis-project/lvis-plugin-sdk#v3.0.0
 
 # npm
-npm install --save-dev github:lvis-project/lvis-plugin-sdk#v2.1.0
+npm install --save-dev github:lvis-project/lvis-plugin-sdk#v3.0.0
 ```
 
 After upgrading, check your `plugin.json` manifest against the updated JSON
