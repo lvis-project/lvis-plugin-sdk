@@ -5,6 +5,8 @@
 
 export type InstallPolicy = "admin" | "user";
 
+export type PluginRegistryEntryInstallSource = "admin" | "user" | "local-dev" | "dev-link";
+
 export interface DependencySpec {
   pluginId: string;
   versionRange?: string;
@@ -273,11 +275,13 @@ export interface PluginRegistryEntry {
   manifestPath: string;
   /** Whether the plugin should be loaded at host startup. Defaults to `true` when omitted. @optional */
   enabled?: boolean;
+
   installedBy?: InstallPolicy;
   bundleRefs?: string[];
   approvedPluginAccess?: PluginAccessSpec;
 
   _devLinked?: boolean;
+  installSource?: PluginRegistryEntryInstallSource;
 }
 
 /**
