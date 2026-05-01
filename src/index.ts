@@ -21,6 +21,23 @@ export interface PluginAccessSpec {
   plugins: PluginAccessTarget[];
 }
 
+export interface PluginAuthSpec {
+
+  label?: string;
+
+  statusTool: string;
+
+  loginTool: string;
+
+  logoutTool?: string;
+}
+
+export interface PluginAuthStatus {
+  authenticated: boolean;
+
+  account?: string;
+}
+
 /**
  * Optional structured hint attached to an event subscription. Allows the host
  * to surface contextual metadata alongside the subscription.
@@ -95,6 +112,8 @@ export interface PluginManifest {
 
   /** Tools that the UI is permitted to invoke directly (bypassing the LLM). Use sparingly — prefer LLM-mediated calls. @optional */
   uiCallable?: string[];
+
+  auth?: PluginAuthSpec;
 
   /** Alias of `eventPublishes` accepted by host bridge paths. @optional */
   emittedEvents?: string[];
@@ -328,6 +347,7 @@ export interface PluginMarketplaceItem {
   keywords?: Array<{ keyword: string; skillId: string }>;
   startupTools?: string[];
   uiCallable?: string[];
+  auth?: PluginAuthSpec;
   emittedEvents?: string[];
   notificationEvents?: Array<{
     event: string;
