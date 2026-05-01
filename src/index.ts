@@ -582,8 +582,6 @@ export interface PluginHostApi {
    */
   onShutdown(handler: () => void | Promise<void>): void;
 
-  onMsGraphAuthChange?(handler: () => void): void;
-
   openAuthWindow(options: {
     url: string;
     completionUrlPatterns: string[];
