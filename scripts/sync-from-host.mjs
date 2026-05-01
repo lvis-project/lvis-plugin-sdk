@@ -407,6 +407,9 @@ const JSDOC_CATALOG = {
  * a SET (\`includes()\`); insertion order is NOT priority and is subject to
  * change. Pair with \`onPluginsChanged\` to react to lifecycle.
  *
+ * Capability-gated by \`lifecycle-observer\` in the plugin manifest (advisory
+ * in v3.x — not enforced yet, but declare it to stay forward-compatible).
+ *
  * @returns Plugin ids of all currently-loaded plugins except the caller.
  */`,
       onPluginsChanged: `/**
@@ -426,6 +429,9 @@ const JSDOC_CATALOG = {
  * The \`installed\` event carries \`source: "marketplace" | "local-dev"\`.
  * Production consumers SHOULD ignore \`source: "local-dev"\` to avoid
  * letting a developer's local test plugin trigger downstream cascades.
+ *
+ * Capability-gated by \`lifecycle-observer\` in the plugin manifest (advisory
+ * in v3.x — not enforced yet, but declare it to stay forward-compatible).
  */`,
     },
   },
@@ -594,7 +600,9 @@ function enrichWithJsDoc(text, catalog) {
         let handled = false;
 
         for (const [fieldName, fieldDoc] of Object.entries(entry.fields)) {
-          const fieldRe = new RegExp(`^(\\s+)(${fieldName})(\\?)?\\s*:`);
+          // Match both property form   `  name?: type`
+          // and TS method form         `  name(...): ReturnType`
+          const fieldRe = new RegExp(`^(\\s+)(${fieldName})(\\?)?\\s*(?::|\\()`);
           const fm = line.match(fieldRe);
           if (!fm) continue;
 
