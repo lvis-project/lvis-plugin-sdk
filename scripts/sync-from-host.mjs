@@ -367,6 +367,32 @@ const JSDOC_CATALOG = {
  * raw third-party content (mail body, transcript). \`spec.source\` MUST match
  * \`^proactive:[a-z][a-z0-9-]*$\`.
  */`,
+      getInstalledPluginIds: `/**
+ * Snapshot of plugin ids currently loaded into the host runtime, in insertion
+ * (load) order. The calling plugin's own id is excluded. Treat the result as
+ * a SET (\`includes()\`); insertion order is NOT priority and is subject to
+ * change. Pair with \`onPluginsChanged\` to react to lifecycle.
+ *
+ * @returns Plugin ids of all currently-loaded plugins except the caller.
+ */`,
+      onPluginsChanged: `/**
+ * Subscribe to plugin install / uninstall lifecycle events. Returns an
+ * \`unsubscribe()\` disposer; the host also auto-clears the subscription when
+ * the calling plugin is disabled.
+ *
+ * Fires AFTER the host has finished mounting (install) or unmounting
+ * (uninstall) the subject plugin — \`getInstalledPluginIds()\` already
+ * reflects the new state when the handler runs. Self-events (this plugin
+ * being the subject) are filtered out.
+ *
+ * P0 only delivers \`installed\` and \`uninstalled\`. Future versions may add
+ * \`updated\` (version bump). Handlers SHOULD branch with a \`default:\` to
+ * stay forward-compatible.
+ *
+ * The \`installed\` event carries \`source: "marketplace" | "local-dev"\`.
+ * Production consumers SHOULD ignore \`source: "local-dev"\` to avoid
+ * letting a developer's local test plugin trigger downstream cascades.
+ */`,
     },
   },
   ConversationTriggerSpec: {
