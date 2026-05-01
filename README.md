@@ -27,7 +27,7 @@ Consume the SDK as a Git dependency pinned to a release tag:
 ```json
 {
   "devDependencies": {
-    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v2.1.0"
+    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v3.0.0"
   }
 }
 ```
@@ -56,10 +56,10 @@ To pull in a new SDK release, update the tag in your `package.json` and reinstal
 # bun (recommended)
 bun update @lvis/plugin-sdk
 # or pin explicitly:
-bun add -d github:lvis-project/lvis-plugin-sdk#v2.1.0
+bun add -d github:lvis-project/lvis-plugin-sdk#v3.0.0
 
 # npm
-npm install --save-dev github:lvis-project/lvis-plugin-sdk#v2.1.0
+npm install --save-dev github:lvis-project/lvis-plugin-sdk#v3.0.0
 ```
 
 After upgrading, check your `plugin.json` manifest against the updated JSON

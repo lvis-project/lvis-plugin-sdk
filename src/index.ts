@@ -60,6 +60,7 @@ export interface EventSubscription {
  *   version: "1.0.0",
  *   entry: "dist/index.js",
  *   tools: ["my_plugin_ping"],
+ *   description: "One-line summary of what this plugin does.",
  * };
  */
 export interface PluginManifest {
