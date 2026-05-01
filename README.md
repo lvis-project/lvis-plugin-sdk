@@ -34,6 +34,20 @@ Consume the SDK as a Git dependency pinned to a release tag:
 
 No submodule is required.
 
+### v3.0.0 Migration Guide (breaking)
+
+**`description` is now a required MUST field** (was optional). Add a one-line
+description to every `plugin.json` if not already present.
+
+**`eventPublishes` is removed** — use `emittedEvents` exclusively. Rename any
+`eventPublishes` fields in `plugin.json` to `emittedEvents`. No compat shim.
+
+**`permissions` top-level field is no longer allowed** (`additionalProperties: false`
+enforced). Remove any `permissions` arrays from `plugin.json` manifests.
+
+**`additionalProperties: false`** — the schema now rejects unknown manifest keys.
+Any undocumented fields in `plugin.json` will cause host load failure.
+
 ### Upgrading
 
 To pull in a new SDK release, update the tag in your `package.json` and reinstall:

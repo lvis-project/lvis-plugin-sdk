@@ -76,8 +76,8 @@ export interface PluginManifest {
   /** Tool names exposed to the host LLM. Each name must match `^[a-zA-Z_][a-zA-Z0-9_]*$` — dots and hyphens are not allowed. */
   tools: string[];
 
-  /** One-line description shown in plugin catalogues and tool pickers. @optional */
-  description?: string;
+  /** One-line description shown in plugin catalogues and the inactive-plugin catalog the LLM sees. Required (MUST). */
+  description: string;
   /** Arbitrary JSON configuration merged into `PluginRuntimeContext.config` at startup. Treat as untrusted user data. @optional */
   config?: Record<string, unknown>;
   /** Sidebar / panel UI extensions contributed by this plugin. @optional */
@@ -96,9 +96,7 @@ export interface PluginManifest {
   /** Tools that the UI is permitted to invoke directly (bypassing the LLM). Use sparingly — prefer LLM-mediated calls. @optional */
   uiCallable?: string[];
 
-  /** Event type names this plugin may emit. Hosts can use this for validation and ownership checks. @optional */
-  eventPublishes?: string[];
-  /** Alias of `eventPublishes` accepted by host bridge paths. @optional */
+  /** Event type names this plugin may emit. Used by the host for validation and ownership checks. @optional */
   emittedEvents?: string[];
 
   /** Events that should be surfaced as host notifications. Each entry names the event and maps fields of its payload to notification title and body. @optional */
@@ -376,7 +374,6 @@ export interface PluginMarketplaceItem {
   keywords?: Array<{ keyword: string; skillId: string }>;
   startupTools?: string[];
   uiCallable?: string[];
-  eventPublishes?: string[];
   emittedEvents?: string[];
   notificationEvents?: Array<{
     event: string;
