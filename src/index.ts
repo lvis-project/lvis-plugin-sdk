@@ -462,8 +462,40 @@ export interface PluginHostApi {
 
   onEvent(eventType: string, handler: (data: unknown) => void): () => void;
 
+  /**
+   * Snapshot of plugin ids currently loaded into the host runtime, in insertion
+   * (load) order. The calling plugin's own id is excluded. Treat the result as
+   * a SET (`includes()`); insertion order is NOT priority and is subject to
+   * change. Pair with `onPluginsChanged` to react to lifecycle.
+   *
+   * Capability-gated by `lifecycle-observer` in the plugin manifest (advisory
+   * in v3.x — not enforced yet, but declare it to stay forward-compatible).
+   *
+   * @returns Plugin ids of all currently-loaded plugins except the caller.
+   */
   getInstalledPluginIds(): string[];
 
+  /**
+   * Subscribe to plugin install / uninstall lifecycle events. Returns an
+   * `unsubscribe()` disposer; the host also auto-clears the subscription when
+   * the calling plugin is disabled.
+   *
+   * Fires AFTER the host has finished mounting (install) or unmounting
+   * (uninstall) the subject plugin — `getInstalledPluginIds()` already
+   * reflects the new state when the handler runs. Self-events (this plugin
+   * being the subject) are filtered out.
+   *
+   * P0 only delivers `installed` and `uninstalled`. Future versions may add
+   * `updated` (version bump). Handlers SHOULD branch with a `default:` to
+   * stay forward-compatible.
+   *
+   * The `installed` event carries `source: "marketplace" | "local-dev"`.
+   * Production consumers SHOULD ignore `source: "local-dev"` to avoid
+   * letting a developer's local test plugin trigger downstream cascades.
+   *
+   * Capability-gated by `lifecycle-observer` in the plugin manifest (advisory
+   * in v3.x — not enforced yet, but declare it to stay forward-compatible).
+   */
   onPluginsChanged(handler: (event: PluginLifecycleEvent) => void): () => void;
   addTask(task: {
     title: string;

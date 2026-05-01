@@ -469,6 +469,32 @@ describe("PluginManifest — capability / event declarations", () => {
     expect(manifest.capabilities).toContain("conversation-trigger");
   });
 
+  it("schema accepts lifecycle-observer capability (issue #57)", () => {
+    const { valid, errors } = validateManifest({
+      id: "com.example.lifecycle",
+      name: "Lifecycle Observer",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin that observes lifecycle events from other plugins.",
+      capabilities: ["lifecycle-observer"],
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("schema rejects unknown capability value", () => {
+    const { valid } = validateManifest({
+      id: "com.example.bad-cap",
+      name: "Bad Cap",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Test fixture.",
+      capabilities: ["not-a-real-capability"],
+    });
+    expect(valid).toBe(false);
+  });
+
   it("emittedEvents is accepted (v3 canonical field)", () => {
     const manifest: PluginManifest = {
       id: "com.example.evt",
