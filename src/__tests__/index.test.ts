@@ -178,14 +178,53 @@ describe("PluginManifest — schema validation", () => {
     expect(valid).toBe(false);
   });
 
-  it("accepts semver with prerelease tag", () => {
-    const { valid, errors } = validateManifest({ ...VALID_MINIMAL, version: "1.2.3-beta.1" });
-    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  it("rejects pre-release tag (stable-only marketplace channel)", () => {
+    // Mirrors the publish.yml SemVer regex — pre-release tags are not a
+    // supported release form on the marketplace today (Channel 3 of
+    // `marketplace-publishing.md`). Rejecting at AJV level surfaces the
+    // mismatch before the plugin author even pushes a tag.
+    const { valid } = validateManifest({ ...VALID_MINIMAL, version: "1.2.3-beta.1" });
+    expect(valid).toBe(false);
   });
 
-  it("accepts semver with build metadata", () => {
-    const { valid, errors } = validateManifest({ ...VALID_MINIMAL, version: "1.2.3+build.42" });
-    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  it("rejects build metadata (stable-only marketplace channel)", () => {
+    const { valid } = validateManifest({ ...VALID_MINIMAL, version: "1.2.3+build.42" });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects leading zeros (per SemVer §2)", () => {
+    const { valid } = validateManifest({ ...VALID_MINIMAL, version: "01.2.3" });
+    expect(valid).toBe(false);
+  });
+
+  // Boundary-table sweep — accept/reject pairs that pin every regex group
+  // independently. Without this, a per-group bug (e.g. `[1-9][0-9]+` instead
+  // of `[1-9][0-9]*` would silently reject single-digit `1.2.3`) could slip
+  // past. Add new rows here when loosening or tightening the contract.
+  it.each([
+    // accepts
+    ["1.0.10", true],
+    ["0.0.0", true],
+    ["10.20.30", true],
+    ["1.2.3", true],
+    // rejects — leading zeros on each component
+    ["01.2.3", false],
+    ["1.02.3", false],
+    ["1.2.03", false],
+    // rejects — wrong shape
+    ["", false],
+    ["1", false],
+    ["1.2", false],
+    ["1.2.3.4", false],
+    ["v1.2.3", false],
+    [" 1.2.3", false],
+    ["1.2.3 ", false],
+    // rejects — pre-release / build metadata (covered above but pinned here too)
+    ["1.2.3-rc.1", false],
+    ["1.2.3+abc", false],
+  ])("version %p — accepts: %p", (version, accepts) => {
+    const { valid } = validateManifest({ ...VALID_MINIMAL, version });
+    expect(valid).toBe(accepts);
   });
 
   it("rejects null top-level object", () => {
