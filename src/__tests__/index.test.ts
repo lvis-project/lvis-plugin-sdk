@@ -127,6 +127,26 @@ describe("PluginManifest — schema validation", () => {
     expect(valid).toBe(false);
   });
 
+  it("rejects unknown top-level key (additionalProperties:false) — permissions example", () => {
+    // Phase 1 breaking change: permissions[] was never read by the host; it is now
+    // explicitly rejected at validation time rather than silently ignored.
+    const { valid } = validateManifest({
+      ...VALID_MINIMAL,
+      permissions: ["tasks", "secrets"],
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects eventPublishes (removed in v3; use emittedEvents instead)", () => {
+    // eventPublishes was the legacy alias for emittedEvents. It is removed in v3.
+    // Manifests using it will fail additionalProperties:false validation.
+    const { valid } = validateManifest({
+      ...VALID_MINIMAL,
+      eventPublishes: ["meeting.summary.created"],
+    });
+    expect(valid).toBe(false);
+  });
+
   it("rejects tool names with dots (underscore format required)", () => {
     const { valid, errors } = validateManifest({
       ...VALID_MINIMAL,
