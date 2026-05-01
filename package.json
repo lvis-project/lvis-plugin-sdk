@@ -1,6 +1,6 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "private": false,
   "description": "Type-only SDK for authoring LVIS plugins. Re-exports the host's PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin contracts so plugin repos can import a single source of truth.",
   "type": "module",
