@@ -197,6 +197,36 @@ describe("PluginManifest — schema validation", () => {
     expect(valid).toBe(false);
   });
 
+  // Boundary-table sweep — accept/reject pairs that pin every regex group
+  // independently. Without this, a per-group bug (e.g. `[1-9][0-9]+` instead
+  // of `[1-9][0-9]*` would silently reject single-digit `1.2.3`) could slip
+  // past. Add new rows here when loosening or tightening the contract.
+  it.each([
+    // accepts
+    ["1.0.10", true],
+    ["0.0.0", true],
+    ["10.20.30", true],
+    ["1.2.3", true],
+    // rejects — leading zeros on each component
+    ["01.2.3", false],
+    ["1.02.3", false],
+    ["1.2.03", false],
+    // rejects — wrong shape
+    ["", false],
+    ["1", false],
+    ["1.2", false],
+    ["1.2.3.4", false],
+    ["v1.2.3", false],
+    [" 1.2.3", false],
+    ["1.2.3 ", false],
+    // rejects — pre-release / build metadata (covered above but pinned here too)
+    ["1.2.3-rc.1", false],
+    ["1.2.3+abc", false],
+  ])("version %p — accepts: %p", (version, accepts) => {
+    const { valid } = validateManifest({ ...VALID_MINIMAL, version });
+    expect(valid).toBe(accepts);
+  });
+
   it("rejects null top-level object", () => {
     const { valid } = validateManifest(null);
     expect(valid).toBe(false);
