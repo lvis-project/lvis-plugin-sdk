@@ -178,14 +178,23 @@ describe("PluginManifest — schema validation", () => {
     expect(valid).toBe(false);
   });
 
-  it("accepts semver with prerelease tag", () => {
-    const { valid, errors } = validateManifest({ ...VALID_MINIMAL, version: "1.2.3-beta.1" });
-    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  it("rejects pre-release tag (stable-only marketplace channel)", () => {
+    // Mirrors the publish.yml SemVer regex — pre-release tags are not a
+    // supported release form on the marketplace today (Channel 3 of
+    // `marketplace-publishing.md`). Rejecting at AJV level surfaces the
+    // mismatch before the plugin author even pushes a tag.
+    const { valid } = validateManifest({ ...VALID_MINIMAL, version: "1.2.3-beta.1" });
+    expect(valid).toBe(false);
   });
 
-  it("accepts semver with build metadata", () => {
-    const { valid, errors } = validateManifest({ ...VALID_MINIMAL, version: "1.2.3+build.42" });
-    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  it("rejects build metadata (stable-only marketplace channel)", () => {
+    const { valid } = validateManifest({ ...VALID_MINIMAL, version: "1.2.3+build.42" });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects leading zeros (per SemVer §2)", () => {
+    const { valid } = validateManifest({ ...VALID_MINIMAL, version: "01.2.3" });
+    expect(valid).toBe(false);
   });
 
   it("rejects null top-level object", () => {
