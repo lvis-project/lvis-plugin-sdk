@@ -34,6 +34,24 @@ Consume the SDK as a Git dependency pinned to a release tag:
 
 No submodule is required.
 
+### v3.1.0 Additions (additive — no migration)
+
+`PluginHostApi` gains plugin lifecycle introspection so brain plugins (e.g.
+`work-proactive`) can react to install/uninstall without a host restart:
+
+- `getInstalledPluginIds(): string[]` — snapshot of currently-loaded plugin
+  ids (caller's own id excluded). Use as a SET; insertion order is NOT
+  priority.
+- `onPluginsChanged(handler): () => void` — subscribe to install/uninstall
+  events. Handler receives `PluginLifecycleEvent` (discriminated union with
+  `source: "marketplace" | "local-dev"` on installs). Self-events filtered.
+  P0 only delivers `installed` and `uninstalled`; branch with `default:`
+  for forward-compat with future `updated`.
+
+Companion host PR adds `plugin.installed` / `plugin.uninstalled` event-bus
+emission and reserves `plugin.*` as a host-only namespace (plugin-side
+`emitEvent` rejected).
+
 ### v3.0.0 Migration Guide (breaking)
 
 **`description` is now a required MUST field** (was optional). Add a one-line
