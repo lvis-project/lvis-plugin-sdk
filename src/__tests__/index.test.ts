@@ -57,6 +57,7 @@ describe("PluginManifest — schema validation", () => {
     version: "1.0.0",
     entry: "dist/index.js",
     tools: ["my_plugin_ping"],
+    description: "One-line summary of what this plugin does.",
   };
 
   it("accepts a minimal valid manifest (all required fields)", () => {
@@ -72,7 +73,6 @@ describe("PluginManifest — schema validation", () => {
       capabilities: ["calendar-source", "mail-source"],
       startupTools: ["my_plugin_init"],
       eventSubscriptions: ["meeting:started", "meeting:ended"],
-      eventPublishes: ["plugin:event:fired"],
       emittedEvents: ["plugin:event:fired"],
       uiCallable: ["my_plugin_ping"],
       keywords: [{ keyword: "example", skillId: "example-skill" }],
@@ -113,6 +113,37 @@ describe("PluginManifest — schema validation", () => {
   it("rejects manifest missing required field: tools", () => {
     const { tools: _, ...noTools } = VALID_MINIMAL;
     const { valid } = validateManifest(noTools);
+    expect(valid).toBe(false);
+  });
+
+  it("rejects manifest missing required field: description", () => {
+    const { description: _, ...noDesc } = VALID_MINIMAL;
+    const { valid } = validateManifest(noDesc);
+    expect(valid).toBe(false);
+  });
+
+  it("rejects manifest with empty description", () => {
+    const { valid } = validateManifest({ ...VALID_MINIMAL, description: "" });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects unknown top-level key (additionalProperties:false) — permissions example", () => {
+    // Phase 1 breaking change: permissions[] was never read by the host; it is now
+    // explicitly rejected at validation time rather than silently ignored.
+    const { valid } = validateManifest({
+      ...VALID_MINIMAL,
+      permissions: ["tasks", "secrets"],
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects eventPublishes (removed in v3; use emittedEvents instead)", () => {
+    // eventPublishes was the legacy alias for emittedEvents. It is removed in v3.
+    // Manifests using it will fail additionalProperties:false validation.
+    const { valid } = validateManifest({
+      ...VALID_MINIMAL,
+      eventPublishes: ["meeting.summary.created"],
+    });
     expect(valid).toBe(false);
   });
 
@@ -175,6 +206,7 @@ describe("PluginManifest — window.defaultMode:detached (2c10491)", () => {
     version: "1.0.0",
     entry: "dist/index.js",
     tools: ["detach_ping"],
+    description: "Test fixture.",
     ui: [
       {
         id: "main-panel",
@@ -252,6 +284,7 @@ describe("PluginManifest — configSchema field (post-#76)", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: ["config_ping"],
+      description: "Test fixture.",
       configSchema: schema,
     };
     const { valid, errors } = validateManifest(manifest);
@@ -395,6 +428,7 @@ describe("EventSubscription — structural validation", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       eventSubscriptions: ["meeting:started", "email:received"],
     };
     expect(Array.isArray(manifest.eventSubscriptions)).toBe(true);
@@ -411,6 +445,7 @@ describe("EventSubscription — structural validation", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       eventSubscriptions: subs,
     };
     expect((manifest.eventSubscriptions as EventSubscription[])[0].type).toBe("meeting:started");
@@ -426,23 +461,23 @@ describe("PluginManifest — capability / event declarations", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       capabilities: ["calendar-source", "mail-source", "meeting-recorder", "conversation-trigger"],
     };
     expect(manifest.capabilities).toContain("calendar-source");
     expect(manifest.capabilities).toContain("conversation-trigger");
   });
 
-  it("eventPublishes and emittedEvents are both accepted", () => {
+  it("emittedEvents is accepted (v3 canonical field)", () => {
     const manifest: PluginManifest = {
       id: "com.example.evt",
       name: "Evt",
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
-      eventPublishes: ["plugin:data:ready"],
+      description: "Test fixture.",
       emittedEvents: ["plugin:data:ready"],
     };
-    expect(manifest.eventPublishes).toContain("plugin:data:ready");
     expect(manifest.emittedEvents).toContain("plugin:data:ready");
   });
 
@@ -453,6 +488,7 @@ describe("PluginManifest — capability / event declarations", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       notificationEvents: [
         { event: "meeting:started", titleField: "title", bodyField: "description" },
         { event: "email:received" },
@@ -469,6 +505,7 @@ describe("PluginManifest — capability / event declarations", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       requires: { capabilities: ["calendar", "email"] },
     };
     expect(manifest.requires?.capabilities).toContain("calendar");
@@ -688,6 +725,7 @@ describe("PluginManifest — edge cases", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
@@ -699,6 +737,7 @@ describe("PluginManifest — edge cases", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: ["tool_one", "tool_two", "tool_three"],
+      description: "Test fixture.",
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
@@ -721,6 +760,7 @@ describe("PluginManifest — edge cases", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
@@ -733,6 +773,7 @@ describe("PluginManifest — edge cases", () => {
         version: "1.0.0",
         entry: "dist/index.js",
         tools: [],
+        description: "Test fixture.",
         installPolicy: policy,
       };
       expect(manifest.installPolicy).toBe(policy);
@@ -746,6 +787,7 @@ describe("PluginManifest — edge cases", () => {
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
+      description: "Test fixture.",
       dependencies: [
         "com.example.simple-dep",
         { pluginId: "com.example.complex-dep", versionRange: ">=1.0.0", required: true },
