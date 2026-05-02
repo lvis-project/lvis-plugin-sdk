@@ -52,13 +52,16 @@ export const BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
  * This helper enforces the contract via:
  * - `external: HOST_EXTERNAL_MODULES` (+ HOST_BROWSER_EXTERNAL_MODULES
  *   for browser builds) — host-provided modules stay external.
- * - `noExternal: BUNDLE_EVERYTHING_REGEX` — every other import (deps,
+ * - `noExternal: [BUNDLE_EVERYTHING_REGEX]` — every other import (deps,
  *   devDeps, transitive) gets bundled into `dist/`. This field is NOT
  *   overridable: the contract is the helper's reason to exist.
  *
  * ## Defaults
  *
- * - `entry`: `["src/index.ts", "src/hostPlugin.ts"]`
+ * - `entry`: `["src/hostPlugin.ts"]` — the marketplace contract entry
+ *   referenced by `plugin.json`. Plugins that also publish a separate
+ *   `src/index.ts` for npm-package consumption should override:
+ *   `entry: ["src/index.ts", "src/hostPlugin.ts"]`.
  * - `format`: `["esm"]`
  * - `target`: `"node20"`
  * - `clean`: `true`
@@ -70,7 +73,7 @@ export const BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
  * - `outDir`: `"dist"`
  * - `external`: HOST_EXTERNAL_MODULES (+ HOST_BROWSER_EXTERNAL_MODULES
  *   when the build is browser-targeted — see below).
- * - `noExternal`: BUNDLE_EVERYTHING_REGEX (forced, not overridable).
+ * - `noExternal`: `[BUNDLE_EVERYTHING_REGEX]` (forced, not overridable).
  *
  * Any other default can be overridden via the `overrides` argument. The
  * `external` array is always merged with the host externals so the
@@ -149,19 +152,27 @@ export function defineLvisPluginConfig(
 function isBrowserBuild(override: Options): boolean {
   if (override.platform === "browser") return true;
   if (override.platform === "node") return false;
-  const target = override.target;
+  // tsup `target` is `string | string[] | undefined`. Treat any element
+  // that looks like a browser target as evidence of a browser build.
+  const targets =
+    typeof override.target === "string"
+      ? [override.target]
+      : Array.isArray(override.target)
+      ? override.target
+      : [];
+  return targets.some((t) => looksLikeBrowserTarget(t));
+}
+
+function looksLikeBrowserTarget(target: unknown): boolean {
   if (typeof target !== "string") return false;
   const lower = target.toLowerCase();
   if (lower.startsWith("es")) return true;
-  if (
+  return (
     lower.startsWith("chrome") ||
     lower.startsWith("firefox") ||
     lower.startsWith("safari") ||
     lower.startsWith("edge")
-  ) {
-    return true;
-  }
-  return false;
+  );
 }
 
 function applyDefaults(override: Options): Options {
@@ -171,7 +182,11 @@ function applyDefaults(override: Options): Options {
     : [...HOST_EXTERNAL_MODULES];
 
   const baseDefaults: Options = {
-    entry: ["src/index.ts", "src/hostPlugin.ts"],
+    // The marketplace contract entry is `src/hostPlugin.ts` — `plugin.json`
+    // points at `dist/hostPlugin.js`. Plugins that ALSO ship a separate
+    // `src/index.ts` (e.g., for npm-package consumption) should override
+    // `entry` explicitly: `entry: ["src/index.ts", "src/hostPlugin.ts"]`.
+    entry: ["src/hostPlugin.ts"],
     format: ["esm"],
     target: "node20",
     clean: true,

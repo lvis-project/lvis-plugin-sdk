@@ -32,7 +32,7 @@ function noExternalRegexes(cfg: { noExternal?: unknown }): RegExp[] {
 describe("defineLvisPluginConfig", () => {
   it("emits self-containment defaults when called with no overrides", () => {
     const cfg = asSingle(defineLvisPluginConfig());
-    expect(cfg.entry).toEqual(["src/index.ts", "src/hostPlugin.ts"]);
+    expect(cfg.entry).toEqual(["src/hostPlugin.ts"]);
     expect(cfg.format).toEqual(["esm"]);
     expect(cfg.target).toBe("node20");
     expect(cfg.outDir).toBe("dist");
@@ -116,6 +116,31 @@ describe("defineLvisPluginConfig", () => {
       defineLvisPluginConfig({ target: "es2020", platform: "node" }),
     );
     expect(cfg.external).not.toContain("react");
+  });
+
+  it("auto-detects browser when target is an array containing browser-like target", () => {
+    const cfg = asSingle(
+      defineLvisPluginConfig({ target: ["es2020", "chrome120"] }),
+    );
+    expect(cfg.external).toContain("react");
+    expect(cfg.external).toContain("react-dom");
+  });
+
+  it("treats array of node-only targets as node build", () => {
+    const cfg = asSingle(
+      defineLvisPluginConfig({ target: ["node18", "node20"] }),
+    );
+    expect(cfg.external).not.toContain("react");
+    expect(cfg.external).not.toContain("react-dom");
+  });
+
+  it("supports extending entry with src/index.ts via override", () => {
+    const cfg = asSingle(
+      defineLvisPluginConfig({
+        entry: ["src/index.ts", "src/hostPlugin.ts"],
+      }),
+    );
+    expect(cfg.entry).toEqual(["src/index.ts", "src/hostPlugin.ts"]);
   });
 
   it("supports multi-target overrides as an array", () => {
