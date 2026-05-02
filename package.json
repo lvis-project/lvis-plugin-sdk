@@ -1,6 +1,6 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "private": false,
   "description": "Type-only SDK for authoring LVIS plugins. Re-exports the host's PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin contracts so plugin repos can import a single source of truth.",
   "type": "module",
@@ -19,6 +19,10 @@
       "import": "./dist/ui/tokens/index.js"
     },
     "./ui/lvis-tokens.css": "./src/ui/tokens/lvis-tokens.css",
+    "./build": {
+      "types": "./src/build/tsup.ts",
+      "import": "./src/build/tsup.ts"
+    },
     "./schemas/plugin-manifest.schema.json": "./schemas/plugin-manifest.schema.json",
     "./schemas/*": "./schemas/*"
   },
