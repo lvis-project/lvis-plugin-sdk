@@ -15,5 +15,6 @@ export type LvisThemePayload = {
   theme: "light" | "dark" | "high-contrast";
   chatTheme: "default" | "purple" | "orange" | "blue";
   codeTheme: "auto" | "light" | "dark";
-  tokens: LvisThemeTokens;
+  /** Optional explicit token values. When absent, CSS data-theme selectors handle theming. */
+  tokens?: Partial<LvisThemeTokens>;
 };
