@@ -186,6 +186,8 @@ export interface PluginManifest {
   >;
 
   configSchema?: PluginConfigSchema;
+
+  icon?: string;
 }
 
 export interface PluginConfigSchema {
@@ -581,8 +583,6 @@ export interface PluginHostApi {
    * chance to flush state.
    */
   onShutdown(handler: () => void | Promise<void>): void;
-
-  onMsGraphAuthChange?(handler: () => void): void;
 
   openAuthWindow(options: {
     url: string;
