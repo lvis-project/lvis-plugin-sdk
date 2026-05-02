@@ -17,9 +17,9 @@ const CSS = `
 .lvis-btn-primary:hover:not(:disabled) { opacity: 0.85; }
 .lvis-btn-secondary {
   background: var(--lvis-secondary); color: var(--lvis-secondary-fg);
-  border-color: var(--lvis-border);
+  border-color: var(--lvis-fg-muted);
 }
-.lvis-btn-secondary:hover:not(:disabled) { opacity: 0.85; }
+.lvis-btn-secondary:hover:not(:disabled) { background: var(--lvis-surface); border-color: var(--lvis-fg); }
 .lvis-btn-ghost {
   background: transparent; color: var(--lvis-fg);
 }
