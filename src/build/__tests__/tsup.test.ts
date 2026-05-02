@@ -175,7 +175,11 @@ describe("defineLvisPluginConfig", () => {
     expect("chokidar").toMatch(noExternal[0]);
   });
 
-  it("rejects empty noExternal override (contract lock)", () => {
+  it("forces noExternal even when user passes an empty array (contract lock)", () => {
+    // The helper ignores user-provided `noExternal` values; the contract
+    // is locked to `[BUNDLE_EVERYTHING_REGEX]`. This test guards against
+    // a regression where `[]` would slip through and bypass the bundle-
+    // everything default.
     const cfg = asSingle(defineLvisPluginConfig({ noExternal: [] }));
     const noExternal = noExternalRegexes(cfg);
     expect(noExternal).toHaveLength(1);
