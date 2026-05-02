@@ -1,6 +1,6 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "private": false,
   "description": "Type-only SDK for authoring LVIS plugins. Re-exports the host's PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin contracts so plugin repos can import a single source of truth.",
   "type": "module",
@@ -33,7 +33,7 @@
   ],
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json",
-    "prepare": "tsup && tsc -p tsconfig.build.json",
+    "prepare": "tsup",
     "dev:storybook": "storybook dev -p 6006",
     "build:storybook": "storybook build",
     "sync:from-host": "node scripts/sync-from-host.mjs",
