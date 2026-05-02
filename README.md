@@ -34,6 +34,26 @@ Consume the SDK as a Git dependency pinned to a release tag:
 
 No submodule is required.
 
+### `$schema` URL migration (deprecation in progress)
+
+The schema `$id` is moving from `https://sdk.lvis.com/schemas/plugin.schema.json`
+to `https://sdk.lvisai.xyz/schemas/plugin.schema.json` as part of the LVIS
+domain rename. Plugin authors who hard-code a `$schema` URL in `plugin.json`
+should migrate at their next release:
+
+```diff
+-  "$schema": "https://sdk.lvis.com/schemas/plugin.schema.json",
++  "$schema": "https://sdk.lvisai.xyz/schemas/plugin.schema.json",
+```
+
+Both URLs validate (the field uses `format: uri` rather than a strict enum
+today) so plugins migrating during the deprecation window will not fail
+validation. The deprecation lasts for **one SDK release**: from v3.2.x the
+SDK warns when the legacy URL is detected, and starting at the next major
+the schema enum will be tightened to the new URL only. The `applyDollarSchemaMigration`
+hook in `scripts/sync-schema-from-host.mjs` is the anchor point for that
+follow-up change.
+
 ### v3.1.0 Additions (additive — no migration)
 
 **`PluginHostApi.getInstalledPluginIds()` and `onPluginsChanged(handler)` are
