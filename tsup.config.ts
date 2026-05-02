@@ -4,6 +4,7 @@ export default defineConfig({
     "index": "src/index.ts",
     "ui/index": "src/ui/index.ts",
     "ui/tokens/index": "src/ui/tokens/index.ts",
+    "build/tsup": "src/build/tsup.ts",
   },
   format: ["esm"],
   // dts emission is delegated to `tsc -p tsconfig.build.json` (see package.json
@@ -12,5 +13,7 @@ export default defineConfig({
   // tsc directly avoids that code path entirely.
   dts: false,
   clean: true,
-  external: ["react", "react-dom"],
+  // `tsup` is a peer/dev concern of consumers, not the SDK runtime — keep it
+  // external so `@lvis/plugin-sdk/build` doesn't drag the tsup runtime in.
+  external: ["react", "react-dom", "tsup"],
 });
