@@ -743,6 +743,8 @@ export type StorageEncoding =
   out = restrictMarketplaceChannelToStable(out);
   out = ensurePluginManifestPython(out);
   out = ensurePluginManifestPackageName(out);
+  out = ensurePluginManifestAuthor(out);
+  out = ensurePluginManifestUiSlots(out);
   out = annotateToolSchemaInner(out);
 
   return out;
@@ -869,6 +871,36 @@ function ensurePluginManifestPackageName(text) {
   return text.replace(
     /(^export interface PluginManifest \{[\s\S]*?)\n\}\n/m,
     (_match, body) => `${body}\n  packageName?: string;\n}\n`,
+  );
+}
+
+/**
+ * Phase-1 schema-master sync — author + uiSlots TS surface.
+ *
+ * `author` (individual maintainer) lives in the SDK schema even though
+ * the host's plugin.schema.json doesn't carry it after the Phase-1 prune.
+ * Plugin authors expect a credit field; `publisher` (organization) and
+ * `author` (individual) are intentionally distinct. Inject on the SDK
+ * side so manifest typings surface it.
+ *
+ * `uiSlots` is the top-level slot-name advertisement (distinct from
+ * the per-extension `ui[].slot` binding). Marketplace metadata only.
+ *
+ * Both are idempotent — only inject when missing.
+ */
+function ensurePluginManifestAuthor(text) {
+  if (/^\s*author\?:\s*string;/m.test(text)) return text;
+  return text.replace(
+    /(^export interface PluginManifest \{[\s\S]*?)\n\}\n/m,
+    (_match, body) => `${body}\n  /** Plugin author — individual maintainer name or contact (distinct from \`publisher\`). */\n  author?: string;\n}\n`,
+  );
+}
+
+function ensurePluginManifestUiSlots(text) {
+  if (/^\s*uiSlots\?:\s*string\[\];/m.test(text)) return text;
+  return text.replace(
+    /(^export interface PluginManifest \{[\s\S]*?)\n\}\n/m,
+    (_match, body) => `${body}\n  /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in \`ui[].slot\`. */\n  uiSlots?: string[];\n}\n`,
   );
 }
 
