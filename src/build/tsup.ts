@@ -95,7 +95,7 @@ export const BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
  *
  * ## Optional native dependencies
  *
- * `noExternal: BUNDLE_EVERYTHING_REGEX` follows ALL imports including
+ * `noExternal: [BUNDLE_EVERYTHING_REGEX]` follows ALL imports including
  * `optionalDependencies` (e.g., `chokidar` → `fsevents` on macOS,
  * `ws` → `bufferutil`/`utf-8-validate`). esbuild errors when a referenced
  * optional dep is not installed (typical on cross-platform CI).
@@ -130,12 +130,16 @@ export const BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
  * });
  * ```
  *
- * Multi-target (host + browser UI):
+ * Multi-target (host + browser UI). The browser entry must set
+ * `platform: "browser"` explicitly so the helper auto-adds
+ * `react` / `react-dom` to `external` (otherwise React would be bundled
+ * twice, breaking the host's React context):
  * ```ts
  * export default defineLvisPluginConfig([
  *   { entry: ["src/hostPlugin.ts"] },
  *   {
  *     entry: { "ui/panel": "src/ui/panel.ts" },
+ *     platform: "browser",
  *     target: "es2020",
  *     clean: false,
  *   },
