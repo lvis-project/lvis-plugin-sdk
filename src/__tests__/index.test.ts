@@ -835,6 +835,337 @@ describe("PluginHostApi — interface contract (structural)", () => {
   });
 });
 
+// ─── auth cross-field invariant (H6) ───────────────────────────────────────
+describe("PluginManifest — auth ⇒ uiCallable invariant (H6)", () => {
+  // Architect post-merge follow-up: cross-field invariant
+  // `auth.statusTool ∈ uiCallable[]` was prose-only. The SDK-side schema
+  // now lifts the structural half of the invariant via `allOf` so AJV
+  // catches the most common manifest mistake (declaring `auth` without
+  // any `uiCallable` allowlist). The full value-level check stays in
+  // the host's manifest-validation.ts.
+  it("rejects manifest with auth but no uiCallable", () => {
+    const { valid } = validateManifest({
+      id: "com.example.auth-no-ui",
+      name: "Auth no UI",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: ["status_tool", "login_tool"],
+      description: "Auth contract without uiCallable allowlist.",
+      auth: { statusTool: "status_tool", loginTool: "login_tool" },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects manifest with auth and empty uiCallable[]", () => {
+    const { valid } = validateManifest({
+      id: "com.example.auth-empty-ui",
+      name: "Auth empty UI",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: ["status_tool", "login_tool"],
+      description: "Auth contract with empty uiCallable allowlist.",
+      uiCallable: [],
+      auth: { statusTool: "status_tool", loginTool: "login_tool" },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("accepts manifest with auth and a non-empty uiCallable allowlist", () => {
+    const { valid, errors } = validateManifest({
+      id: "com.example.auth-ok",
+      name: "Auth OK",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: ["status_tool", "login_tool"],
+      description: "Auth contract with uiCallable.",
+      uiCallable: ["status_tool", "login_tool"],
+      auth: { statusTool: "status_tool", loginTool: "login_tool" },
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts manifest without auth regardless of uiCallable", () => {
+    const { valid, errors } = validateManifest({
+      id: "com.example.no-auth",
+      name: "No Auth",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: ["ping"],
+      description: "No auth contract — uiCallable not required.",
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+});
+
+// ─── python field (H3) ─────────────────────────────────────────────────────
+describe("PluginManifest — python co-deployment field (H3)", () => {
+  it("accepts manifest with python.managedBy='lvis-app' + requirementsLock", () => {
+    const manifest: PluginManifest = {
+      id: "com.lge.pageindex",
+      name: "PageIndex",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Document indexer with Python worker.",
+      python: {
+        managedBy: "lvis-app",
+        requirementsLock: "requirements.lock",
+        interpreter: "python3.11",
+      },
+    };
+    expect(manifest.python?.managedBy).toBe("lvis-app");
+    const { valid, errors } = validateManifest(manifest);
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts python.managedBy='self'", () => {
+    const manifest: PluginManifest = {
+      id: "com.example.self-py",
+      name: "Self Py",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin manages its own venv.",
+      python: { managedBy: "self" },
+    };
+    expect(manifest.python?.managedBy).toBe("self");
+  });
+
+  it("rejects unknown python.managedBy value", () => {
+    const { valid } = validateManifest({
+      id: "com.example.bad-py",
+      name: "Bad Py",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Bad python.managedBy.",
+      python: { managedBy: "docker" },
+    });
+    expect(valid).toBe(false);
+  });
+});
+
+// ─── packageName field (M9) ───────────────────────────────────────────────
+describe("PluginManifest — packageName field (M9)", () => {
+  it("accepts manifest with packageName", () => {
+    const manifest: PluginManifest = {
+      id: "com.lge.meeting",
+      name: "Meeting",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Meeting recorder.",
+      packageName: "@lge/lvis-plugin-meeting",
+    };
+    const { valid, errors } = validateManifest(manifest);
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    expect(manifest.packageName).toBe("@lge/lvis-plugin-meeting");
+  });
+});
+
+// ─── PluginRegistryEntry public surface (M8) ──────────────────────────────
+describe("PluginRegistryEntry — public surface excludes host-internal fields (M8)", () => {
+  // _devLinked + installSource are host-internal bookkeeping. The SDK
+  // strips them from the public interface so plugin code cannot branch
+  // on them.
+  it("PluginRegistryEntryInstallSource type is no longer exported", async () => {
+    // Type-only import — checked at compile time. Runtime JS module has
+    // no symbols for type aliases. Use a string source check as a
+    // belt-and-braces safeguard against accidental re-exposure: the
+    // JSDoc on PluginRegistryEntry MAY mention the stripped fields by
+    // name (so plugin authors know not to expect them), so we look for
+    // the actual property/type-alias declarations rather than the bare
+    // identifiers.
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
+    expect(indexSrc).not.toMatch(/^\s*_devLinked\?:/m);
+    expect(indexSrc).not.toMatch(/^\s*installSource\?:/m);
+    expect(indexSrc).not.toMatch(/^\s*installedBy\?:/m);
+    expect(indexSrc).not.toMatch(/^export type PluginRegistryEntryInstallSource\b/m);
+  });
+});
+
+// ─── PluginMarketplaceItem channel restriction (M11) ──────────────────────
+describe("PluginMarketplaceItem — channel restricted to stable (M11)", () => {
+  it("source surface no longer mentions canary channel", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
+    expect(indexSrc).not.toContain('"canary"');
+    // and the field is still present, just narrower
+    expect(indexSrc).toMatch(/channel\?:\s*"stable";/);
+  });
+});
+
+// ─── PluginLifecycleEventPayload removed (M12) ────────────────────────────
+describe("PluginLifecycleEventPayload — removed (M12)", () => {
+  it("source surface no longer exports the type", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
+    expect(indexSrc).not.toMatch(/export type PluginLifecycleEventPayload/);
+  });
+});
+
+// ─── description JSDoc must not say @optional (H1) ────────────────────────
+describe("PluginManifest.description JSDoc — required, not @optional (H1)", () => {
+  it("source surface marks description as required (no @optional tag)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
+    // Locate the PluginManifest.description JSDoc specifically: scan inside
+    // the PluginManifest interface body and pick the JSDoc directly
+    // preceding `description: string;`.
+    const manifestBlock = indexSrc.match(
+      /export interface PluginManifest \{[\s\S]*?\n\}/,
+    );
+    expect(manifestBlock).not.toBeNull();
+    const m = manifestBlock![0].match(
+      /(\/\*\*(?:[^*]|\*(?!\/))*\*\/)\s*\n\s*description:\s*string;/,
+    );
+    expect(m, "PluginManifest.description JSDoc not found").not.toBeNull();
+    expect(m![1]).not.toContain("@optional");
+    expect(m![1]).toMatch(/Required/i);
+  });
+});
+
+// ─── emittedEvents JSDoc must not say "Alias of eventPublishes" (H5) ──────
+describe("PluginManifest.emittedEvents JSDoc — no eventPublishes alias text (H5)", () => {
+  it("source surface no longer claims emittedEvents is an alias of eventPublishes", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
+    expect(indexSrc).not.toMatch(/Alias of\s*`?eventPublishes`?/);
+  });
+});
+
+// ─── tool description JSDoc — LLM-facing, not catalogue (M10) ─────────────
+describe("toolSchemas[].description JSDoc — LLM-facing (M10)", () => {
+  it("source surface describes inner tool description as LLM-facing with min length 10", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
+    // Locate the toolSchemas Record block and its inner description JSDoc.
+    const block = indexSrc.match(
+      /toolSchemas\?:\s*Record<\s*\n\s*string,\s*\n\s*\{[\s\S]*?\}\s*\n\s*>/,
+    );
+    expect(block, "toolSchemas block not found").not.toBeNull();
+    expect(block![0]).toMatch(/LLM-facing/);
+    expect(block![0]).toMatch(/Minimum 10/);
+    // The wrong text from the parent PluginManifest catalogue must NOT leak.
+    expect(block![0]).not.toMatch(/plugin catalogues and tool pickers/);
+  });
+});
+
+// ─── PluginConfigSchema fields restored (H4) ──────────────────────────────
+describe("PluginConfigSchema field JSDoc — restored (H4)", () => {
+  it("source surface documents PluginConfigSchema and its property fields", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
+    // The PluginConfigSchema body should carry one-line JSDoc on each field.
+    const schemaBlock = indexSrc.match(
+      /export interface PluginConfigSchema \{[\s\S]*?\n\}/,
+    );
+    expect(schemaBlock).not.toBeNull();
+    // each declared field must be directly preceded by a JSDoc comment
+    expect(schemaBlock![0]).toMatch(/\/\*\*[\s\S]*?\*\/\s*\n\s*\$schema\?: string;/);
+    expect(schemaBlock![0]).toMatch(/\/\*\*[\s\S]*?\*\/\s*\n\s*properties:/);
+    expect(schemaBlock![0]).toMatch(/\/\*\*[\s\S]*?\*\/\s*\n\s*required\?:/);
+    expect(schemaBlock![0]).toMatch(/\/\*\*[\s\S]*?\*\/\s*\n\s*customPanel\?:/);
+  });
+});
+
+// ─── auto-gen idempotency (M14) ───────────────────────────────────────────
+describe("scripts/sync-from-host.mjs — idempotency (M14)", () => {
+  // Architect post-merge follow-up: the JSDoc-strip pass in
+  // sanitizeForPublic + the catalog re-injection in enrichWithJsDoc must
+  // round-trip cleanly so a second sync after the first produces no diff.
+  // Without this guarantee the drift-check workflow oscillates on every
+  // run (PR #62 root cause for the JSDoc drift the architect flagged).
+  it("running the script twice against the same host source is a no-op", async () => {
+    const { spawnSync } = await import("node:child_process");
+    const { readFileSync, writeFileSync, existsSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const sdkRoot = join(here, "..", "..");
+    const scriptPath = join(sdkRoot, "scripts", "sync-from-host.mjs");
+    const indexPath = join(sdkRoot, "src", "index.ts");
+    const hostTypesEnv = process.env.LVIS_HOST_TYPES_PATH;
+
+    if (!hostTypesEnv || !existsSync(hostTypesEnv)) {
+      // CI sets LVIS_HOST_TYPES_PATH; locally we skip rather than fail
+      // so plugin-author quick test runs don't require a host clone.
+      return;
+    }
+
+    const before = readFileSync(indexPath, "utf8");
+    try {
+      const r1 = spawnSync("node", [scriptPath], {
+        encoding: "utf8",
+        env: { ...process.env, LVIS_HOST_TYPES_PATH: hostTypesEnv },
+      });
+      expect(r1.status, `first sync failed: ${r1.stderr}`).toBe(0);
+      const after1 = readFileSync(indexPath, "utf8");
+
+      const r2 = spawnSync("node", [scriptPath], {
+        encoding: "utf8",
+        env: { ...process.env, LVIS_HOST_TYPES_PATH: hostTypesEnv },
+      });
+      expect(r2.status, `second sync failed: ${r2.stderr}`).toBe(0);
+      const after2 = readFileSync(indexPath, "utf8");
+
+      expect(after2).toBe(after1);
+    } finally {
+      writeFileSync(indexPath, before);
+    }
+  });
+
+  it("running the schema script twice against the same host source is a no-op", async () => {
+    const { spawnSync } = await import("node:child_process");
+    const { readFileSync, writeFileSync, existsSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const sdkRoot = join(here, "..", "..");
+    const scriptPath = join(sdkRoot, "scripts", "sync-schema-from-host.mjs");
+    const schemaPath = join(sdkRoot, "schemas", "plugin-manifest.schema.json");
+    const hostSchemaEnv = process.env.LVIS_HOST_SCHEMA_PATH;
+
+    if (!hostSchemaEnv || !existsSync(hostSchemaEnv)) {
+      return;
+    }
+
+    const before = readFileSync(schemaPath, "utf8");
+    try {
+      const r1 = spawnSync("node", [scriptPath], {
+        encoding: "utf8",
+        env: { ...process.env, LVIS_HOST_SCHEMA_PATH: hostSchemaEnv },
+      });
+      expect(r1.status, `first schema sync failed: ${r1.stderr}`).toBe(0);
+      const after1 = readFileSync(schemaPath, "utf8");
+
+      const r2 = spawnSync("node", [scriptPath], {
+        encoding: "utf8",
+        env: { ...process.env, LVIS_HOST_SCHEMA_PATH: hostSchemaEnv },
+      });
+      expect(r2.status, `second schema sync failed: ${r2.stderr}`).toBe(0);
+      const after2 = readFileSync(schemaPath, "utf8");
+
+      expect(after2).toBe(after1);
+    } finally {
+      writeFileSync(schemaPath, before);
+    }
+  });
+});
+
 // ─── PluginManifest edge cases ─────────────────────────────────────────────
 describe("PluginManifest — edge cases", () => {
   it("accepts empty tools array", () => {

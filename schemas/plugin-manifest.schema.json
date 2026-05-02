@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://sdk.lvisai.xyz/schemas/plugin.schema.json",
   "title": "LVIS Plugin Manifest",
-  "description": "Validates plugin.json manifest files for LVIS plugins (\u00a79)",
+  "description": "Validates plugin.json manifest files for LVIS plugins (§9)",
   "type": "object",
   "required": [
     "id",
@@ -52,7 +52,7 @@
         "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
         "maxLength": 64
       },
-      "description": "Tool name list \u2014 underscore format required"
+      "description": "Tool name list — underscore format required"
     },
     "config": {
       "type": "object"
@@ -147,7 +147,7 @@
           }
         }
       },
-      "description": "UI extensions. Kind-specific required fields (embedded-module: entry+exportName; embedded-page: page) are enforced at runtime with soft-fallback \u2014 invalid entries are dropped with a console warning, the plugin continues to load."
+      "description": "UI extensions. Kind-specific required fields (embedded-module: entry+exportName; embedded-page: page) are enforced at runtime with soft-fallback — invalid entries are dropped with a console warning, the plugin continues to load."
     },
     "keywords": {
       "type": "array",
@@ -172,7 +172,7 @@
     },
     "capabilities": {
       "type": "array",
-      "description": "Closed vocabulary \u2014 see src/plugins/capabilities.ts (KNOWN_CAPABILITIES). Unknown values fail validation so typos don't silently grant nothing.",
+      "description": "Closed vocabulary — see src/plugins/capabilities.ts (KNOWN_CAPABILITIES). Unknown values fail validation so typos don't silently grant nothing.",
       "items": {
         "type": "string",
         "enum": [
@@ -464,7 +464,7 @@
     },
     "toolSchemas": {
       "type": "object",
-      "description": "LLM\uc774 \uba54\uc11c\ub4dc\ub97c \ud638\ucd9c\ud560 \ub54c \uc0ac\uc6a9\ud558\ub294 JSON Schema (draft-07). \ud0a4: method \uc774\ub984, \uac12: { description, inputSchema }",
+      "description": "LLM이 메서드를 호출할 때 사용하는 JSON Schema (draft-07). 키: method 이름, 값: { description, inputSchema }",
       "additionalProperties": {
         "type": "object",
         "required": [
@@ -476,7 +476,7 @@
           "description": {
             "type": "string",
             "minLength": 10,
-            "description": "LLM\uc774 \uc774\ud574\ud560 \uba54\uc11c\ub4dc \uc124\uba85 (when/what/returns)"
+            "description": "LLM이 이해할 메서드 설명 (when/what/returns)"
           },
           "inputSchema": {
             "type": "object",
@@ -484,7 +484,7 @@
               "type",
               "properties"
             ],
-            "description": "JSON Schema draft-07 \uc785\ub825 \uc2a4\ud0a4\ub9c8",
+            "description": "JSON Schema draft-07 입력 스키마",
             "properties": {
               "$schema": {
                 "type": "string"
@@ -508,13 +508,13 @@
           },
           "version": {
             "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
-            "description": "\u00a76.4 Tool versioning \u2014 optional stable SemVer (MAJOR.MINOR.PATCH, no leading zeros) for this tool. When omitted, the plugin manifest's top-level version is used. Same strictness as the top-level version field."
+            "description": "§6.4 Tool versioning — optional stable SemVer (MAJOR.MINOR.PATCH, no leading zeros) for this tool. When omitted, the plugin manifest's top-level version is used. Same strictness as the top-level version field.",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
           },
           "deprecatedSince": {
             "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
-            "description": "Stable SemVer (MAJOR.MINOR.PATCH) of the manifest version that deprecated this tool."
+            "description": "Stable SemVer (MAJOR.MINOR.PATCH) of the manifest version that deprecated this tool.",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
           },
           "replacedBy": {
             "type": "string",
@@ -525,7 +525,7 @@
     },
     "configSchema": {
       "type": "object",
-      "description": "\u00a79.2 Track B \u2014 declarative settings schema. JSON Schema draft-07 subset rendered as a typed form in PluginConfigTab. format:'secret' routes the value through the encrypted keychain instead of cleartext pluginConfigs.",
+      "description": "§9.2 Track B — declarative settings schema. JSON Schema draft-07 subset rendered as a typed form in PluginConfigTab. format:'secret' routes the value through the encrypted keychain instead of cleartext pluginConfigs.",
       "required": [
         "properties"
       ],
@@ -640,5 +640,26 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "$comment": "auth contract requires a uiCallable allowlist — the three referenced tool names MUST also be in uiCallable[]; value-level cross-check is enforced in lvis-app's manifest-validation.ts",
+      "if": {
+        "required": [
+          "auth"
+        ]
+      },
+      "then": {
+        "required": [
+          "uiCallable"
+        ],
+        "properties": {
+          "uiCallable": {
+            "type": "array",
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ]
 }
