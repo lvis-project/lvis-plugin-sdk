@@ -84,12 +84,14 @@ export const BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
  *
  * A target is considered a browser build when ANY of the following hold:
  * - `platform === "browser"`
- * - `target` is a string starting with `"es"` (e.g., `es2020`, `es2022`)
  * - `target` is `"chrome*"` / `"firefox*"` / `"safari*"` / `"edge*"`
+ *   (case-insensitive). Array targets are checked element-wise.
  *
- * This catches the common case where a plugin author specifies an ES /
- * browser target without explicitly setting `platform: "browser"`. To
- * opt out, set `platform: "node"` explicitly.
+ * `target: "es2020"` / `"es2022"` is NOT auto-detected as browser:
+ * those targets are commonly used for modern Node builds too, and
+ * silently adding `react` / `react-dom` externals to a Node build that
+ * imports React would break runtime resolution. For browser UI bundles,
+ * set `platform: "browser"` explicitly.
  *
  * ## Optional native dependencies
  *
@@ -166,7 +168,12 @@ function isBrowserBuild(override: Options): boolean {
 function looksLikeBrowserTarget(target: unknown): boolean {
   if (typeof target !== "string") return false;
   const lower = target.toLowerCase();
-  if (lower.startsWith("es")) return true;
+  // ES targets (es2020 / es2022) are intentionally excluded — they are
+  // commonly used for modern Node builds too, and auto-adding react /
+  // react-dom externals on a Node build that happens to import React
+  // would silently break runtime resolution. Only browser-vendor target
+  // names are unambiguous enough to auto-detect; for any other case the
+  // plugin author should set `platform: "browser"` explicitly.
   return (
     lower.startsWith("chrome") ||
     lower.startsWith("firefox") ||

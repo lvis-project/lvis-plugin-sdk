@@ -89,15 +89,15 @@ describe("defineLvisPluginConfig", () => {
     expect(cfg.external).toContain("react-dom");
   });
 
-  it("auto-detects browser build via target=es* even without platform field", () => {
+  it("does NOT auto-detect browser via target=es* (common for Node builds too)", () => {
     const cfg = asSingle(
       defineLvisPluginConfig({
         target: "es2020",
         entry: { "ui/panel": "src/ui/panel.ts" },
       }),
     );
-    expect(cfg.external).toContain("react");
-    expect(cfg.external).toContain("react-dom");
+    expect(cfg.external).not.toContain("react");
+    expect(cfg.external).not.toContain("react-dom");
   });
 
   it("auto-detects browser build via target=chrome*", () => {
