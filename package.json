@@ -33,7 +33,7 @@
   ],
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json",
-    "prepare": "bun run build",
+    "prepare": "tsup && tsc -p tsconfig.build.json",
     "dev:storybook": "storybook dev -p 6006",
     "build:storybook": "storybook build",
     "sync:from-host": "node scripts/sync-from-host.mjs",
