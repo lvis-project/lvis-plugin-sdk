@@ -50,8 +50,16 @@ jobs:
       - name: Checkout SDK
         uses: actions/checkout@v4
 
+      # `continue-on-error: true` is intentional: the GitHub App that backs
+      # this workflow may not be installed on every plugin repo yet (org
+      # admin one-time action). When the App is missing, the action returns
+      # 404 and we skip downstream steps via `steps.app-token.outcome`.
+      # Once the App is installed on a previously-missing repo, validation
+      # kicks in automatically without any workflow change. The "App missing"
+      # state is surfaced as a step warning so admins see it at a glance.
       - name: Generate read token for plugin repo
         id: app-token
+        continue-on-error: true
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.APP_ID }}
@@ -59,7 +67,13 @@ jobs:
           owner: lvis-project
           repositories: ${{ matrix.plugin }}
 
+      - name: Annotate when App is not installed on plugin repo
+        if: steps.app-token.outcome != 'success'
+        run: |
+          echo "::warning title=GitHub App not installed::HOST_READ_TOKEN App is not installed on lvis-project/${{ matrix.plugin }} — manifest validation skipped. Install the App via org settings to enable."
+
       - name: Fetch plugin.json from ${{ matrix.plugin }}@main
+        if: steps.app-token.outcome == 'success'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -76,9 +90,11 @@ jobs:
           echo "::endgroup::"
 
       - name: Install ajv-cli
+        if: steps.app-token.outcome == 'success'
         run: npm install --no-save ajv-cli@5 ajv-formats@2
 
       - name: Validate plugin.json against SDK schema
+        if: steps.app-token.outcome == 'success'
         run: |
           set -euo pipefail
           npx ajv-cli validate \
@@ -89,7 +105,7 @@ jobs:
             -d plugin.json
 
       - name: Open issue on validation failure (nightly only)
-        if: failure() && github.event_name == 'schedule'
+        if: failure() && github.event_name == 'schedule' && steps.app-token.outcome == 'success'
         uses: actions/github-script@v7
         with:
           script: |
