@@ -758,3 +758,6 @@ export interface RuntimePlugin {
  * export default factory;
  */
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
+
+// UI Framework — components, tokens, theme hook
+export type { LvisThemeTokens, LvisThemePayload, LvisTokenName } from "./ui/tokens/index.js";
