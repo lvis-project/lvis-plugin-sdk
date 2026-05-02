@@ -1,36 +1,79 @@
 /* @lvis/plugin-sdk — Plugin UI Tokens
- * These variables are overridden at runtime by the host app's theme engine.
- * Default values are dark-theme fallbacks (Common.png style guide reference).
+ * Default = dark. Host broadcasts theme axis via host.theme.changed;
+ * useTheme() sets data-theme / data-chat-theme on documentElement so these
+ * selectors activate automatically — no JS token-swap needed.
  */
+
+/* ─── Dark (default) ─────────────────────────────────── */
 :root {
-  /* Surfaces */
   --lvis-bg:           #0f0f13;
   --lvis-surface:      #1a1a22;
-
-  /* Text */
   --lvis-fg:           #f5f5f5;
   --lvis-fg-muted:     #888888;
-
-  /* Brand — Primary purple */
   --lvis-primary:      #a078f5;
   --lvis-primary-fg:   #ffffff;
-
-  /* Secondary — neutral dark */
   --lvis-secondary:    #2d2d38;
   --lvis-secondary-fg: #f5f5f5;
-
-  /* Status */
   --lvis-danger:       #f03e2f;
   --lvis-danger-fg:    #ffffff;
   --lvis-warning:      #f5a050;
   --lvis-warning-fg:   #1a1a1a;
   --lvis-success:      #22c55e;
-
-  /* Structure */
   --lvis-border:       #2d2d38;
   --lvis-ring:         #a078f5;
-
-  /* Shape */
   --lvis-radius:       0.6rem;
   --lvis-radius-sm:    0.2rem;
+}
+
+/* ─── Light ──────────────────────────────────────────── */
+:root[data-theme="light"] {
+  --lvis-bg:           #f8f8fc;
+  --lvis-surface:      #ffffff;
+  --lvis-fg:           #1a1a22;
+  --lvis-fg-muted:     #666677;
+  --lvis-primary:      #734dff;
+  --lvis-primary-fg:   #ffffff;
+  --lvis-secondary:    #ebebf5;
+  --lvis-secondary-fg: #1a1a22;
+  --lvis-danger:       #e02020;
+  --lvis-danger-fg:    #ffffff;
+  --lvis-warning:      #d97706;
+  --lvis-warning-fg:   #ffffff;
+  --lvis-success:      #16a34a;
+  --lvis-border:       #d4d4e0;
+  --lvis-ring:         #734dff;
+}
+
+/* ─── High-contrast ──────────────────────────────────── */
+:root[data-theme="high-contrast"] {
+  --lvis-bg:           #000000;
+  --lvis-surface:      #0a0a0a;
+  --lvis-fg:           #ffffff;
+  --lvis-fg-muted:     #cccccc;
+  --lvis-primary:      #c497ef;
+  --lvis-primary-fg:   #000000;
+  --lvis-secondary:    #1a1a1a;
+  --lvis-secondary-fg: #ffffff;
+  --lvis-danger:       #ff4444;
+  --lvis-danger-fg:    #000000;
+  --lvis-warning:      #ffaa00;
+  --lvis-warning-fg:   #000000;
+  --lvis-success:      #00ff88;
+  --lvis-border:       #ffffff;
+  --lvis-ring:         #c497ef;
+}
+
+/* ─── Chat theme accent overrides ────────────────────── */
+:root[data-chat-theme="purple"] {
+  --lvis-primary:    #a078f5;
+  --lvis-ring:       #a078f5;
+}
+:root[data-chat-theme="orange"] {
+  --lvis-primary:    #f5a050;
+  --lvis-primary-fg: #1a1a1a;
+  --lvis-ring:       #f5a050;
+}
+:root[data-chat-theme="blue"] {
+  --lvis-primary:    #60a5fa;
+  --lvis-ring:       #60a5fa;
 }
