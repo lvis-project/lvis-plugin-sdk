@@ -26,6 +26,17 @@ export const HOST_EXTERNAL_MODULES = ["electron"] as const;
 export const HOST_BROWSER_EXTERNAL_MODULES = ["react", "react-dom"] as const;
 
 /**
+ * The match-everything regex used as the helper's `noExternal` value.
+ *
+ * Exposed so plugin tests can assert that a given dependency name would
+ * be matched (and therefore bundled) by the helper-produced config.
+ */
+// JSDoc cannot embed `*` followed by `/` inside a `/_*_ ... _*_/` block
+// without prematurely terminating the comment, so the regex literal is
+// constructed via the RegExp constructor.
+export const BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
+
+/**
  * Build a tsup configuration for an LVIS marketplace plugin.
  *
  * ## Self-contained plugin contract
@@ -39,10 +50,11 @@ export const HOST_BROWSER_EXTERNAL_MODULES = ["react", "react-dom"] as const;
  * Therefore: every runtime dependency MUST be bundled into `dist/`.
  *
  * This helper enforces the contract via:
- * - `external: HOST_EXTERNAL_MODULES` (and `HOST_BROWSER_EXTERNAL_MODULES`
- *   when `platform === "browser"`) — host-provided modules stay external.
- * - `noExternal: [match-everything regex]` — every other import (deps,
- *   devDeps, transitive) gets bundled into `dist/`.
+ * - `external: HOST_EXTERNAL_MODULES` (+ HOST_BROWSER_EXTERNAL_MODULES
+ *   for browser builds) — host-provided modules stay external.
+ * - `noExternal: BUNDLE_EVERYTHING_REGEX` — every other import (deps,
+ *   devDeps, transitive) gets bundled into `dist/`. This field is NOT
+ *   overridable: the contract is the helper's reason to exist.
  *
  * ## Defaults
  *
@@ -57,13 +69,44 @@ export const HOST_BROWSER_EXTERNAL_MODULES = ["react", "react-dom"] as const;
  *   under TypeScript 6).
  * - `outDir`: `"dist"`
  * - `external`: HOST_EXTERNAL_MODULES (+ HOST_BROWSER_EXTERNAL_MODULES
- *   when `platform === "browser"`)
- * - `noExternal`: match-everything regex
+ *   when the build is browser-targeted — see below).
+ * - `noExternal`: BUNDLE_EVERYTHING_REGEX (forced, not overridable).
  *
- * Any default can be overridden by passing `overrides`. The `external`
- * array is always merged with the host externals so the contract cannot
- * be silently broken — passing `external: []` does NOT clear the host
- * externals.
+ * Any other default can be overridden via the `overrides` argument. The
+ * `external` array is always merged with the host externals so the
+ * contract cannot be silently bypassed — passing `external: []` does
+ * NOT clear the host externals.
+ *
+ * ## Browser-build detection
+ *
+ * A target is considered a browser build when ANY of the following hold:
+ * - `platform === "browser"`
+ * - `target` is a string starting with `"es"` (e.g., `es2020`, `es2022`)
+ * - `target` is `"chrome*"` / `"firefox*"` / `"safari*"` / `"edge*"`
+ *
+ * This catches the common case where a plugin author specifies an ES /
+ * browser target without explicitly setting `platform: "browser"`. To
+ * opt out, set `platform: "node"` explicitly.
+ *
+ * ## Optional native dependencies
+ *
+ * `noExternal: BUNDLE_EVERYTHING_REGEX` follows ALL imports including
+ * `optionalDependencies` (e.g., `chokidar` → `fsevents` on macOS,
+ * `ws` → `bufferutil`/`utf-8-validate`). esbuild errors when a referenced
+ * optional dep is not installed (typical on cross-platform CI).
+ *
+ * If your plugin transitively pulls in optional native deps, add them to
+ * `external` explicitly:
+ *
+ * ```ts
+ * defineLvisPluginConfig({
+ *   external: ["fsevents", "bufferutil", "utf-8-validate"],
+ * });
+ * ```
+ *
+ * The host's plugin loader will still resolve these against the consumer
+ * machine's optional installs — they're treated as best-effort enhancements,
+ * not hard requirements.
  *
  * ## Usage
  *
@@ -89,7 +132,6 @@ export const HOST_BROWSER_EXTERNAL_MODULES = ["react", "react-dom"] as const;
  *   {
  *     entry: { "ui/panel": "src/ui/panel.ts" },
  *     target: "es2020",
- *     platform: "browser",
  *     clean: false,
  *   },
  * ]);
@@ -104,8 +146,26 @@ export function defineLvisPluginConfig(
   return applyDefaults(overrides);
 }
 
+function isBrowserBuild(override: Options): boolean {
+  if (override.platform === "browser") return true;
+  if (override.platform === "node") return false;
+  const target = override.target;
+  if (typeof target !== "string") return false;
+  const lower = target.toLowerCase();
+  if (lower.startsWith("es")) return true;
+  if (
+    lower.startsWith("chrome") ||
+    lower.startsWith("firefox") ||
+    lower.startsWith("safari") ||
+    lower.startsWith("edge")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function applyDefaults(override: Options): Options {
-  const isBrowser = override.platform === "browser";
+  const isBrowser = isBrowserBuild(override);
   const hostExternals: (string | RegExp)[] = isBrowser
     ? [...HOST_EXTERNAL_MODULES, ...HOST_BROWSER_EXTERNAL_MODULES]
     : [...HOST_EXTERNAL_MODULES];
@@ -119,7 +179,6 @@ function applyDefaults(override: Options): Options {
     splitting: false,
     dts: false,
     outDir: "dist",
-    noExternal: [/.*/],
   };
 
   const userExternals: (string | RegExp)[] = Array.isArray(override.external)
@@ -130,17 +189,25 @@ function applyDefaults(override: Options): Options {
     ...baseDefaults,
     ...override,
     external: dedupeExternals([...hostExternals, ...userExternals]),
-    noExternal: override.noExternal ?? baseDefaults.noExternal,
+    // noExternal is contract-locked: the helper exists to enforce
+    // self-containment. User overrides for noExternal are intentionally
+    // ignored.
+    noExternal: [BUNDLE_EVERYTHING_REGEX],
   };
 }
 
 function dedupeExternals(items: (string | RegExp)[]): (string | RegExp)[] {
   const seenStrings = new Set<string>();
+  const seenRegexSources = new Set<string>();
   const out: (string | RegExp)[] = [];
   for (const item of items) {
     if (typeof item === "string") {
       if (seenStrings.has(item)) continue;
       seenStrings.add(item);
+    } else if (item instanceof RegExp) {
+      const key = `${item.source}/${item.flags}`;
+      if (seenRegexSources.has(key)) continue;
+      seenRegexSources.add(key);
     }
     out.push(item);
   }

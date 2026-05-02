@@ -21,7 +21,7 @@
     "./ui/lvis-tokens.css": "./src/ui/tokens/lvis-tokens.css",
     "./build": {
       "types": "./src/build/tsup.ts",
-      "import": "./src/build/tsup.ts"
+      "import": "./dist/build/tsup.js"
     },
     "./schemas/plugin-manifest.schema.json": "./schemas/plugin-manifest.schema.json",
     "./schemas/*": "./schemas/*"
@@ -33,6 +33,7 @@
   ],
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json",
+    "prepare": "bun run build",
     "dev:storybook": "storybook dev -p 6006",
     "build:storybook": "storybook build",
     "sync:from-host": "node scripts/sync-from-host.mjs",

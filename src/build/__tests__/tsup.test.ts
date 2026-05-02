@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  BUNDLE_EVERYTHING_REGEX,
   defineLvisPluginConfig,
   HOST_EXTERNAL_MODULES,
   HOST_BROWSER_EXTERNAL_MODULES,
@@ -19,6 +20,15 @@ function asArray(cfg: ReturnType<typeof defineLvisPluginConfig>) {
   return cfg;
 }
 
+function noExternalRegexes(cfg: { noExternal?: unknown }): RegExp[] {
+  expect(Array.isArray(cfg.noExternal)).toBe(true);
+  const arr = cfg.noExternal as unknown[];
+  for (const item of arr) {
+    expect(item).toBeInstanceOf(RegExp);
+  }
+  return arr as RegExp[];
+}
+
 describe("defineLvisPluginConfig", () => {
   it("emits self-containment defaults when called with no overrides", () => {
     const cfg = asSingle(defineLvisPluginConfig());
@@ -31,10 +41,7 @@ describe("defineLvisPluginConfig", () => {
     expect(cfg.splitting).toBe(false);
     expect(cfg.sourcemap).toBe(true);
     expect(cfg.external).toEqual(["electron"]);
-    // noExternal must contain a regex matching all packages.
-    expect(Array.isArray(cfg.noExternal)).toBe(true);
-    const noExternal = cfg.noExternal as RegExp[];
-    expect(noExternal[0]).toBeInstanceOf(RegExp);
+    const noExternal = noExternalRegexes(cfg);
     expect("node-ical").toMatch(noExternal[0]);
     expect("@azure/msal-node").toMatch(noExternal[0]);
   });
@@ -43,6 +50,11 @@ describe("defineLvisPluginConfig", () => {
     const cfg = asSingle(defineLvisPluginConfig({ external: ["foo"] }));
     expect(cfg.external).toContain("electron");
     expect(cfg.external).toContain("foo");
+  });
+
+  it("ignores attempt to clear host externals via empty external array", () => {
+    const cfg = asSingle(defineLvisPluginConfig({ external: [] }));
+    expect(cfg.external).toEqual(["electron"]);
   });
 
   it("dedupes string externals", () => {
@@ -54,7 +66,18 @@ describe("defineLvisPluginConfig", () => {
     expect(externals.filter((x) => x === "foo")).toHaveLength(1);
   });
 
-  it("auto-adds react/react-dom externals for browser-platform builds", () => {
+  it("dedupes regex externals by source + flags", () => {
+    const cfg = asSingle(
+      defineLvisPluginConfig({ external: [/^node:/, /^node:/, /^node:/i] }),
+    );
+    const regexExternals = (cfg.external as (string | RegExp)[]).filter(
+      (x): x is RegExp => x instanceof RegExp,
+    );
+    // Same source/flags collapsed; different flags preserved.
+    expect(regexExternals).toHaveLength(2);
+  });
+
+  it("auto-adds react/react-dom externals for platform=browser", () => {
     const cfg = asSingle(
       defineLvisPluginConfig({
         platform: "browser",
@@ -66,10 +89,33 @@ describe("defineLvisPluginConfig", () => {
     expect(cfg.external).toContain("react-dom");
   });
 
-  it("does NOT add browser externals for node-platform builds", () => {
+  it("auto-detects browser build via target=es* even without platform field", () => {
+    const cfg = asSingle(
+      defineLvisPluginConfig({
+        target: "es2020",
+        entry: { "ui/panel": "src/ui/panel.ts" },
+      }),
+    );
+    expect(cfg.external).toContain("react");
+    expect(cfg.external).toContain("react-dom");
+  });
+
+  it("auto-detects browser build via target=chrome*", () => {
+    const cfg = asSingle(defineLvisPluginConfig({ target: "chrome120" }));
+    expect(cfg.external).toContain("react");
+  });
+
+  it("treats node-prefixed targets as node builds", () => {
     const cfg = asSingle(defineLvisPluginConfig({ target: "node18" }));
     expect(cfg.external).not.toContain("react");
     expect(cfg.external).not.toContain("react-dom");
+  });
+
+  it("respects platform=node override even with es target", () => {
+    const cfg = asSingle(
+      defineLvisPluginConfig({ target: "es2020", platform: "node" }),
+    );
+    expect(cfg.external).not.toContain("react");
   });
 
   it("supports multi-target overrides as an array", () => {
@@ -86,17 +132,45 @@ describe("defineLvisPluginConfig", () => {
     );
     expect(cfgs).toHaveLength(2);
     expect(cfgs[0].external).toEqual(["electron"]);
-    expect(cfgs[0].clean).toBe(true); // default preserved
+    expect(cfgs[0].clean).toBe(true);
     expect(cfgs[1].external).toContain("react");
-    expect(cfgs[1].clean).toBe(false); // override wins
+    expect(cfgs[1].external).toContain("react-dom");
+    expect(cfgs[1].clean).toBe(false);
     expect(cfgs[1].target).toBe("es2020");
   });
 
-  it("respects user-provided noExternal override", () => {
+  it("forces noExternal — user override is ignored (contract lock)", () => {
     const cfg = asSingle(
       defineLvisPluginConfig({ noExternal: ["only-this"] }),
     );
-    expect(cfg.noExternal).toEqual(["only-this"]);
+    const noExternal = noExternalRegexes(cfg);
+    expect(noExternal[0].source).toBe(BUNDLE_EVERYTHING_REGEX.source);
+    // Sanity check: the regex matches typical plugin deps.
+    expect("@azure/msal-node").toMatch(noExternal[0]);
+    expect("chokidar").toMatch(noExternal[0]);
+  });
+
+  it("rejects empty noExternal override (contract lock)", () => {
+    const cfg = asSingle(defineLvisPluginConfig({ noExternal: [] }));
+    const noExternal = noExternalRegexes(cfg);
+    expect(noExternal).toHaveLength(1);
+    expect(noExternal[0].source).toBe(BUNDLE_EVERYTHING_REGEX.source);
+  });
+
+  it("allows user to externalize optional native deps without breaking host externals", () => {
+    const cfg = asSingle(
+      defineLvisPluginConfig({
+        external: ["fsevents", "bufferutil", "utf-8-validate"],
+      }),
+    );
+    expect(cfg.external).toContain("electron");
+    expect(cfg.external).toContain("fsevents");
+    expect(cfg.external).toContain("bufferutil");
+    expect(cfg.external).toContain("utf-8-validate");
+    // noExternal regex would have matched these; but `external` takes
+    // precedence in tsup/esbuild, so they stay external as requested.
+    const noExternal = noExternalRegexes(cfg);
+    expect("fsevents").toMatch(noExternal[0]); // matches but external wins
   });
 
   it("exposes HOST_EXTERNAL_MODULES contract", () => {
@@ -106,5 +180,12 @@ describe("defineLvisPluginConfig", () => {
   it("exposes HOST_BROWSER_EXTERNAL_MODULES contract", () => {
     expect(HOST_BROWSER_EXTERNAL_MODULES).toContain("react");
     expect(HOST_BROWSER_EXTERNAL_MODULES).toContain("react-dom");
+  });
+
+  it("BUNDLE_EVERYTHING_REGEX matches all package-name shapes", () => {
+    expect("foo").toMatch(BUNDLE_EVERYTHING_REGEX);
+    expect("@scope/foo").toMatch(BUNDLE_EVERYTHING_REGEX);
+    expect("foo/sub/path").toMatch(BUNDLE_EVERYTHING_REGEX);
+    expect("foo-bar_baz").toMatch(BUNDLE_EVERYTHING_REGEX);
   });
 });
