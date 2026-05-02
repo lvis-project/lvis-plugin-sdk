@@ -561,16 +561,13 @@
               },
               "default": {
                 "description": "Default value for the form field. Outer JSON byte-size cap is enforced server-side (see marketplace publisher.py); the schema bounds object/array primitives so a pathological default can't blow up the catalog.",
-                "oneOf": [
+                "anyOf": [
                   {
                     "type": "string",
                     "maxLength": 1024
                   },
                   {
                     "type": "number"
-                  },
-                  {
-                    "type": "integer"
                   },
                   {
                     "type": "boolean"

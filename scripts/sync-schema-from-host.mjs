@@ -214,17 +214,26 @@ function ensureBoundedConfigSchemaDefault(schema) {
     schema.properties?.configSchema?.properties?.properties?.additionalProperties
       ?.properties?.default;
   if (!fieldDef) return schema;
-  if (fieldDef.oneOf) return schema; // already bounded
+  if (fieldDef.anyOf) return schema; // already bounded (current canonical form)
+  // Migrate legacy oneOf form (PR #68 first iteration) — oneOf requires
+  // *exactly one* match, but an integer matches both `{type: "number"}` and
+  // `{type: "integer"}`, breaking ajv validation. anyOf is the correct
+  // disjunction operator for bounded-primitive enumeration.
+  if (fieldDef.oneOf) {
+    delete fieldDef.oneOf;
+    Object.keys(fieldDef).forEach((k) => {
+      if (k !== "description") delete fieldDef[k];
+    });
+  }
   // Only upgrade the literal `{}` (any value) form. If the host has
   // intentionally constrained `default` to something else, leave it.
-  if (Object.keys(fieldDef).length !== 0) return schema;
+  if (Object.keys(fieldDef).filter((k) => k !== "description").length !== 0) return schema;
   schema.properties.configSchema.properties.properties.additionalProperties.properties.default = {
     description:
       "Default value for the form field. Outer JSON byte-size cap is enforced server-side (see marketplace publisher.py); the schema bounds object/array primitives so a pathological default can't blow up the catalog.",
-    oneOf: [
+    anyOf: [
       { type: "string", maxLength: 1024 },
       { type: "number" },
-      { type: "integer" },
       { type: "boolean" },
       { type: "null" },
       { type: "array", maxItems: 64 },
