@@ -195,6 +195,10 @@ export interface PluginManifest {
     interpreter?: string;
   };
   packageName?: string;
+  /** Plugin author — individual maintainer name or contact (distinct from `publisher`). */
+  author?: string;
+  /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */
+  uiSlots?: string[];
 }
 
 /**

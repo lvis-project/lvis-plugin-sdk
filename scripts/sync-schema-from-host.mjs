@@ -152,11 +152,96 @@ function tightenVersionPatternToStable(schema) {
   return schema;
 }
 
+/**
+ * Phase-1 schema-master sync — author + uiSlots + bounded configSchema default.
+ *
+ * The host's `plugin.schema.json` historically had a richer `author` field
+ * (PR #404 era) that was lost during the Phase-1 prune. The host doesn't
+ * read it, but plugin authors expect to declare credit somewhere — keeping
+ * it in the SDK schema so consumers (marketplace UI, IDE intellisense)
+ * have a place to surface "made by". `publisher` (organization) and
+ * `author` (individual) are intentionally distinct.
+ */
+function ensurePluginManifestAuthor(schema) {
+  const props = schema.properties;
+  if (props && !props.author) {
+    props.author = {
+      type: "string",
+      minLength: 1,
+      maxLength: 256,
+      description:
+        "Plugin author — individual maintainer name or contact (distinct from `publisher`, which is the publishing organization). Surfaced in catalog / IDE intellisense; not used for permission decisions.",
+    };
+  }
+  return schema;
+}
+
+/**
+ * `uiSlots` — top-level array of slot identifiers the plugin advertises.
+ * Distinct from `ui[].slot` which is the per-extension binding (richer:
+ * id + slot + kind + entry). `uiSlots` is metadata so a host can show
+ * "this plugin uses slots: sidebar, toolbar" in the marketplace listing
+ * without parsing the full `ui[]` array. Empty array is allowed.
+ */
+function ensurePluginManifestUiSlots(schema) {
+  const props = schema.properties;
+  if (props && !props.uiSlots) {
+    props.uiSlots = {
+      type: "array",
+      maxItems: 32,
+      items: {
+        type: "string",
+        pattern: "^[a-z][a-z0-9-]*$",
+        maxLength: 64,
+      },
+      description:
+        "Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. Kebab-case identifiers, ≤32 entries.",
+    };
+  }
+  return schema;
+}
+
+/**
+ * configSchema default — was `{}` (anything goes), now oneOf bounded so
+ * a publisher can't ship a 30 MB JSON `default` and DoS the catalog.
+ * Cherry-picked from marketplace-side hardening (see lvis-marketplace
+ * PR #83). Keeps semantics identical for legitimate small defaults
+ * (string ≤1 KB, number, boolean, null, array ≤64, object ≤32 props).
+ * Idempotent — only mutates when the value is the literal empty schema.
+ */
+function ensureBoundedConfigSchemaDefault(schema) {
+  const fieldDef =
+    schema.properties?.configSchema?.properties?.properties?.additionalProperties
+      ?.properties?.default;
+  if (!fieldDef) return schema;
+  if (fieldDef.oneOf) return schema; // already bounded
+  // Only upgrade the literal `{}` (any value) form. If the host has
+  // intentionally constrained `default` to something else, leave it.
+  if (Object.keys(fieldDef).length !== 0) return schema;
+  schema.properties.configSchema.properties.properties.additionalProperties.properties.default = {
+    description:
+      "Default value for the form field. Outer JSON byte-size cap is enforced server-side (see marketplace publisher.py); the schema bounds object/array primitives so a pathological default can't blow up the catalog.",
+    oneOf: [
+      { type: "string", maxLength: 1024 },
+      { type: "number" },
+      { type: "integer" },
+      { type: "boolean" },
+      { type: "null" },
+      { type: "array", maxItems: 64 },
+      { type: "object", maxProperties: 32 },
+    ],
+  };
+  return schema;
+}
+
 function postProcessSdkSchema(text) {
   const obj = JSON.parse(text);
   tightenVersionPatternToStable(obj);
   ensureAuthUiCallableInvariant(obj);
   applyDollarSchemaMigration(obj);
+  ensurePluginManifestAuthor(obj);
+  ensurePluginManifestUiSlots(obj);
+  ensureBoundedConfigSchemaDefault(obj);
   return JSON.stringify(obj, null, 2) + "\n";
 }
 
