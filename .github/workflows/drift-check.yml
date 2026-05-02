@@ -60,6 +60,28 @@ jobs:
           LVIS_HOST_SCHEMA_PATH: ${{ github.workspace }}/.host/schemas/plugin.schema.json
           LVIS_HOST_REPO_URL: https://github.com/lvis-project/lvis-app.git
         run: node scripts/sync-schema-from-host.mjs
+      # Architect post-merge follow-up M14 — running each sync script a
+      # second time against the same host source MUST produce the same
+      # output. Without this guarantee the JSDoc-strip + re-injection
+      # passes can oscillate (the original PR #62 root cause).
+      - name: Verify sync scripts are idempotent (M14)
+        env:
+          LVIS_HOST_TYPES_PATH: ${{ github.workspace }}/.host/src/plugins/types.ts
+          LVIS_HOST_SCHEMA_PATH: ${{ github.workspace }}/.host/schemas/plugin.schema.json
+        run: |
+          set -euo pipefail
+          cp src/index.ts /tmp/index-after-first-run.ts
+          cp schemas/plugin-manifest.schema.json /tmp/schema-after-first-run.json
+          node scripts/sync-from-host.mjs
+          node scripts/sync-schema-from-host.mjs
+          if ! diff -u /tmp/index-after-first-run.ts src/index.ts; then
+            echo "::error::sync-from-host.mjs is not idempotent — second run produced different output"
+            exit 1
+          fi
+          if ! diff -u /tmp/schema-after-first-run.json schemas/plugin-manifest.schema.json; then
+            echo "::error::sync-schema-from-host.mjs is not idempotent — second run produced different output"
+            exit 1
+          fi
       - name: Remove host checkout
         run: rm -rf .host
       - name: Check for drift
