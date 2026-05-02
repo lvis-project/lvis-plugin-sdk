@@ -1,0 +1,36 @@
+/* @lvis/plugin-sdk — Plugin UI Tokens
+ * These variables are overridden at runtime by the host app's theme engine.
+ * Default values are dark-theme fallbacks (Common.png style guide reference).
+ */
+:root {
+  /* Surfaces */
+  --lvis-bg:           #0f0f13;
+  --lvis-surface:      #1a1a22;
+
+  /* Text */
+  --lvis-fg:           #f5f5f5;
+  --lvis-fg-muted:     #888888;
+
+  /* Brand — Primary purple */
+  --lvis-primary:      #a078f5;
+  --lvis-primary-fg:   #ffffff;
+
+  /* Secondary — neutral dark */
+  --lvis-secondary:    #2d2d38;
+  --lvis-secondary-fg: #f5f5f5;
+
+  /* Status */
+  --lvis-danger:       #f03e2f;
+  --lvis-danger-fg:    #ffffff;
+  --lvis-warning:      #f5a050;
+  --lvis-warning-fg:   #1a1a1a;
+  --lvis-success:      #22c55e;
+
+  /* Structure */
+  --lvis-border:       #2d2d38;
+  --lvis-ring:         #a078f5;
+
+  /* Shape */
+  --lvis-radius:       0.6rem;
+  --lvis-radius-sm:    0.2rem;
+}
