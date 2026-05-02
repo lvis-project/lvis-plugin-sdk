@@ -62,13 +62,112 @@ function normalize(s) {
   return s.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").trimEnd() + "\n";
 }
 
+/**
+ * H6 — cross-field invariant `auth.statusTool ∈ uiCallable[]` (and the
+ * matching `loginTool` / `logoutTool`) currently lives only in prose
+ * under `properties.auth.description`. Inject a JSON Schema `allOf`
+ * clause that lifts the *structural half* of the invariant — when
+ * `auth` is declared, `uiCallable` MUST also be a non-empty array — so
+ * AJV catches the most common manifest mistake (forgetting `uiCallable`
+ * entirely while declaring `auth`).
+ *
+ * The full value-level cross-reference (statusTool/loginTool/logoutTool
+ * MUST each appear inside the uiCallable array) cannot be expressed in
+ * pure draft-07 without AJV's non-standard `$data` extension, so it is
+ * still enforced in `manifest-validation.ts` on the host side. The SDK
+ * test suite (`auth-cross-field` describe block) covers the structural
+ * check and documents the remaining gap. Idempotent — when the host
+ * schema already carries an `allOf` clause we leave it alone.
+ */
+function ensureAuthUiCallableInvariant(schema) {
+  if (Array.isArray(schema.allOf)) return schema;
+  schema.allOf = [
+    {
+      $comment:
+        "auth contract requires a uiCallable allowlist — the three referenced tool names MUST also be in uiCallable[]; value-level cross-check is enforced in lvis-app's manifest-validation.ts",
+      if: { required: ["auth"] },
+      then: {
+        required: ["uiCallable"],
+        properties: {
+          uiCallable: { type: "array", minItems: 1 },
+        },
+      },
+    },
+  ];
+  return schema;
+}
+
+/**
+ * M13 — $schema URL migration. Plugin authors may set
+ * `"$schema": "https://sdk.lvis.com/schemas/plugin.schema.json"` (the
+ * pre-rename URL) or the new `https://sdk.lvisai.xyz/...`. Accept both
+ * for one release window so plugins don't fail validation mid-migration.
+ * The accepted set is broadened from `format: uri` to an explicit enum
+ * once both URLs become canonical references; for now we keep `format:
+ * uri` (lenient) and leave the migration plan in README.md. This pass
+ * is a no-op today but exists as the obvious anchor point for the next
+ * step in the migration. Idempotent.
+ */
+function applyDollarSchemaMigration(schema) {
+  // Reserved for the deprecate-then-remove step. README.md documents the
+  // current state. Nothing to mutate here today.
+  return schema;
+}
+
+/**
+ * PR #62 — marketplace publish channel is stable-only SemVer (no
+ * pre-release / build metadata, no leading zeros). The SDK schema MUST
+ * gate the same input the publish.yml workflow rejects so plugin
+ * authors fail at AJV time rather than at tag time.
+ *
+ * The host's plugin.schema.json is currently still on the looser pattern
+ * (allows `1.2.3-beta.1`); until host PR catches up the SDK keeps the
+ * stricter version. Idempotent — only rewrites the lenient pattern when
+ * we see it.
+ */
+function tightenVersionPatternToStable(schema) {
+  const STRICT =
+    "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$";
+  const STRICT_DESC =
+    "Stable SemVer (MAJOR.MINOR.PATCH, no leading zeros). Pre-release / build-metadata suffixes are not supported on the marketplace publish channel — the per-plugin publish.yml rejects them at tag time. Aligning the schema with that gate so AJV fails earlier.";
+  const versionField = schema.properties?.version;
+  if (versionField && versionField.pattern !== STRICT) {
+    versionField.pattern = STRICT;
+    versionField.description = STRICT_DESC;
+  }
+  // Also tighten the per-tool version + deprecatedSince patterns inside
+  // toolSchemas.<tool> so they match the top-level rule.
+  const toolEntry =
+    schema.properties?.toolSchemas?.additionalProperties?.properties;
+  if (toolEntry?.version && toolEntry.version.pattern !== STRICT) {
+    toolEntry.version.pattern = STRICT;
+    toolEntry.version.description =
+      "§6.4 Tool versioning — optional stable SemVer (MAJOR.MINOR.PATCH, no leading zeros) for this tool. When omitted, the plugin manifest's top-level version is used. Same strictness as the top-level version field.";
+  }
+  if (toolEntry?.deprecatedSince && toolEntry.deprecatedSince.pattern !== STRICT) {
+    toolEntry.deprecatedSince.pattern = STRICT;
+    toolEntry.deprecatedSince.description =
+      "Stable SemVer (MAJOR.MINOR.PATCH) of the manifest version that deprecated this tool.";
+  }
+  return schema;
+}
+
+function postProcessSdkSchema(text) {
+  const obj = JSON.parse(text);
+  tightenVersionPatternToStable(obj);
+  ensureAuthUiCallableInvariant(obj);
+  applyDollarSchemaMigration(obj);
+  return JSON.stringify(obj, null, 2) + "\n";
+}
+
 try {
   const { path: hostSchemaPath, source } = resolveHostSchemaPath();
   if (!fs.existsSync(hostSchemaPath)) {
     console.error(`ERROR: host schema not found at ${hostSchemaPath}`);
     process.exit(1);
   }
-  const hostSchema = normalize(fs.readFileSync(hostSchemaPath, "utf8"));
+  const rawHostSchema = fs.readFileSync(hostSchemaPath, "utf8");
+  const hostSchema = normalize(postProcessSdkSchema(rawHostSchema));
 
   if (process.argv.includes("--check")) {
     const current = fs.existsSync(TARGET) ? fs.readFileSync(TARGET, "utf8") : "";

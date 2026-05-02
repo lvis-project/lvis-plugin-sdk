@@ -222,6 +222,7 @@ const JSDOC_CATALOG = {
  *   version: "1.0.0",
  *   entry: "dist/index.js",
  *   tools: ["my_plugin_ping"],
+ *   description: "One-line summary shown to the host LLM and in plugin catalogues.",
  * };
  */`,
     fields: {
@@ -230,19 +231,20 @@ const JSDOC_CATALOG = {
       version: `/** SemVer version string (for example \`1.2.3\`). Used by the host to detect updates and enforce compatibility. */`,
       entry: `/** Path (relative to the plugin root) to the JavaScript module whose default export is a \`RuntimePluginFactory\`. */`,
       tools: `/** Tool names exposed to the host LLM. Each name must match \`^[a-zA-Z_][a-zA-Z0-9_]*$\` — dots and hyphens are not allowed. */`,
-      description: `/** One-line description shown in plugin catalogues and tool pickers. @optional */`,
+      description: `/** One-line summary (1-280 chars) of what the plugin does. **Required** since v3.0.0 — the LLM uses this in the inactive-plugin catalogue to decide whether to surface the plugin to the user. */`,
       config: `/** Arbitrary JSON configuration merged into \`PluginRuntimeContext.config\` at startup. Treat as untrusted user data. @optional */`,
       ui: `/** Sidebar / panel UI extensions contributed by this plugin. @optional */`,
       keywords: `/** Skill keywords registered with the host keyword engine. Each entry binds a surface keyword to a \`skillId\` the plugin handles. @optional */`,
       capabilities: `/** Free-form capability tags declared by the plugin (for example \`"calendar"\`, \`"email"\`). Hosts may gate features on these. @optional */`,
       startupTools: `/** Tools that should be invoked once during plugin startup, before the first user interaction. @optional */`,
       eventSubscriptions: `/** Event type names this plugin subscribes to. The host delivers matching events via \`PluginHostApi.onEvent\`. @optional */`,
-      eventPublishes: `/** Event type names this plugin may emit. Hosts can use this for validation and ownership checks. @optional */`,
-      emittedEvents: `/** Alias of \`eventPublishes\` accepted by host bridge paths. @optional */`,
+      emittedEvents: `/** Event type names this plugin may emit on the host event bus. Used by the host for validation and ownership checks. @optional */`,
       uiCallable: `/** Tools that the UI is permitted to invoke directly (bypassing the LLM). Use sparingly — prefer LLM-mediated calls. @optional */`,
       auth: `/** Declarative auth contract — see {@link PluginAuthSpec}. When present, the host renders a generic 미인증 / signed-in badge + login/logout button in Settings. @optional */`,
       notificationEvents: `/** Events that should be surfaced as host notifications. Each entry names the event and maps fields of its payload to notification title and body. @optional */`,
       publisher: `/** Display string identifying the plugin publisher (for example an organization or author). @optional */`,
+      packageName: `/** npm package name persisted by the host marketplace service for rollback support. Authored by the marketplace publish pipeline — plugin authors should not set this manually. @optional */`,
+      python: `/** Optional Python runtime co-deployment metadata. When \`managedBy\` is \`"lvis-app"\` the host installs the locked requirements file at install time; \`"self"\` lets the plugin manage its own venv. @optional */`,
       startupTimeoutMs: `/** Maximum time in milliseconds the host will wait for \`RuntimePlugin.start\` to resolve. Plugins exceeding this are considered failed. @optional */`,
       toolSchemas: `/** JSON Schema descriptions of each tool's input. Used by the host to advertise tools to the LLM and to validate arguments before dispatch. Keys must appear in \`tools\`. @optional */`,
     },
@@ -276,11 +278,47 @@ const JSDOC_CATALOG = {
  * Entry in the host's local plugin registry. The registry records which
  * plugins are installed, where their manifests live, and whether they are
  * currently enabled.
+ *
+ * Note: host-internal install-source bookkeeping (\`_devLinked\`,
+ * \`installSource\`) is intentionally stripped from the SDK public surface —
+ * see \`stripHostInternalRegistryFields()\` in \`scripts/sync-from-host.mjs\`.
+ * Plugins should not branch on those fields.
  */`,
     fields: {
       id: `/** Plugin identifier, matching \`PluginManifest.id\`. */`,
       manifestPath: `/** Absolute or host-relative filesystem path to the plugin's \`manifest.json\`. */`,
       enabled: `/** Whether the plugin should be loaded at host startup. Defaults to \`true\` when omitted. @optional */`,
+    },
+  },
+  PluginConfigSchema: {
+    leading: `/**
+ * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
+ * rendered as a typed form in the host's \`PluginConfigTab\`.
+ * \`format: "secret"\` routes values through the encrypted keychain instead
+ * of the cleartext \`pluginConfigs\` map.
+ */`,
+    fields: {
+      $schema: `/** Optional \`$schema\` identifier; informational only. @optional */`,
+      properties: `/** Property declarations keyed by config key. */`,
+      required: `/** Property keys that must have a value after merging defaults + saved values. @optional */`,
+      customPanel: `/** Optional escape hatch — when declared the host renders a custom React panel underneath the auto-generated form. \`entry\` is a path relative to the plugin root; \`exportName\` is the named export to mount. Use sparingly — schema fields cover the common case. @optional */`,
+    },
+  },
+  PluginConfigSchemaProperty: {
+    leading: `/** Schema for a single configuration property. */`,
+    fields: {
+      type: `/** JSON Schema-compatible value type. */`,
+      title: `/** Short human-readable label. @optional */`,
+      description: `/** Long-form description rendered as helper text. @optional */`,
+      default: `/** Default value seeded into the form when no saved value exists. @optional */`,
+      enum: `/** Closed list of valid values (renders as Select). @optional */`,
+      minimum: `/** Inclusive lower bound for numeric / integer types. @optional */`,
+      maximum: `/** Inclusive upper bound for numeric / integer types. @optional */`,
+      minLength: `/** Minimum string length. @optional */`,
+      maxLength: `/** Maximum string length. @optional */`,
+      pattern: `/** Regex the string value must match. @optional */`,
+      format: `/** UI/storage hint. \`"secret"\` routes the value through \`hostApi.setSecret\` / \`getSecret\` instead of cleartext config. \`"uri"\`, \`"email"\`, \`"date-time"\` enable typed inputs. @optional */`,
+      items: `/** Item schema for \`type: "array"\` properties. @optional */`,
     },
   },
   PluginRegistry: {
@@ -594,35 +632,54 @@ function enrichWithJsDoc(text, catalog) {
       const bodyText = out.slice(braceStart + 1, bodyEnd);
       const lines = bodyText.split("\n");
 
+      // Track nesting depth across lines so field re-injection only fires on
+      // direct (depth-0) members of the interface body. Without this guard the
+      // script greedily injects PluginManifest.fields.description JSDoc onto
+      // the inner `toolSchemas[].description` field too — which is the LLM-
+      // facing tool description with min length 10, NOT a plugin catalog
+      // summary. Strings, comments, and template literals are NOT separately
+      // tokenized — for our generated output (no string-literal braces inside
+      // type signatures) plain brace counting is sufficient.
+      let lineDepth = 0;
+
       const newLines = [];
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+        const lineDepthEntry = lineDepth; // depth at the start of this line
+        // Update running depth from this line's brace tally for the next line.
+        for (const ch of line) {
+          if (ch === "{") lineDepth++;
+          else if (ch === "}") lineDepth--;
+        }
+
         let handled = false;
 
-        for (const [fieldName, fieldDoc] of Object.entries(entry.fields)) {
-          // Match both property form   `  name?: type`
-          // and TS method form         `  name(...): ReturnType`
-          const escapedName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const fieldRe = new RegExp(`^(\\s+)(${escapedName})(\\?)?\\s*(?::|\\()`);
-          const fm = line.match(fieldRe);
-          if (!fm) continue;
+        if (lineDepthEntry === 0) {
+          for (const [fieldName, fieldDoc] of Object.entries(entry.fields)) {
+            // Match both property form   `  name?: type`
+            // and TS method form         `  name(...): ReturnType`
+            const escapedName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const fieldRe = new RegExp(`^(\\s+)(${escapedName})(\\?)?\\s*(?::|\\()`);
+            const fm = line.match(fieldRe);
+            if (!fm) continue;
 
-          const fieldIndent = fm[1];
+            const fieldIndent = fm[1];
 
-          // Idempotence: skip if previous non-empty line is end of JSDoc.
-          let j = newLines.length - 1;
-          while (j >= 0 && newLines[j].trim() === "") j--;
-          if (j >= 0 && newLines[j].trimEnd().endsWith("*/")) {
+            // Idempotence: skip if previous non-empty line is end of JSDoc.
+            let j = newLines.length - 1;
+            while (j >= 0 && newLines[j].trim() === "") j--;
+            if (j >= 0 && newLines[j].trimEnd().endsWith("*/")) {
+              handled = true;
+              break;
+            }
+
+            const docLines = fieldDoc
+              .split("\n")
+              .map((l) => fieldIndent + l);
+            newLines.push(...docLines);
             handled = true;
             break;
           }
-
-          const docLines = fieldDoc
-            .split("\n")
-            .map((l) => fieldIndent + l);
-          newLines.push(...docLines);
-          handled = true;
-          break;
         }
 
         newLines.push(line);
@@ -681,7 +738,138 @@ export type StorageEncoding =
     }
   }
 
+  out = stripHostInternalRegistryFields(out);
+  out = dropPluginLifecycleEventPayload(out);
+  out = restrictMarketplaceChannelToStable(out);
+  out = ensurePluginManifestPython(out);
+  out = ensurePluginManifestPackageName(out);
+  out = annotateToolSchemaInner(out);
+
   return out;
+}
+
+/**
+ * M10 — the depth-aware field-injection in `enrichWithJsDoc` deliberately
+ * skips nested object members so PluginManifest's `description` JSDoc no
+ * longer leaks onto the inner `toolSchemas[].description` (which is the
+ * LLM-facing tool description with `minLength: 10` per the JSON Schema —
+ * NOT a plugin catalog summary). This pass adds back a correct JSDoc on
+ * those nested members. Idempotent.
+ */
+function annotateToolSchemaInner(text) {
+  const innerDescDoc =
+    "      /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */";
+  const innerVersionDoc =
+    "      /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */";
+  const innerDeprecatedDoc =
+    "      /** Stable SemVer marking the manifest version that deprecated this tool. Triggers a runtime warn on call. @optional */";
+  const innerReplacedByDoc =
+    "      /** Tool name that supersedes this deprecated tool — host transparently redirects calls. @optional */";
+
+  let out = text;
+
+  out = out.replace(
+    /(toolSchemas\?: Record<\s*\n\s*string,\s*\n\s*\{\s*\n)([ \t]+description: string;)/m,
+    (_match, head, line) => {
+      if (head.includes(innerDescDoc.trim())) return _match;
+      return `${head}${innerDescDoc}\n${line}`;
+    },
+  );
+  out = out.replace(
+    /(\n)([ \t]+version\?: string;\n)/,
+    (_match, lead, line) =>
+      out.includes(innerVersionDoc.trim()) ? _match : `${lead}${innerVersionDoc}\n${line}`,
+  );
+  out = out.replace(
+    /(\n)([ \t]+deprecatedSince\?: string;\n)/,
+    (_match, lead, line) =>
+      out.includes(innerDeprecatedDoc.trim()) ? _match : `${lead}${innerDeprecatedDoc}\n${line}`,
+  );
+  out = out.replace(
+    /(\n)([ \t]+replacedBy\?: string;\n)/,
+    (_match, lead, line) =>
+      out.includes(innerReplacedByDoc.trim()) ? _match : `${lead}${innerReplacedByDoc}\n${line}`,
+  );
+
+  return out;
+}
+
+/**
+ * M8 — strip host-internal install bookkeeping (`_devLinked`,
+ * `installSource`) from the public `PluginRegistryEntry`. Plugins should
+ * never branch on those values. Also strips the legacy `installedBy`
+ * @deprecated alias for the same reason.
+ */
+function stripHostInternalRegistryFields(text) {
+  return text
+    .replace(/^[ \t]+installedBy\?:\s*InstallPolicy;\s*\r?\n/gm, "")
+    .replace(/^[ \t]+_devLinked\?:\s*boolean;\s*\r?\n/gm, "")
+    .replace(/^[ \t]+installSource\?:\s*PluginRegistryEntryInstallSource;\s*\r?\n/gm, "")
+    // Without `installSource` consumers no longer need the union; drop the
+    // type alias too so the SDK doesn't ship a dangling export.
+    .replace(
+      /^export type PluginRegistryEntryInstallSource = "admin" \| "user" \| "local-dev" \| "dev-link";\r?\n+/m,
+      "",
+    );
+}
+
+/**
+ * M12 — `PluginLifecycleEventPayload` is the host's internal event-bus
+ * mirror of `PluginLifecycleEvent` minus `type`; no SDK consumer ever
+ * references it and it conflicts with the canonical
+ * `PluginLifecycleEvent`. Drop it from the public surface.
+ */
+function dropPluginLifecycleEventPayload(text) {
+  return text.replace(
+    /^export type PluginLifecycleEventPayload =[\s\S]*?\| \{ pluginId: string \};\r?\n+/m,
+    "",
+  );
+}
+
+/**
+ * M11 — PR #62 locked the marketplace publish channel to stable-only
+ * SemVer (no pre-release / build-metadata suffixes). Until pre-release
+ * support comes back for canary, the catalog `channel` field must drop
+ * the `"canary"` literal so plugin-side type narrowing matches the
+ * publish gate. Reintroduce `"canary"` here in lock-step with whatever
+ * change loosens the SemVer regex.
+ */
+function restrictMarketplaceChannelToStable(text) {
+  return text.replace(
+    /channel\?: "stable" \| "canary";/g,
+    'channel?: "stable";',
+  );
+}
+
+/**
+ * H3 — host `types.ts` is missing the `python?` block that the host's
+ * JSON Schema (and pageindex's published `plugin.json`) already accept.
+ * Inject it into `PluginManifest` so plugin authors get type-checking
+ * parity with what the schema validates. Idempotent — skips when already
+ * present.
+ */
+function ensurePluginManifestPython(text) {
+  if (/python\?:\s*\{/m.test(text)) return text;
+  return text.replace(
+    /(^export interface PluginManifest \{[\s\S]*?)\n\}\n/m,
+    (_match, body) =>
+      `${body}\n  python?: {\n    managedBy?: "lvis-app" | "self";\n    requirementsLock?: string;\n    interpreter?: string;\n  };\n}\n`,
+  );
+}
+
+/**
+ * M9 — schema accepts `packageName` on installed manifests (the
+ * marketplace publish pipeline writes it for rollback support) but the
+ * host TS interface doesn't declare it. Inject it on the SDK side so
+ * plugin authors validating their own \`plugin.json\` don't see a TS error
+ * if they want to surface the field. Idempotent.
+ */
+function ensurePluginManifestPackageName(text) {
+  if (/^\s*packageName\?:\s*string;/m.test(text)) return text;
+  return text.replace(
+    /(^export interface PluginManifest \{[\s\S]*?)\n\}\n/m,
+    (_match, body) => `${body}\n  packageName?: string;\n}\n`,
+  );
 }
 
 try {
