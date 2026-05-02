@@ -18,8 +18,8 @@ export function useTheme(bridge: PluginBridge): void {
       const payload = data as Partial<LvisThemePayload>;
       if (!payload) return;
       const root = document.documentElement;
-      if (payload.theme) root.setAttribute("data-theme", payload.theme);
-      if (payload.codeTheme) root.setAttribute("data-code-theme", payload.codeTheme);
+      if (payload.theme !== undefined) root.setAttribute("data-theme", payload.theme);
+      if (payload.codeTheme !== undefined) root.setAttribute("data-code-theme", payload.codeTheme);
       // "default" removes the accent attribute so the base :root tokens win.
       if (payload.chatTheme !== undefined) {
         if (payload.chatTheme === "default") {
