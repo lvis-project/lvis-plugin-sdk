@@ -7,16 +7,30 @@
   "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts"
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
     },
+    "./ui": {
+      "types": "./src/ui/index.ts",
+      "import": "./dist/ui/index.js"
+    },
+    "./ui/tokens": {
+      "types": "./src/ui/tokens/index.ts",
+      "import": "./dist/ui/tokens/index.js"
+    },
+    "./ui/lvis-tokens.css": "./src/ui/tokens/lvis-tokens.css",
     "./schemas/plugin-manifest.schema.json": "./schemas/plugin-manifest.schema.json",
     "./schemas/*": "./schemas/*"
   },
   "files": [
     "src",
-    "schemas"
+    "schemas",
+    "dist"
   ],
   "scripts": {
+    "build": "tsup",
+    "dev:storybook": "storybook dev -p 6006",
+    "build:storybook": "storybook build",
     "sync:from-host": "node scripts/sync-from-host.mjs",
     "sync:schema-from-host": "node scripts/sync-schema-from-host.mjs",
     "check:drift": "node scripts/sync-from-host.mjs --check",
@@ -24,9 +38,30 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@storybook/addon-themes": "^8.0.0",
+    "@storybook/react-vite": "^8.0.0",
+    "@types/node": "^25.6.0",
+    "@types/react": "^18.3.0",
     "ajv": "^8.20.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "storybook": "^8.0.0",
+    "tsup": "^8.0.0",
     "typescript": "^6.0.3",
+    "vite": "^5.0.0",
     "vitest": "^4.1.5"
   }
 }
