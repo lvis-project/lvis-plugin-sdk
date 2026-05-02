@@ -1,0 +1,123 @@
+name: validate-plugin-manifests
+
+# Architect post-merge follow-up H7 — fetch each active plugin's
+# `plugin.json` via the GitHub API and validate it against the SDK's
+# current `schemas/plugin-manifest.schema.json` using ajv-cli. Catches
+# the "SDK schema tightened, plugin manifest still has the old shape"
+# class of break that PR #62 made more likely.
+#
+# Runs on every PR that touches the SDK schema, on push to main, and
+# nightly so a plugin-side merge that drifts from the SDK schema gets
+# noticed within 24h instead of at the next plugin release.
+
+on:
+  pull_request:
+    paths:
+      - 'schemas/plugin-manifest.schema.json'
+      - 'scripts/sync-schema-from-host.mjs'
+      - '.github/workflows/validate-plugin-manifests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'schemas/plugin-manifest.schema.json'
+  schedule:
+    - cron: '37 4 * * *' # nightly ~04:37 UTC, after drift-check (03:17)
+  workflow_dispatch: {}
+
+concurrency:
+  group: validate-plugin-manifests-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    if: github.repository == 'lvis-project/lvis-plugin-sdk'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix:
+        plugin:
+          - lvis-plugin-meeting
+          - lvis-plugin-pageindex
+          - lvis-plugin-ms-graph
+          - lvis-plugin-lge-api
+          - lvis-plugin-work-proactive
+          - lvis-plugin-agent-hub
+          - lvis-plugin-template
+    steps:
+      - name: Checkout SDK
+        uses: actions/checkout@v4
+
+      # `continue-on-error: true` is intentional: the GitHub App that backs
+      # this workflow may not be installed on every plugin repo yet (org
+      # admin one-time action). When the App is missing, the action returns
+      # 404 and we skip downstream steps via `steps.app-token.outcome`.
+      # Once the App is installed on a previously-missing repo, validation
+      # kicks in automatically without any workflow change. The "App missing"
+      # state is surfaced as a step warning so admins see it at a glance.
+      - name: Generate read token for plugin repo
+        id: app-token
+        continue-on-error: true
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: lvis-project
+          repositories: ${{ matrix.plugin }}
+
+      - name: Annotate when App is not installed on plugin repo
+        if: steps.app-token.outcome != 'success'
+        run: |
+          echo "::warning title=GitHub App not installed::HOST_READ_TOKEN App is not installed on lvis-project/${{ matrix.plugin }} — manifest validation skipped. Install the App via org settings to enable."
+
+      - name: Fetch plugin.json from ${{ matrix.plugin }}@main
+        if: steps.app-token.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          # Plugins keep `plugin.json` at the repo root. Use the contents API
+          # so we don't have to clone the whole plugin repo just to read one
+          # file. The API returns base64-encoded content.
+          gh api \
+            "repos/lvis-project/${{ matrix.plugin }}/contents/plugin.json?ref=main" \
+            --jq '.content' \
+            | base64 --decode > plugin.json
+          echo "::group::plugin.json"
+          cat plugin.json
+          echo "::endgroup::"
+
+      - name: Install ajv-cli
+        if: steps.app-token.outcome == 'success'
+        run: npm install --no-save ajv-cli@5 ajv-formats@2
+
+      - name: Validate plugin.json against SDK schema
+        if: steps.app-token.outcome == 'success'
+        run: |
+          set -euo pipefail
+          npx ajv-cli validate \
+            --spec=draft7 \
+            --strict=false \
+            -c ajv-formats \
+            -s schemas/plugin-manifest.schema.json \
+            -d plugin.json
+
+      - name: Open issue on validation failure (nightly only)
+        if: failure() && github.event_name == 'schedule' && steps.app-token.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `validate-plugin-manifests: ${{ matrix.plugin }} drift`;
+            const body =
+              `Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\n` +
+              `\`${{ matrix.plugin }}\`'s \`plugin.json\` no longer validates against the SDK schema. ` +
+              `Either bump the plugin to fix the manifest or update the SDK schema if the contract intentionally changed.`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['ci', 'plugin-manifest-drift'],
+            });

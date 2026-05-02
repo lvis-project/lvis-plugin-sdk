@@ -5,8 +5,6 @@
 
 export type InstallPolicy = "admin" | "user";
 
-export type PluginRegistryEntryInstallSource = "admin" | "user" | "local-dev" | "dev-link";
-
 export interface DependencySpec {
   pluginId: string;
   versionRange?: string;
@@ -104,6 +102,7 @@ export interface EventSubscription {
  *   version: "1.0.0",
  *   entry: "dist/index.js",
  *   tools: ["my_plugin_ping"],
+ *   description: "One-line summary shown to the host LLM and in plugin catalogues.",
  * };
  */
 export interface PluginManifest {
@@ -120,7 +119,7 @@ export interface PluginManifest {
   /** Tool names exposed to the host LLM. Each name must match `^[a-zA-Z_][a-zA-Z0-9_]*$` — dots and hyphens are not allowed. */
   tools: string[];
 
-  /** One-line description shown in plugin catalogues and tool pickers. @optional */
+  /** One-line summary (1-280 chars) of what the plugin does. **Required** since v3.0.0 — the LLM uses this in the inactive-plugin catalogue to decide whether to surface the plugin to the user. */
   description: string;
   /** Arbitrary JSON configuration merged into `PluginRuntimeContext.config` at startup. Treat as untrusted user data. @optional */
   config?: Record<string, unknown>;
@@ -143,7 +142,7 @@ export interface PluginManifest {
   /** Declarative auth contract — see {@link PluginAuthSpec}. When present, the host renders a generic 미인증 / signed-in badge + login/logout button in Settings. @optional */
   auth?: PluginAuthSpec;
 
-  /** Alias of `eventPublishes` accepted by host bridge paths. @optional */
+  /** Event type names this plugin may emit on the host event bus. Used by the host for validation and ownership checks. @optional */
   emittedEvents?: string[];
 
   /** Events that should be surfaced as host notifications. Each entry names the event and maps fields of its payload to notification title and body. @optional */
@@ -166,14 +165,16 @@ export interface PluginManifest {
   toolSchemas?: Record<
     string,
     {
-      /** One-line description shown in plugin catalogues and tool pickers. @optional */
+      /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */
       description: string;
 
-      /** SemVer version string (for example `1.2.3`). Used by the host to detect updates and enforce compatibility. */
+      /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
       version?: string;
 
+      /** Stable SemVer marking the manifest version that deprecated this tool. Triggers a runtime warn on call. @optional */
       deprecatedSince?: string;
 
+      /** Tool name that supersedes this deprecated tool — host transparently redirects calls. @optional */
       replacedBy?: string;
       inputSchema: {
         $schema?: string;
@@ -186,43 +187,74 @@ export interface PluginManifest {
   >;
 
   configSchema?: PluginConfigSchema;
+
+  icon?: string;
+  python?: {
+    managedBy?: "lvis-app" | "self";
+    requirementsLock?: string;
+    interpreter?: string;
+  };
+  packageName?: string;
 }
 
+/**
+ * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
+ * rendered as a typed form in the host's `PluginConfigTab`.
+ * `format: "secret"` routes values through the encrypted keychain instead
+ * of the cleartext `pluginConfigs` map.
+ */
 export interface PluginConfigSchema {
 
+  /** Optional `$schema` identifier; informational only. @optional */
   $schema?: string;
 
+  /** Property declarations keyed by config key. */
   properties: Record<string, PluginConfigSchemaProperty>;
 
+  /** Property keys that must have a value after merging defaults + saved values. @optional */
   required?: string[];
 
+  /** Optional escape hatch — when declared the host renders a custom React panel underneath the auto-generated form. `entry` is a path relative to the plugin root; `exportName` is the named export to mount. Use sparingly — schema fields cover the common case. @optional */
   customPanel?: { entry: string; exportName: string };
 }
 
+/** Schema for a single configuration property. */
 export interface PluginConfigSchemaProperty {
 
+  /** JSON Schema-compatible value type. */
   type: "string" | "number" | "integer" | "boolean" | "array";
 
+  /** Short human-readable label. @optional */
   title?: string;
 
+  /** Long-form description rendered as helper text. @optional */
   description?: string;
 
+  /** Default value seeded into the form when no saved value exists. @optional */
   default?: unknown;
 
+  /** Closed list of valid values (renders as Select). @optional */
   enum?: Array<string | number | boolean>;
 
+  /** Inclusive lower bound for numeric / integer types. @optional */
   minimum?: number;
 
+  /** Inclusive upper bound for numeric / integer types. @optional */
   maximum?: number;
 
+  /** Minimum string length. @optional */
   minLength?: number;
 
+  /** Maximum string length. @optional */
   maxLength?: number;
 
+  /** Regex the string value must match. @optional */
   pattern?: string;
 
+  /** UI/storage hint. `"secret"` routes the value through `hostApi.setSecret` / `getSecret` instead of cleartext config. `"uri"`, `"email"`, `"date-time"` enable typed inputs. @optional */
   format?: "secret" | "uri" | "email" | "date-time";
 
+  /** Item schema for `type: "array"` properties. @optional */
   items?: { type: "string" | "number" | "integer" | "boolean"; enum?: Array<string | number | boolean> };
 }
 
@@ -267,6 +299,11 @@ export interface PluginUiExtension {
  * Entry in the host's local plugin registry. The registry records which
  * plugins are installed, where their manifests live, and whether they are
  * currently enabled.
+ *
+ * Note: host-internal install-source bookkeeping (`_devLinked`,
+ * `installSource`) is intentionally stripped from the SDK public surface —
+ * see `stripHostInternalRegistryFields()` in `scripts/sync-from-host.mjs`.
+ * Plugins should not branch on those fields.
  */
 export interface PluginRegistryEntry {
   /** Plugin identifier, matching `PluginManifest.id`. */
@@ -276,12 +313,9 @@ export interface PluginRegistryEntry {
   /** Whether the plugin should be loaded at host startup. Defaults to `true` when omitted. @optional */
   enabled?: boolean;
 
-  installedBy?: InstallPolicy;
   bundleRefs?: string[];
   approvedPluginAccess?: PluginAccessSpec;
 
-  _devLinked?: boolean;
-  installSource?: PluginRegistryEntryInstallSource;
 }
 
 /**
@@ -368,7 +402,7 @@ export interface PluginMarketplaceItem {
 
   version?: string;
 
-  channel?: "stable" | "canary";
+  channel?: "stable";
   /** Default configuration seeded into the plugin on first install. Users may override this. @optional */
   defaultConfig?: Record<string, unknown>;
   /** UI extensions the plugin will contribute once installed. @optional */
@@ -435,10 +469,6 @@ export type PluginLifecycleEvent =
   | { type: "installed"; pluginId: string; source: "marketplace" | "local-dev" }
   | { type: "uninstalled"; pluginId: string }
   | { type: "_future"; readonly __exhaustive: never };
-
-export type PluginLifecycleEventPayload =
-  | { pluginId: string; source: "marketplace" | "local-dev" }
-  | { pluginId: string };
 
 /**
  * Services exposed by the host to a running plugin. An instance is provided
@@ -581,8 +611,6 @@ export interface PluginHostApi {
    * chance to flush state.
    */
   onShutdown(handler: () => void | Promise<void>): void;
-
-  onMsGraphAuthChange?(handler: () => void): void;
 
   openAuthWindow(options: {
     url: string;
