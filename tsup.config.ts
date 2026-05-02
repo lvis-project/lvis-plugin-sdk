@@ -6,7 +6,11 @@ export default defineConfig({
     "ui/tokens/index": "src/ui/tokens/index.ts",
   },
   format: ["esm"],
-  dts: true,
+  // dts emission is delegated to `tsc -p tsconfig.build.json` (see package.json
+  // build script). tsup's bundled dts path injects `baseUrl: "."` into the
+  // synthetic compile, which TypeScript 6+ rejects with TS5101 — invoking
+  // tsc directly avoids that code path entirely.
+  dts: false,
   clean: true,
   external: ["react", "react-dom"],
 });

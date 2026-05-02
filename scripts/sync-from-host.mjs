@@ -808,9 +808,13 @@ function stripHostInternalRegistryFields(text) {
     .replace(/^[ \t]+_devLinked\?:\s*boolean;\s*\r?\n/gm, "")
     .replace(/^[ \t]+installSource\?:\s*PluginRegistryEntryInstallSource;\s*\r?\n/gm, "")
     // Without `installSource` consumers no longer need the union; drop the
-    // type alias too so the SDK doesn't ship a dangling export.
+    // type alias too so the SDK doesn't ship a dangling export. Match the
+    // declaration line by name + RHS shape rather than a hard-coded literal
+    // union so this stays correct as host adds/removes install sources
+    // (e.g. lvis-app PR #487 dropped `"dev-link"` and the old regex went
+    // stale, leaving the type stuck in the SDK surface).
     .replace(
-      /^export type PluginRegistryEntryInstallSource = "admin" \| "user" \| "local-dev" \| "dev-link";\r?\n+/m,
+      /^export type PluginRegistryEntryInstallSource = [^;]+;\r?\n+/m,
       "",
     );
 }
