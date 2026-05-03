@@ -1,4 +1,3 @@
-import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Input } from "../src/ui/components/Input.js";
 import { Text } from "../src/ui/components/Text.js";
@@ -6,32 +5,46 @@ import { Text } from "../src/ui/components/Text.js";
 const meta: Meta<typeof Input> = {
   title: "UI/Input",
   component: Input,
+  argTypes: {
+    error: { control: "boolean" },
+    disabled: { control: "boolean" },
+    placeholder: { control: "text" },
+  },
 };
 export default meta;
 
-export const All: StoryObj = {
+export const All: Story = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", maxWidth: "320px" }}>
-      <div>
-        <Text variant="label" style={{ marginBottom: "0.375rem" }}>기본</Text>
-        <Input placeholder="텍스트를 입력하세요" />
-      </div>
-      <div>
-        <Text variant="label" style={{ marginBottom: "0.375rem" }}>비활성화</Text>
-        <Input placeholder="비활성화됨" disabled />
-      </div>
-      <div>
-        <Text variant="label" style={{ marginBottom: "0.375rem" }}>오류 상태</Text>
-        <Input placeholder="잘못된 입력" error defaultValue="잘못된 값" />
-      </div>
-      <div>
-        <Text variant="label" style={{ marginBottom: "0.375rem" }}>Password</Text>
-        <Input type="password" placeholder="비밀번호" />
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "18rem" }}>
+      <Text variant="label" as="span">이메일 주소</Text>
+      <Input type="email" placeholder="user@example.com" />
     </div>
   ),
 };
 
-export const Default: StoryObj<typeof Input> = { args: { placeholder: "입력하세요" } };
-export const Disabled: StoryObj<typeof Input> = { args: { placeholder: "비활성화", disabled: true } };
-export const Error: StoryObj<typeof Input> = { args: { error: true, defaultValue: "잘못된 값" } };
+type Story = StoryObj<typeof Input>;
+
+export const Default: Story = {
+  args: { placeholder: "검색어를 입력하세요" },
+};
+
+export const WithValue: Story = {
+  args: { defaultValue: "이미 입력된 내용" },
+};
+
+export const Error: Story = {
+  args: { error: true, defaultValue: "잘못된 값", placeholder: "올바른 값을 입력하세요" },
+};
+
+export const Disabled: Story = {
+  args: { disabled: true, defaultValue: "비활성 입력" },
+};
+export const WithError: Story = {
+  render: () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "18rem" }}>
+      <Text variant="label" as="span">API 키</Text>
+      <Input error defaultValue="invalid-key" />
+      <Text variant="muted" style={{ color: "var(--lvis-danger)", fontSize: "0.75rem" }}>유효하지 않은 API 키입니다.</Text>
+    </div>
+  ),
+};

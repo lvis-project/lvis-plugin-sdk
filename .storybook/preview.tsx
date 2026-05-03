@@ -40,7 +40,7 @@ const preview: Preview = {
   globalTypes: {
     theme: {
       name: "Theme",
-      defaultValue: "dark",
+      defaultValue: "light",
       toolbar: {
         title: "Theme",
         items: [
@@ -53,7 +53,7 @@ const preview: Preview = {
     },
     chatTheme: {
       name: "Accent",
-      defaultValue: "purple",
+      defaultValue: "lg",
       toolbar: {
         title: "Accent",
         items: [

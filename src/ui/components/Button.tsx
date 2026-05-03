@@ -53,14 +53,13 @@ export function Button({
   ].filter(Boolean).join(" ");
   return (
     <button {...rest} className={cls} disabled={disabled || loading}>
-      {loading ? <Spinner size="sm" /> : null}
+      {loading ? <ButtonSpinner size="sm" /> : null}
       {children}
     </button>
   );
 }
 
-// inline spinner for loading state
-function Spinner({ size }: { size: "sm" }) {
+function ButtonSpinner({ size }: { size: "sm" }) {
   const s = size === "sm" ? "0.875rem" : "1rem";
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none"

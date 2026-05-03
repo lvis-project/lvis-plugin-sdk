@@ -1,4 +1,3 @@
-import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Card } from "../src/ui/components/Card.js";
 import { Text } from "../src/ui/components/Text.js";
@@ -7,46 +6,58 @@ import { Button } from "../src/ui/components/Button.js";
 const meta: Meta<typeof Card> = {
   title: "UI/Card",
   component: Card,
+  argTypes: {
+    padding: { control: "select", options: ["sm", "md", "lg"] },
+  },
 };
 export default meta;
 
-export const All: StoryObj = {
+export const All: Story = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", maxWidth: "360px" }}>
-      <div>
-        <Text variant="label" style={{ marginBottom: "0.5rem" }}>Small padding</Text>
-        <Card padding="sm"><Text>Small card content</Text></Card>
+    <Card>
+      <Text variant="heading">플러그인 설치 확인</Text>
+      <Text variant="muted" style={{ margin: "0.5rem 0 1rem" }}>
+        이 플러그인을 설치하시겠습니까?
+      </Text>
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <Button variant="primary" size="sm">설치</Button>
+        <Button variant="secondary" size="sm">취소</Button>
       </div>
-      <div>
-        <Text variant="label" style={{ marginBottom: "0.5rem" }}>Medium padding (default)</Text>
-        <Card>
-          <Text variant="heading" style={{ marginBottom: "0.5rem" }}>Card title</Text>
-          <Text variant="muted">Some description text goes here.</Text>
-        </Card>
-      </div>
-      <div>
-        <Text variant="label" style={{ marginBottom: "0.5rem" }}>Large padding</Text>
-        <Card padding="lg">
-          <Text variant="heading" style={{ marginBottom: "0.75rem" }}>Card with action</Text>
-          <Text variant="muted" style={{ marginBottom: "1rem" }}>Cards can contain any content including buttons.</Text>
-          <Button variant="primary" size="sm">Action</Button>
-        </Card>
-      </div>
-    </div>
+    </Card>
   ),
 };
 
-export const Default: StoryObj<typeof Card> = {
-  args: { padding: "md" },
-  render: (args) => <Card {...args}><Text>Card content</Text></Card>,
+type Story = StoryObj<typeof Card>;
+
+export const Default: Story = {
+  args: {
+    children: (
+      <>
+        <Text variant="heading">회의 요약</Text>
+        <Text variant="muted" style={{ marginTop: "0.5rem" }}>오늘 진행된 스프린트 회의에서 세 가지 액션 아이템이 도출되었습니다.</Text>
+      </>
+    ),
+  },
 };
 
-export const Small: StoryObj<typeof Card> = {
-  args: { padding: "sm" },
-  render: (args) => <Card {...args}><Text>Compact card</Text></Card>,
+export const SmallPadding: Story = {
+  args: {
+    padding: "sm",
+    children: <Text>소형 패딩 카드</Text>,
+  },
 };
 
-export const Large: StoryObj<typeof Card> = {
-  args: { padding: "lg" },
-  render: (args) => <Card {...args}><Text>Spacious card</Text></Card>,
+export const LargePadding: Story = {
+  args: {
+    padding: "lg",
+    children: (
+      <>
+        <Text variant="heading">대형 패딩</Text>
+        <Text variant="muted" style={{ marginTop: "0.5rem" }}>여백이 넓은 카드입니다.</Text>
+        <div style={{ marginTop: "1rem" }}>
+          <Button size="sm">확인</Button>
+        </div>
+      </>
+    ),
+  },
 };
