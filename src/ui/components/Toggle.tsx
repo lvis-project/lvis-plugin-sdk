@@ -53,7 +53,7 @@ export function Toggle({ checked, defaultChecked, onChange, label, disabled, id 
   ].filter(Boolean).join(" ");
 
   return (
-    <div id={id} role="switch" aria-checked={isOn} aria-disabled={disabled}
+    <div id={id} role="switch" aria-checked={isOn} aria-disabled={disabled ?? false}
       className={cls} onClick={handleClick} tabIndex={disabled ? -1 : 0}
       onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); handleClick(); } }}>
       <span className="lvis-toggle-track">

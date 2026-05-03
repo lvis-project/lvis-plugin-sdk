@@ -6,6 +6,7 @@
       "name": "@lvis/plugin-sdk",
       "devDependencies": {
         "@storybook/addon-themes": "^8.0.0",
+        "@storybook/addon-toolbars": "8.6.18",
         "@storybook/react-vite": "^8.0.0",
         "@testing-library/react": "^16.3.2",
         "@types/node": "^25.6.0",
@@ -23,10 +24,12 @@
       "peerDependencies": {
         "react": ">=18.0.0",
         "react-dom": ">=18.0.0",
+        "tsup": ">=8.0.0",
       },
       "optionalPeers": [
         "react",
         "react-dom",
+        "tsup",
       ],
     },
   },
@@ -254,6 +257,8 @@
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
     "@storybook/addon-themes": ["@storybook/addon-themes@8.6.18", "", { "dependencies": { "ts-dedent": "^2.0.0" }, "peerDependencies": { "storybook": "^8.6.18" } }, "sha512-v+Xcxo/XB2ayw9E/RygGOqUIaPOXp9XEFv6EF7DRt41/RQkQ846yJBARTC2cH8kCb+7FYcvDLD3GN/ms7i8wNg=="],
+
+    "@storybook/addon-toolbars": ["@storybook/addon-toolbars@8.6.18", "", { "peerDependencies": { "storybook": "^8.6.18" } }, "sha512-x037KXCEcNfPISGX485DtiP+8Bw/cOT45plcQa8eiAQVrVcUwYaDoLubE9YV5b5CsSAjX8sDviGTme6ALfq7+w=="],
 
     "@storybook/builder-vite": ["@storybook/builder-vite@8.6.18", "", { "dependencies": { "@storybook/csf-plugin": "8.6.18", "browser-assert": "^1.2.1", "ts-dedent": "^2.0.0" }, "peerDependencies": { "storybook": "^8.6.18", "vite": "^4.0.0 || ^5.0.0 || ^6.0.0" } }, "sha512-XLqnOv4C36jlTd4uC8xpWBxv+7GV4/05zWJ0wAcU4qflorropUTirt4UQPGkwIzi+BVAhs9pJj+m4k0IWJtpHg=="],
 
