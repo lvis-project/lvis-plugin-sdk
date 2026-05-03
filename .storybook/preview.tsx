@@ -5,8 +5,8 @@ import { applyThemeTokens } from "../src/ui/tokens/inject.js";
 import { resolveStoryTokens } from "./story-token-map.js";
 import type { LvisThemePayload } from "../src/ui/tokens/index.js";
 
-const VALID_THEMES = new Set(["light", "dark", "high-contrast"] as const);
-const VALID_CHAT_THEMES = new Set(["default", "lg", "purple", "orange", "blue"] as const);
+const VALID_THEMES = new Set<string>(["light", "dark", "high-contrast"]);
+const VALID_CHAT_THEMES = new Set<string>(["default", "lg", "purple", "orange", "blue"]);
 
 const preview: Preview = {
   decorators: [

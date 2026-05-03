@@ -1,7 +1,6 @@
 import { useEffect } from "react";
-import type { LvisThemePayload } from "../tokens/index.js";
+import { type LvisThemePayload, LVIS_TOKEN_NAMES } from "../tokens/index.js";
 import { applyThemeTokens } from "../tokens/inject.js";
-import { LVIS_TOKEN_NAMES } from "../tokens/index.js";
 
 type PluginBridge = {
   onEvent: (type: string, handler: (data: unknown) => void) => () => void;
