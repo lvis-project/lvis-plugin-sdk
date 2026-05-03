@@ -5,6 +5,7 @@ export default defineConfig({
     "ui/index": "src/ui/index.ts",
     "ui/tokens/index": "src/ui/tokens/index.ts",
     "build/tsup": "src/build/tsup.ts",
+    "runtime/electron": "src/runtime/electron.ts",
   },
   format: ["esm"],
   // dts emission is delegated to `tsc -p tsconfig.build.json` (see package.json
