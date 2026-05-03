@@ -12,6 +12,16 @@ const meta: Meta<typeof Input> = {
   },
 };
 export default meta;
+
+export const All: Story = {
+  render: () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "18rem" }}>
+      <Text variant="label" as="span">이메일 주소</Text>
+      <Input type="email" placeholder="user@example.com" />
+    </div>
+  ),
+};
+
 type Story = StoryObj<typeof Input>;
 
 export const Default: Story = {
@@ -29,16 +39,6 @@ export const Error: Story = {
 export const Disabled: Story = {
   args: { disabled: true, defaultValue: "비활성 입력" },
 };
-
-export const WithLabel: Story = {
-  render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "18rem" }}>
-      <Text variant="label" as="span">이메일 주소</Text>
-      <Input type="email" placeholder="user@example.com" />
-    </div>
-  ),
-};
-
 export const WithError: Story = {
   render: () => (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "18rem" }}>

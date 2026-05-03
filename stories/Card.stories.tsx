@@ -11,6 +11,22 @@ const meta: Meta<typeof Card> = {
   },
 };
 export default meta;
+
+export const All: Story = {
+  render: () => (
+    <Card>
+      <Text variant="heading">플러그인 설치 확인</Text>
+      <Text variant="muted" style={{ margin: "0.5rem 0 1rem" }}>
+        이 플러그인을 설치하시겠습니까?
+      </Text>
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <Button variant="primary" size="sm">설치</Button>
+        <Button variant="secondary" size="sm">취소</Button>
+      </div>
+    </Card>
+  ),
+};
+
 type Story = StoryObj<typeof Card>;
 
 export const Default: Story = {
@@ -44,19 +60,4 @@ export const LargePadding: Story = {
       </>
     ),
   },
-};
-
-export const WithActions: Story = {
-  render: () => (
-    <Card>
-      <Text variant="heading">플러그인 설치 확인</Text>
-      <Text variant="muted" style={{ margin: "0.5rem 0 1rem" }}>
-        이 플러그인을 설치하시겠습니까?
-      </Text>
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <Button variant="primary" size="sm">설치</Button>
-        <Button variant="secondary" size="sm">취소</Button>
-      </div>
-    </Card>
-  ),
 };

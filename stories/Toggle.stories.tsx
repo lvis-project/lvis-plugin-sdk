@@ -10,6 +10,18 @@ const meta: Meta<typeof Toggle> = {
   },
 };
 export default meta;
+
+export const All: Story = {
+  render: () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem", width: "14rem" }}>
+      <Toggle label="자동 업데이트" defaultChecked />
+      <Toggle label="활동 데이터 수집" />
+      <Toggle label="크래시 리포트" defaultChecked />
+      <Toggle label="베타 기능" disabled />
+    </div>
+  ),
+};
+
 type Story = StoryObj<typeof Toggle>;
 
 export const Off: Story = {
@@ -30,15 +42,4 @@ export const DisabledOn: Story = {
 
 export const NoLabel: Story = {
   args: { defaultChecked: true },
-};
-
-export const SettingsList: Story = {
-  render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem", width: "14rem" }}>
-      <Toggle label="자동 업데이트" defaultChecked />
-      <Toggle label="활동 데이터 수집" />
-      <Toggle label="크래시 리포트" defaultChecked />
-      <Toggle label="베타 기능" disabled />
-    </div>
-  ),
 };

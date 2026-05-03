@@ -10,6 +10,18 @@ const meta: Meta<typeof Text> = {
   },
 };
 export default meta;
+
+export const All: Story = {
+  render: () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+      <Text variant="heading">회의 요약</Text>
+      <Text variant="label" as="span">참석자</Text>
+      <Text variant="body">홍길동, 이순신, 김유신 외 4명이 참석하였습니다.</Text>
+      <Text variant="muted">2026년 5월 3일 오전 10:00 — 오전 11:00</Text>
+    </div>
+  ),
+};
+
 type Story = StoryObj<typeof Text>;
 
 export const Body: Story = {
@@ -26,15 +38,4 @@ export const Label: Story = {
 
 export const Heading: Story = {
   args: { variant: "heading", children: "카드 제목" },
-};
-
-export const AllVariants: Story = {
-  render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-      <Text variant="heading">회의 요약</Text>
-      <Text variant="label" as="span">참석자</Text>
-      <Text variant="body">홍길동, 이순신, 김유신 외 4명이 참석하였습니다.</Text>
-      <Text variant="muted">2026년 5월 3일 오전 10:00 — 오전 11:00</Text>
-    </div>
-  ),
 };

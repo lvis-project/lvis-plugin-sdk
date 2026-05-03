@@ -12,6 +12,22 @@ const meta: Meta<typeof Button> = {
   },
 };
 export default meta;
+
+export const All: Story = {
+  render: () => (
+    <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+      <Button variant="primary">Primary</Button>
+      <Button variant="secondary">Secondary</Button>
+      <Button variant="ghost">Ghost</Button>
+      <Button variant="danger">Danger</Button>
+      <Button variant="primary" size="sm">Small</Button>
+      <Button variant="primary" size="lg">Large</Button>
+      <Button variant="primary" loading>Loading</Button>
+      <Button variant="primary" disabled>Disabled</Button>
+    </div>
+  ),
+};
+
 type Story = StoryObj<typeof Button>;
 
 export const Primary: Story = {
@@ -44,19 +60,4 @@ export const Loading: Story = {
 
 export const Disabled: Story = {
   args: { disabled: true, children: "비활성" },
-};
-
-export const AllVariants: Story = {
-  render: () => (
-    <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
-      <Button variant="primary">Primary</Button>
-      <Button variant="secondary">Secondary</Button>
-      <Button variant="ghost">Ghost</Button>
-      <Button variant="danger">Danger</Button>
-      <Button variant="primary" size="sm">Small</Button>
-      <Button variant="primary" size="lg">Large</Button>
-      <Button variant="primary" loading>Loading</Button>
-      <Button variant="primary" disabled>Disabled</Button>
-    </div>
-  ),
 };

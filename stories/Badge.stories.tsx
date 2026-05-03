@@ -9,6 +9,18 @@ const meta: Meta<typeof Badge> = {
   },
 };
 export default meta;
+
+export const All: Story = {
+  render: () => (
+    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+      <Badge variant="default">기본</Badge>
+      <Badge variant="success">완료</Badge>
+      <Badge variant="warning">주의</Badge>
+      <Badge variant="danger">오류</Badge>
+    </div>
+  ),
+};
+
 type Story = StoryObj<typeof Badge>;
 
 export const Default: Story = {
@@ -25,15 +37,4 @@ export const Warning: Story = {
 
 export const Danger: Story = {
   args: { variant: "danger", children: "오류" },
-};
-
-export const AllVariants: Story = {
-  render: () => (
-    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-      <Badge variant="default">기본</Badge>
-      <Badge variant="success">완료</Badge>
-      <Badge variant="warning">주의</Badge>
-      <Badge variant="danger">오류</Badge>
-    </div>
-  ),
 };

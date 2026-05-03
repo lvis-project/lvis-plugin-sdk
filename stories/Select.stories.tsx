@@ -10,6 +10,20 @@ const meta: Meta<typeof Select> = {
   },
 };
 export default meta;
+
+export const All: Story = {
+  render: () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "16rem" }}>
+      <Text variant="label" as="span">언어 모델</Text>
+      <Select defaultValue="claude">
+        <option value="gpt4o">GPT-4o</option>
+        <option value="claude">Claude</option>
+        <option value="gemini">Gemini</option>
+      </Select>
+    </div>
+  ),
+};
+
 type Story = StoryObj<typeof Select>;
 
 export const Default: Story = {
@@ -50,17 +64,4 @@ export const Disabled: Story = {
       </>
     ),
   },
-};
-
-export const WithLabel: Story = {
-  render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "16rem" }}>
-      <Text variant="label" as="span">언어 모델</Text>
-      <Select defaultValue="claude">
-        <option value="gpt4o">GPT-4o</option>
-        <option value="claude">Claude</option>
-        <option value="gemini">Gemini</option>
-      </Select>
-    </div>
-  ),
 };

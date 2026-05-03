@@ -11,6 +11,18 @@ const meta: Meta<typeof Checkbox> = {
   },
 };
 export default meta;
+
+export const All: Story = {
+  render: () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+      <Checkbox label="이메일 알림" defaultChecked />
+      <Checkbox label="푸시 알림" />
+      <Checkbox label="SMS 알림" disabled />
+      <Checkbox label="일부 선택됨" indeterminate />
+    </div>
+  ),
+};
+
 type Story = StoryObj<typeof Checkbox>;
 
 export const Unchecked: Story = {
@@ -35,15 +47,4 @@ export const DisabledChecked: Story = {
 
 export const NoLabel: Story = {
   args: { defaultChecked: true },
-};
-
-export const Group: Story = {
-  render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-      <Checkbox label="이메일 알림" defaultChecked />
-      <Checkbox label="푸시 알림" />
-      <Checkbox label="SMS 알림" disabled />
-      <Checkbox label="일부 선택됨" indeterminate />
-    </div>
-  ),
 };

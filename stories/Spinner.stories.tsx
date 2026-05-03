@@ -9,6 +9,17 @@ const meta: Meta<typeof Spinner> = {
   },
 };
 export default meta;
+
+export const All: Story = {
+  render: () => (
+    <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
+      <Spinner size="sm" />
+      <Spinner size="md" />
+      <Spinner size="lg" />
+    </div>
+  ),
+};
+
 type Story = StoryObj<typeof Spinner>;
 
 export const Small: Story = {
@@ -21,14 +32,4 @@ export const Medium: Story = {
 
 export const Large: Story = {
   args: { size: "lg" },
-};
-
-export const AllSizes: Story = {
-  render: () => (
-    <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
-      <Spinner size="sm" />
-      <Spinner size="md" />
-      <Spinner size="lg" />
-    </div>
-  ),
 };
