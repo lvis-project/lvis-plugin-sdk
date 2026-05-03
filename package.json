@@ -1,8 +1,8 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "3.4.2",
+  "version": "3.5.0",
   "private": false,
-  "description": "Type-only SDK for authoring LVIS plugins. Re-exports the host's PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin contracts so plugin repos can import a single source of truth.",
+  "description": "SDK for authoring LVIS plugins. Type contracts (PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin) re-exported from the host as a single source of truth, plus thin runtime utilities (UI primitives, build helpers, host-context shims for safeStorage / shell.openExternal) shared across plugin repos.",
   "type": "module",
   "types": "./src/index.ts",
   "exports": {
@@ -22,6 +22,10 @@
     "./build": {
       "types": "./src/build/tsup.ts",
       "import": "./dist/build/tsup.js"
+    },
+    "./runtime/electron": {
+      "types": "./src/runtime/electron.ts",
+      "import": "./dist/runtime/electron.js"
     },
     "./schemas/plugin-manifest.schema.json": "./schemas/plugin-manifest.schema.json",
     "./schemas/*": "./schemas/*"
