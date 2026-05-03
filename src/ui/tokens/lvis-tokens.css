@@ -1,105 +1,38 @@
 /* @lvis/plugin-sdk — Plugin UI Tokens
- * Default = dark. Host broadcasts theme axis via host.theme.changed;
- * useTheme() sets data-theme / data-chat-theme on documentElement so these
- * selectors activate automatically — no JS token-swap needed.
+ *
+ * These :root defaults serve as an initial fallback until the host broadcasts
+ * computed values via host.theme.changed → useTheme() → applyThemeTokens().
+ * Once tokens arrive, inline style.setProperty() overwrites these values.
+ *
+ * Do NOT add data-theme / data-chat-theme variant blocks here — those are
+ * now redundant and diverge from lvis-app/src/styles.css.
+ * The host (lvis-app) is the single source of truth for token values.
+ * See: src/ui/tokens/inject.ts:applyThemeTokens, src/ui/hooks/useTheme.ts
  */
 
-/* ─── Dark (default) ─────────────────────────────────── */
+/* ─── Dark (default fallback) ────────────────────────────
+ * Values mirror lvis-app src/ui/renderer/theme/plugin-token-map.ts _DARK_BASE.
+ * Three files must stay in sync when the design palette changes:
+ *   1. lvis-app/src/ui/renderer/theme/plugin-token-map.ts  (_DARK_BASE)
+ *   2. lvis-plugin-sdk/src/ui/tokens/lvis-tokens.css       (:root below)
+ *   3. lvis-plugin-sdk/.storybook/story-token-map.ts       (_DARK_BASE)
+ * ────────────────────────────────────────────────────── */
 :root {
-  --lvis-bg:           #0f0f13;
-  --lvis-surface:      #1a1a22;
-  --lvis-fg:           #f5f5f5;
-  --lvis-fg-muted:     #888888;
-  --lvis-primary:      #a078f5;
-  --lvis-primary-fg:   #ffffff;
-  --lvis-secondary:    #2d2d38;
-  --lvis-secondary-fg: #f5f5f5;
-  --lvis-danger:       #f03e2f;
-  --lvis-danger-fg:    #ffffff;
-  --lvis-warning:      #f5a050;
-  --lvis-warning-fg:   #1a1a1a;
-  --lvis-success:      #22c55e;
-  --lvis-border:       #2d2d38;
-  --lvis-ring:         #a078f5;
+  --lvis-bg:           hsl(222.2, 84%, 4.9%);
+  --lvis-surface:      hsl(222.2, 84%, 7%);
+  --lvis-fg:           hsl(210, 40%, 98%);
+  --lvis-fg-muted:     hsl(215, 20%, 65%);
+  --lvis-primary:      hsl(217.2, 91.2%, 59.8%);
+  --lvis-primary-fg:   hsl(210, 40%, 98%);
+  --lvis-secondary:    hsl(217, 33%, 17%);
+  --lvis-secondary-fg: hsl(210, 40%, 98%);
+  --lvis-danger:       hsl(0, 62.8%, 30.6%);
+  --lvis-danger-fg:    hsl(210, 40%, 98%);
+  --lvis-warning:      hsl(48, 97%, 77%);
+  --lvis-warning-fg:   hsl(30, 80%, 25%);
+  --lvis-success:      hsl(142, 71%, 45%);
+  --lvis-border:       hsl(217, 33%, 17%);
+  --lvis-ring:         hsl(224.3, 76.3%, 48%);
   --lvis-radius:       0.6rem;
-  --lvis-radius-sm:    0.2rem;
-}
-
-/* ─── Light ──────────────────────────────────────────── */
-:root[data-theme="light"] {
-  --lvis-bg:           #f8f8fc;
-  --lvis-surface:      #ffffff;
-  --lvis-fg:           #1a1a22;
-  --lvis-fg-muted:     #666677;
-  --lvis-primary:      #734dff;
-  --lvis-primary-fg:   #ffffff;
-  --lvis-secondary:    #ebebf5;
-  --lvis-secondary-fg: #1a1a22;
-  --lvis-danger:       #e02020;
-  --lvis-danger-fg:    #ffffff;
-  --lvis-warning:      #d97706;
-  --lvis-warning-fg:   #ffffff;
-  --lvis-success:      #16a34a;
-  --lvis-border:       #d4d4e0;
-  --lvis-ring:         #734dff;
-}
-
-/* ─── High-contrast ──────────────────────────────────── */
-:root[data-theme="high-contrast"] {
-  --lvis-bg:           #000000;
-  --lvis-surface:      #0a0a0a;
-  --lvis-fg:           #ffffff;
-  --lvis-fg-muted:     #cccccc;
-  --lvis-primary:      #c497ef;
-  --lvis-primary-fg:   #000000;
-  --lvis-secondary:    #1a1a1a;
-  --lvis-secondary-fg: #ffffff;
-  --lvis-danger:       #ff4444;
-  --lvis-danger-fg:    #000000;
-  --lvis-warning:      #ffaa00;
-  --lvis-warning-fg:   #000000;
-  --lvis-success:      #00ff88;
-  --lvis-border:       #ffffff;
-  --lvis-ring:         #c497ef;
-}
-
-/* ─── Chat theme accent overrides ────────────────────── */
-:root[data-chat-theme="purple"] {
-  --lvis-primary:    #a078f5;
-  --lvis-ring:       #a078f5;
-}
-:root[data-chat-theme="orange"] {
-  --lvis-primary:    #f5a050;
-  --lvis-primary-fg: #1a1a1a;
-  --lvis-ring:       #f5a050;
-}
-:root[data-chat-theme="blue"] {
-  --lvis-primary:    #60a5fa;
-  --lvis-ring:       #60a5fa;
-}
-/* LG brand — light variant (warm-grey surface, lilac bubble, vivid purple SEND)
-   Mirrors lvis-app/src/styles.css [data-chat-theme="lg"] */
-:root[data-chat-theme="lg"] {
-  --lvis-primary:      #734dff;   /* vivid purple — SEND button */
-  --lvis-primary-fg:   #ffffff;
-  --lvis-ring:         #734dff;
-  --lvis-bg:           #f0ece4;   /* Grey 6 — warm-grey chat surface */
-  --lvis-surface:      #f6f3eb;   /* Grey 7 — slight elevation */
-  --lvis-fg:           #262626;   /* Grey 1 */
-  --lvis-fg-muted:     #716f6a;   /* Grey 3 */
-  --lvis-secondary:    #f6f3eb;
-  --lvis-secondary-fg: #262626;
-  --lvis-border:       #cbc8c2;   /* Grey 4 */
-  --lvis-danger:       #fd312e;   /* LG red */
-  --lvis-danger-fg:    #ffffff;
-}
-/* LG brand — dark variant (warm-neutral inversion, accent inherited) */
-:root[data-theme="dark"][data-chat-theme="lg"] {
-  --lvis-bg:           #262626;   /* Grey 1 */
-  --lvis-surface:      #2e2e2e;
-  --lvis-fg:           #f6f3eb;   /* Grey 7 */
-  --lvis-fg-muted:     #9e9c99;
-  --lvis-secondary:    #333333;
-  --lvis-secondary-fg: #f6f3eb;
-  --lvis-border:       #474747;
+  --lvis-radius-sm:    0.25rem;
 }

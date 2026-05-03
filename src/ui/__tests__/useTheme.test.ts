@@ -70,6 +70,17 @@ describe("useTheme", () => {
     expect(document.documentElement.style.getPropertyValue("--evil-key")).toBe("");
   });
 
+  it("drops --lvis-* key not in LVIS_TOKEN_NAMES closed set", () => {
+    const bridge = makeBridge();
+    renderHook(() => useTheme(bridge));
+    bridge.fire({
+      theme: "dark", chatTheme: "default", codeTheme: "dark",
+      tokens: { "--lvis-bg": "#000", "--lvis-nonexistent-custom": "red" },
+    });
+    expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe("#000");
+    expect(document.documentElement.style.getPropertyValue("--lvis-nonexistent-custom")).toBe("");
+  });
+
   it("rejects invalid theme enum — does not set data-theme", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
