@@ -77,3 +77,29 @@
   --lvis-primary:    #60a5fa;
   --lvis-ring:       #60a5fa;
 }
+/* LG brand — light variant (warm-grey surface, lilac bubble, vivid purple SEND)
+   Mirrors lvis-app/src/styles.css [data-chat-theme="lg"] */
+:root[data-chat-theme="lg"] {
+  --lvis-primary:      #734dff;   /* vivid purple — SEND button */
+  --lvis-primary-fg:   #ffffff;
+  --lvis-ring:         #734dff;
+  --lvis-bg:           #f0ece4;   /* Grey 6 — warm-grey chat surface */
+  --lvis-surface:      #f6f3eb;   /* Grey 7 — slight elevation */
+  --lvis-fg:           #262626;   /* Grey 1 */
+  --lvis-fg-muted:     #716f6a;   /* Grey 3 */
+  --lvis-secondary:    #f6f3eb;
+  --lvis-secondary-fg: #262626;
+  --lvis-border:       #cbc8c2;   /* Grey 4 */
+  --lvis-danger:       #fd312e;   /* LG red */
+  --lvis-danger-fg:    #ffffff;
+}
+/* LG brand — dark variant (warm-neutral inversion, accent inherited) */
+:root[data-theme="dark"][data-chat-theme="lg"] {
+  --lvis-bg:           #262626;   /* Grey 1 */
+  --lvis-surface:      #2e2e2e;
+  --lvis-fg:           #f6f3eb;   /* Grey 7 */
+  --lvis-fg-muted:     #9e9c99;
+  --lvis-secondary:    #333333;
+  --lvis-secondary-fg: #f6f3eb;
+  --lvis-border:       #474747;
+}
