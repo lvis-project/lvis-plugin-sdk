@@ -211,6 +211,68 @@ function applyDefaults(override: Options): Options {
     ? override.external
     : [];
 
+  // CJS-interop banner — bundled CJS deps in the ESM output need three
+  // CJS globals re-injected so they don't crash at runtime:
+  //   `require`     — esbuild's dynamic-require shim falls back to a
+  //                   throwing Proxy ("Dynamic require of "fs" is not
+  //                   supported") when no real `require` is in scope.
+  //                   `createRequire(import.meta.url)` provides one.
+  //   `__filename`  — referenced by some deps (e.g. parts of
+  //                   `node-ical`, `msal-node`) at module load time.
+  //                   `fileURLToPath(import.meta.url)` reconstructs it.
+  //   `__dirname`   — same — derived from `__filename`.
+  //
+  // Without this banner the ESM output throws on first import.
+  //
+  // Skipped for browser builds: `import.meta.url` and `"module"`/`"url"`/
+  // `"path"` specifiers aren't browser-resolvable. Browser UI bundles
+  // shouldn't pull in Node CJS deps anyway.
+  //
+  // Helper imports are prefixed with `__lvis` so they cannot collide with
+  // user source's own `createRequire`/`fileURLToPath`/`dirname` imports.
+  // The CJS-style identifiers (`require`/`__filename`/`__dirname`) are
+  // intentionally unprefixed because bundled CJS deps reference them by
+  // those exact names.
+  //
+  // `var` (NOT `const`) is critical: bundled deps frequently emit their
+  // own ESM-to-CJS interop preamble like
+  //   var __filename = fileURLToPath(import.meta.url);
+  // — using `const` here would `SyntaxError: Identifier '__filename'
+  // has already been declared`. `var` permits redeclaration (even under
+  // strict mode), so multiple definitions coexist; both compute the
+  // same value so the final binding is correct regardless of order.
+  const cjsInteropJs =
+    'import { createRequire as __lvisCreateRequire } from "module";' +
+    'import { fileURLToPath as __lvisFileURLToPath } from "url";' +
+    'import { dirname as __lvisDirname } from "path";' +
+    "var require = __lvisCreateRequire(import.meta.url);" +
+    "var __filename = __lvisFileURLToPath(import.meta.url);" +
+    "var __dirname = __lvisDirname(__filename);";
+
+  // Banner merge — preserve any user-supplied banner fields (e.g. `css`
+  // for browser UI bundles, or extra `js` prologue) while ALWAYS keeping
+  // our CJS-interop js on Node builds. Naïve `{...baseDefaults, ...override}`
+  // would let `banner: { css: "..." }` silently drop our `js` and reintroduce
+  // the dynamic-require crash — that's the bug this PR fixes, so the merge
+  // here closes the loophole. User's own `js` is appended after ours so the
+  // CJS globals are in scope when user code runs.
+  //
+  // tsup's `Options['banner']` accepts either an object OR a per-format
+  // function `(ctx) => banner | undefined`. Both are handled.
+  const userBanner = override.banner;
+  const mergeWithCjsInterop = (
+    user: { js?: string; css?: string } | undefined,
+  ): { js?: string; css?: string } => ({
+    ...user,
+    js: cjsInteropJs + (user?.js ?? ""),
+  });
+  const mergedBanner = isBrowser
+    ? userBanner
+    : typeof userBanner === "function"
+      ? (ctx: Parameters<Extract<typeof userBanner, (...args: never) => unknown>>[0]) =>
+          mergeWithCjsInterop(userBanner(ctx) || undefined)
+      : mergeWithCjsInterop(userBanner);
+
   return {
     ...baseDefaults,
     ...override,
@@ -219,6 +281,11 @@ function applyDefaults(override: Options): Options {
     // self-containment. User overrides for noExternal are intentionally
     // ignored.
     noExternal: [BUNDLE_EVERYTHING_REGEX],
+    // banner is also contract-locked on Node builds: dropping the
+    // CJS-interop js would re-break dynamic require. We merge instead of
+    // overwrite so legitimate banner overrides (css, extra js prologue)
+    // still work.
+    banner: mergedBanner,
   };
 }
 
