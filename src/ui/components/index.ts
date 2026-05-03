@@ -8,6 +8,8 @@ export type { CardProps } from "./Card.js";
 export type { BadgeProps, BadgeVariant } from "./Badge.js";
 export type { TextProps, TextVariant } from "./Text.js";
 export type { SpinnerProps, SpinnerSize } from "./Spinner.js";
+export { Checkbox } from "./Checkbox.js";
+export type { CheckboxProps } from "./Checkbox.js";
 export { Input } from "./Input.js";
 export { Select } from "./Select.js";
 export { Toggle } from "./Toggle.js";

