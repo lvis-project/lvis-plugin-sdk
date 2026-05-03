@@ -41,6 +41,7 @@ const CSS = `
 .lvis-checkbox-disabled { opacity: 0.5; cursor: not-allowed; }
 .lvis-checkbox-label { font-size: 0.875rem; color: var(--lvis-fg); }
 `;
+injectTokenCss("lvis-checkbox", CSS);
 
 export interface CheckboxProps {
   checked?: boolean;
@@ -53,7 +54,6 @@ export interface CheckboxProps {
 }
 
 export function Checkbox({ checked, defaultChecked, indeterminate, onChange, label, disabled, id }: CheckboxProps) {
-  injectTokenCss("lvis-checkbox", CSS);
   const [internal, setInternal] = React.useState(defaultChecked ?? false);
   const isOn = checked !== undefined ? checked : internal;
 

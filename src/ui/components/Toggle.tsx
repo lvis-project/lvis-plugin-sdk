@@ -24,6 +24,7 @@ const CSS = `
 .lvis-toggle-disabled { opacity: 0.5; cursor: not-allowed; }
 .lvis-toggle-label { font-size: 0.875rem; color: var(--lvis-fg); }
 `;
+injectTokenCss("lvis-toggle", CSS);
 
 export interface ToggleProps {
   checked?: boolean;
@@ -35,7 +36,6 @@ export interface ToggleProps {
 }
 
 export function Toggle({ checked, defaultChecked, onChange, label, disabled, id }: ToggleProps) {
-  injectTokenCss("lvis-toggle", CSS);
   const [internal, setInternal] = React.useState(defaultChecked ?? false);
   const isOn = checked !== undefined ? checked : internal;
 

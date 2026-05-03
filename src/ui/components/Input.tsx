@@ -16,13 +16,13 @@ const CSS = `
 .lvis-input-error { border-color: var(--lvis-danger); }
 .lvis-input-error:focus { border-color: var(--lvis-danger); box-shadow: 0 0 0 2px color-mix(in srgb, var(--lvis-danger) 25%, transparent); }
 `;
+injectTokenCss("lvis-input", CSS);
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: boolean;
 }
 
 export function Input({ error, className = "", ...rest }: InputProps) {
-  injectTokenCss("lvis-input", CSS);
   const cls = ["lvis-input", error ? "lvis-input-error" : "", className].filter(Boolean).join(" ");
   return <input {...rest} className={cls} />;
 }
