@@ -7,7 +7,7 @@ type PluginBridge = {
 };
 
 const VALID_THEMES = new Set<string>(["light", "dark", "high-contrast"]);
-const VALID_CHAT_THEMES = new Set<string>(["default", "lg", "purple", "orange", "blue"]);
+const VALID_CHAT_THEMES = new Set<string>(["lg", "purple", "orange", "blue"]);
 const VALID_CODE_THEMES = new Set<string>(["light", "dark"]);
 
 /**
