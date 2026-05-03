@@ -44,6 +44,133 @@ describe("defineLvisPluginConfig", () => {
     const noExternal = noExternalRegexes(cfg);
     expect("node-ical").toMatch(noExternal[0]);
     expect("@azure/msal-node").toMatch(noExternal[0]);
+    // CJS-interop banner is auto-injected on Node builds so esbuild's
+    // dynamic-require shim resolves to a real `require`, and CJS-style
+    // `__filename`/`__dirname` are reconstructed from `import.meta.url`.
+    // Node-target plugins always get this; browser builds opt out.
+    expect(cfg.banner).toMatchObject({
+      js: expect.stringContaining("createRequire"),
+    });
+    expect(cfg.banner).toMatchObject({
+      js: expect.stringContaining("__filename"),
+    });
+    expect(cfg.banner).toMatchObject({
+      js: expect.stringContaining("__dirname"),
+    });
+    expect(cfg.banner).toMatchObject({
+      js: expect.stringContaining("import.meta.url"),
+    });
+    // Helpers must use the `__lvis*` prefix so they cannot collide with
+    // user source's own `createRequire` / `fileURLToPath` / `dirname`
+    // imports. A future refactor that drops the prefix would silently
+    // break user code — lock the names in.
+    expect(cfg.banner).toMatchObject({
+      js: expect.stringContaining("__lvisCreateRequire"),
+    });
+    expect(cfg.banner).toMatchObject({
+      js: expect.stringContaining("__lvisFileURLToPath"),
+    });
+    expect(cfg.banner).toMatchObject({
+      js: expect.stringContaining("__lvisDirname"),
+    });
+    // `var` (not `const`) — bundled deps frequently emit their own
+    // `var __filename = ...` preamble; `const` would SyntaxError on
+    // redeclaration. Lock the choice in so a future "modernize to const"
+    // refactor doesn't reintroduce the regression.
+    expect(cfg.banner).toMatchObject({
+      js: expect.stringContaining("var __filename"),
+    });
+    expect(cfg.banner).toMatchObject({
+      js: expect.stringContaining("var __dirname"),
+    });
+    expect(cfg.banner).toMatchObject({
+      js: expect.stringContaining("var require"),
+    });
+  });
+
+  it("preserves user banner.css and prepends CJS-interop to user banner.js (Node build)", () => {
+    // BLOCKER regression — naïve { ...baseDefaults, ...override } would
+    // let a user-supplied `banner: { css: "..." }` wipe our js, silently
+    // re-breaking dynamic require. Verify the merge keeps our js AND
+    // user's css.
+    const userJs = "/* userPrologue */ globalThis.__lvisUserMarker = 1;";
+    const cfg = asSingle(
+      defineLvisPluginConfig({
+        banner: {
+          css: "/* user-css */",
+          js: userJs,
+        },
+      }),
+    );
+    expect(cfg.banner).toMatchObject({
+      css: "/* user-css */",
+    });
+    const banner = cfg.banner as { js?: string };
+    expect(banner.js).toContain("createRequire");
+    expect(banner.js).toContain(userJs);
+    // CJS-interop comes BEFORE user js so const require is in scope.
+    expect(banner.js!.indexOf("createRequire")).toBeLessThan(
+      banner.js!.indexOf(userJs),
+    );
+  });
+
+  it("css-only user banner does not silently drop CJS-interop js (BLOCKER regression)", () => {
+    const cfg = asSingle(
+      defineLvisPluginConfig({
+        banner: { css: "/* css only */" },
+      }),
+    );
+    expect(cfg.banner).toMatchObject({
+      css: "/* css only */",
+      js: expect.stringContaining("createRequire"),
+    });
+  });
+
+  it("explicit `banner: undefined` still gets CJS-interop on Node build", () => {
+    const cfg = asSingle(defineLvisPluginConfig({ banner: undefined }));
+    expect(cfg.banner).toMatchObject({
+      js: expect.stringContaining("createRequire"),
+    });
+  });
+
+  it("function-form user banner is wrapped — wrapper invokes user fn and merges CJS-interop", () => {
+    const userJs = "/* user-fn-js */";
+    const userBannerFn = (ctx: { format: string }) => ({
+      js: `${userJs}/*${ctx.format}*/`,
+    });
+    const cfg = asSingle(
+      defineLvisPluginConfig({
+        banner: userBannerFn,
+      }),
+    );
+    // Result must itself be a function so tsup invokes it per format.
+    expect(typeof cfg.banner).toBe("function");
+    const wrapped = cfg.banner as (ctx: { format: string }) => {
+      js?: string;
+      css?: string;
+    };
+    const result = wrapped({ format: "esm" });
+    // CJS-interop is prepended; user's per-format js follows.
+    expect(result.js).toContain("createRequire");
+    expect(result.js).toContain(userJs);
+    expect(result.js).toContain("/*esm*/");
+    expect(result.js!.indexOf("createRequire")).toBeLessThan(
+      result.js!.indexOf(userJs),
+    );
+  });
+
+  it("function-form user banner returning null/undefined still gets CJS-interop", () => {
+    const cfg = asSingle(
+      defineLvisPluginConfig({
+        banner: () => undefined,
+      }),
+    );
+    const wrapped = cfg.banner as (ctx: { format: string }) => {
+      js?: string;
+      css?: string;
+    };
+    const result = wrapped({ format: "esm" });
+    expect(result.js).toContain("createRequire");
   });
 
   it("merges user external with host externals (cannot opt out of electron)", () => {
@@ -87,6 +214,16 @@ describe("defineLvisPluginConfig", () => {
     expect(cfg.external).toContain("electron");
     expect(cfg.external).toContain("react");
     expect(cfg.external).toContain("react-dom");
+  });
+
+  it("skips the CJS-interop banner on browser builds (no `module` specifier in browsers)", () => {
+    const cfg = asSingle(
+      defineLvisPluginConfig({
+        platform: "browser",
+        entry: { "ui/panel": "src/ui/panel.ts" },
+      }),
+    );
+    expect(cfg.banner).toBeUndefined();
   });
 
   it("does NOT auto-detect browser via target=es* (common for Node builds too)", () => {
@@ -162,6 +299,13 @@ describe("defineLvisPluginConfig", () => {
     expect(cfgs[1].external).toContain("react-dom");
     expect(cfgs[1].clean).toBe(false);
     expect(cfgs[1].target).toBe("es2020");
+    // Per-target banner — Node target gets CJS-interop, browser target
+    // gets nothing (it would otherwise reference unresolvable `module`/
+    // `url`/`path` specifiers in the browser).
+    expect(cfgs[0].banner).toMatchObject({
+      js: expect.stringContaining("createRequire"),
+    });
+    expect(cfgs[1].banner).toBeUndefined();
   });
 
   it("forces noExternal — user override is ignored (contract lock)", () => {
