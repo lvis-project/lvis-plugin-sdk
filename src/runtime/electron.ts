@@ -45,18 +45,48 @@ export interface ShellApi {
 const nodeRequire = createRequire(import.meta.url);
 const electronModuleName = ["electron"].join("");
 
+// Module-level seam state. Pinned to vitest `pool: "forks"` per-file
+// isolation in vitest.config.ts so concurrent test files can't stomp
+// each other's overrides — see that comment for the rationale.
 let _testSafeStorageOverride: SafeStorage | null | undefined = undefined;
 let _testShellOverride: ShellApi | null | undefined = undefined;
+
+// Runtime guard so a misbehaving (or compromised) plugin can't call
+// the test seam in a packaged build to hijack token storage. The
+// `__set*ForTests` exports are reachable via the public subpath
+// (`@lvis/plugin-sdk/runtime/electron`) — `@internal` JSDoc + `__`
+// prefix are convention-only, this guard is the actual enforcement.
+//
+// Allow-listed envs: vitest sets `VITEST=true`; tests that exercise
+// this module from outside vitest can opt in via `LVIS_TEST=1`. The
+// host's production builds set `NODE_ENV=production`; in that case
+// any seam call throws regardless of process state.
+function assertTestEnvironment(name: string): void {
+  if (
+    typeof process !== "undefined" &&
+    process.env &&
+    process.env.NODE_ENV === "production" &&
+    !process.env.VITEST &&
+    !process.env.LVIS_TEST
+  ) {
+    throw new Error(
+      `${name}: test seam called in production. ` +
+      `Use vitest, set LVIS_TEST=1, or remove the call.`,
+    );
+  }
+}
 
 /** @internal Test seam — production code MUST NOT call this. */
 export function __setSafeStorageForTests(
   impl: SafeStorage | null | undefined,
 ): void {
+  assertTestEnvironment("__setSafeStorageForTests");
   _testSafeStorageOverride = impl;
 }
 
 /** @internal Test seam — production code MUST NOT call this. */
 export function __setShellForTests(impl: ShellApi | null | undefined): void {
+  assertTestEnvironment("__setShellForTests");
   _testShellOverride = impl;
 }
 
