@@ -17,11 +17,11 @@ const CSS = `
 .lvis-select:focus { border-color: var(--lvis-ring); box-shadow: 0 0 0 2px color-mix(in srgb, var(--lvis-ring) 25%, transparent); }
 .lvis-select:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
+injectTokenCss("lvis-select", CSS);
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {}
 
 export function Select({ className = "", children, ...rest }: SelectProps) {
-  injectTokenCss("lvis-select", CSS);
   const cls = ["lvis-select", className].filter(Boolean).join(" ");
   return <select {...rest} className={cls}>{children}</select>;
 }

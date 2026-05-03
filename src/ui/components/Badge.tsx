@@ -12,6 +12,7 @@ const CSS = `
 .lvis-badge-warning { background: var(--lvis-warning); color: var(--lvis-warning-fg); }
 .lvis-badge-danger  { background: var(--lvis-danger);  color: var(--lvis-danger-fg); }
 `;
+injectTokenCss("lvis-badge", CSS);
 
 export type BadgeVariant = "default" | "success" | "warning" | "danger";
 
@@ -20,7 +21,6 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 export function Badge({ variant = "default", className = "", children, ...rest }: BadgeProps) {
-  injectTokenCss("lvis-badge", CSS);
   const cls = ["lvis-badge", `lvis-badge-${variant}`, className].filter(Boolean).join(" ");
   return <span {...rest} className={cls}>{children}</span>;
 }
