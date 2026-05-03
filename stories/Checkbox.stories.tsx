@@ -1,31 +1,49 @@
-import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Checkbox } from "../src/ui/components/Checkbox.js";
-import { Text } from "../src/ui/components/Text.js";
 
 const meta: Meta<typeof Checkbox> = {
   title: "UI/Checkbox",
   component: Checkbox,
+  argTypes: {
+    label: { control: "text" },
+    disabled: { control: "boolean" },
+    indeterminate: { control: "boolean" },
+  },
 };
 export default meta;
+type Story = StoryObj<typeof Checkbox>;
 
-export const All: StoryObj = {
+export const Unchecked: Story = {
+  args: { label: "알림 수신" },
+};
+
+export const Checked: Story = {
+  args: { label: "알림 수신", defaultChecked: true },
+};
+
+export const Indeterminate: Story = {
+  args: { label: "일부 선택됨", indeterminate: true },
+};
+
+export const Disabled: Story = {
+  args: { label: "비활성 항목", disabled: true },
+};
+
+export const DisabledChecked: Story = {
+  args: { label: "비활성 선택됨", disabled: true, defaultChecked: true },
+};
+
+export const NoLabel: Story = {
+  args: { defaultChecked: true },
+};
+
+export const Group: Story = {
   render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-      <Checkbox label="체크 안됨" defaultChecked={false} />
-      <Checkbox label="체크됨" defaultChecked={true} />
-      <Checkbox label="Indeterminate" indeterminate />
-      <Checkbox label="비활성화 (꺼짐)" disabled defaultChecked={false} />
-      <Checkbox label="비활성화 (켜짐)" disabled defaultChecked={true} />
-      <div>
-        <Text variant="label" style={{ marginBottom: "0.5rem" }}>레이블 없음</Text>
-        <Checkbox defaultChecked={true} />
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+      <Checkbox label="이메일 알림" defaultChecked />
+      <Checkbox label="푸시 알림" />
+      <Checkbox label="SMS 알림" disabled />
+      <Checkbox label="일부 선택됨" indeterminate />
     </div>
   ),
 };
-
-export const Unchecked: StoryObj<typeof Checkbox> = { args: { label: "체크 안됨", defaultChecked: false } };
-export const Checked: StoryObj<typeof Checkbox> = { args: { label: "체크됨", defaultChecked: true } };
-export const Indeterminate: StoryObj<typeof Checkbox> = { args: { label: "Indeterminate", indeterminate: true } };
-export const Disabled: StoryObj<typeof Checkbox> = { args: { label: "비활성화", disabled: true, defaultChecked: false } };
