@@ -12,7 +12,10 @@
 
 /* ─── Dark (default fallback) ────────────────────────────
  * Values mirror lvis-app src/ui/renderer/theme/plugin-token-map.ts _DARK_BASE.
- * Update both files when the design palette changes.
+ * Three files must stay in sync when the design palette changes:
+ *   1. lvis-app/src/ui/renderer/theme/plugin-token-map.ts  (_DARK_BASE)
+ *   2. lvis-plugin-sdk/src/ui/tokens/lvis-tokens.css       (:root below)
+ *   3. lvis-plugin-sdk/.storybook/story-token-map.ts       (_DARK_BASE)
  * ────────────────────────────────────────────────────── */
 :root {
   --lvis-bg:           hsl(222.2, 84%, 4.9%);

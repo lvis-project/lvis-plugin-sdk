@@ -118,5 +118,7 @@ export function resolveStoryTokens(
       return theme === "dark"
         ? { ...base, "--lvis-primary": _H(217.2, 91.2, 59.8), "--lvis-ring": _H(224.3, 76.3, 48) }
         : { ...base, "--lvis-primary": _H(224.3, 76.3, 48), "--lvis-ring": _H(217.2, 91.2, 59.8) };
+    default:
+      return { ...base };
   }
 }

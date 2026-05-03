@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { LvisThemePayload } from "../tokens/index.js";
 import { applyThemeTokens } from "../tokens/inject.js";
+import { LVIS_TOKEN_NAMES } from "../tokens/index.js";
 
 type PluginBridge = {
   onEvent: (type: string, handler: (data: unknown) => void) => () => void;
@@ -9,11 +10,21 @@ type PluginBridge = {
 const VALID_THEMES = new Set<string>(["light", "dark", "high-contrast"]);
 const VALID_CHAT_THEMES = new Set<string>(["lg", "purple", "orange", "blue"]);
 const VALID_CODE_THEMES = new Set<string>(["light", "dark"]);
+// Closed allowlist mirrors LVIS_TOKEN_NAMES — same set as inject.ts:_ALLOWED_KEYS.
+const _ALLOWED_TOKEN_KEYS = new Set<string>(LVIS_TOKEN_NAMES);
 
 /**
- * Subscribe to host theme changes. Sets data-theme / data-chat-theme /
- * data-code-theme on <html> so lvis-tokens.css selectors activate, then
- * applies any explicit --lvis-* token overrides when provided.
+ * Subscribe to host theme changes via the plugin bridge.
+ *
+ * When `host.theme.changed` fires with a `tokens` field, applies computed
+ * `--lvis-*` values directly via style.setProperty (inline style wins over
+ * any stylesheet). The `data-theme`/`data-chat-theme`/`data-code-theme`
+ * attributes are set for devtools inspection only — there are no CSS selector
+ * blocks in lvis-tokens.css that react to them.
+ *
+ * When `tokens` is absent the plugin retains its current token state;
+ * initial render uses the :root fallback values in lvis-tokens.css (dark).
+ *
  * Call once at the plugin's root component.
  */
 export function useTheme(bridge: PluginBridge): void {
@@ -36,7 +47,7 @@ export function useTheme(bridge: PluginBridge): void {
       if (payload.tokens) {
         const safe: Record<string, string> = {};
         for (const [k, v] of Object.entries(payload.tokens)) {
-          if (k.startsWith("--lvis-") && typeof v === "string") safe[k] = v;
+          if (_ALLOWED_TOKEN_KEYS.has(k) && typeof v === "string") safe[k] = v;
         }
         if (Object.keys(safe).length > 0) applyThemeTokens(safe);
       }

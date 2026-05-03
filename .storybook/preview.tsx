@@ -3,16 +3,25 @@ import type { Preview } from "@storybook/react";
 import "../src/ui/tokens/lvis-tokens.css";
 import { applyThemeTokens } from "../src/ui/tokens/inject.js";
 import { resolveStoryTokens } from "./story-token-map.js";
+import type { LvisThemePayload } from "../src/ui/tokens/index.js";
+
+const VALID_THEMES = new Set(["light", "dark", "high-contrast"] as const);
+const VALID_CHAT_THEMES = new Set(["default", "lg", "purple", "orange", "blue"] as const);
 
 const preview: Preview = {
   decorators: [
     (Story, ctx) => {
-      const theme = (ctx.globals.theme as string) ?? "dark";
-      const chatTheme = (ctx.globals.chatTheme as string) ?? "purple";
+      const rawTheme = (ctx.globals.theme as string) ?? "dark";
+      const rawChatTheme = (ctx.globals.chatTheme as string) ?? "purple";
+      // Validate globals before passing — toolbar values are strings at runtime.
+      const theme: LvisThemePayload["theme"] = VALID_THEMES.has(rawTheme as LvisThemePayload["theme"])
+        ? (rawTheme as LvisThemePayload["theme"]) : "dark";
+      const chatTheme: LvisThemePayload["chatTheme"] = VALID_CHAT_THEMES.has(rawChatTheme as LvisThemePayload["chatTheme"])
+        ? (rawChatTheme as LvisThemePayload["chatTheme"]) : "default";
       useEffect(() => {
         // Apply computed token values directly — no longer relies on
         // data-theme/data-chat-theme CSS selectors in lvis-tokens.css.
-        applyThemeTokens(resolveStoryTokens(theme as "light" | "dark" | "high-contrast", chatTheme as "default" | "lg" | "purple" | "orange" | "blue"));
+        applyThemeTokens(resolveStoryTokens(theme, chatTheme));
         // Set data-* attributes for debugging / devtools inspection.
         document.documentElement.setAttribute("data-theme", theme);
         if (chatTheme === "default") {
