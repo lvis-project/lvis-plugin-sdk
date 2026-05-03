@@ -9,13 +9,13 @@ const CSS = `
 .lvis-card-sm { padding: 0.625rem; }
 .lvis-card-lg { padding: 1.5rem; }
 `;
+injectTokenCss("lvis-card", CSS);
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   padding?: "sm" | "md" | "lg";
 }
 
 export function Card({ padding = "md", className = "", children, ...rest }: CardProps) {
-  injectTokenCss("lvis-card", CSS);
   const cls = ["lvis-card", padding !== "md" ? `lvis-card-${padding}` : "", className]
     .filter(Boolean).join(" ");
   return <div {...rest} className={cls}>{children}</div>;

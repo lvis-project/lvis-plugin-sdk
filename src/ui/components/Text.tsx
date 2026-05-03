@@ -8,6 +8,7 @@ const CSS = `
 .lvis-text-label  { font-size: 0.75rem;  color: var(--lvis-fg-muted); font-weight: 500; line-height: 1.4; text-transform: uppercase; letter-spacing: 0.05em; }
 .lvis-text-heading{ font-size: 1rem;     color: var(--lvis-fg); font-weight: 600; line-height: 1.4; }
 `;
+injectTokenCss("lvis-text", CSS);
 
 export type TextVariant = "body" | "muted" | "label" | "heading";
 
@@ -17,7 +18,6 @@ export interface TextProps extends React.HTMLAttributes<HTMLParagraphElement> {
 }
 
 export function Text({ variant = "body", as: Tag = "p", className = "", children, ...rest }: TextProps) {
-  injectTokenCss("lvis-text", CSS);
   const cls = ["lvis-text", `lvis-text-${variant}`, className].filter(Boolean).join(" ");
   return <Tag {...rest} className={cls}>{children}</Tag>;
 }
