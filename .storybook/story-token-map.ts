@@ -5,6 +5,7 @@
 //
 // Keep in sync with: lvis-app/src/ui/renderer/theme/plugin-token-map.ts
 // and: lvis-app/src/styles.css
+import type { LvisThemePayload } from "../src/ui/tokens/index.js";
 
 const _H = (h: number, s: number, l: number) => `hsl(${h}, ${s}%, ${l}%)`;
 
@@ -95,12 +96,14 @@ const _LG_DARK_SURFACE: Record<string, string> = {
 };
 
 export function resolveStoryTokens(
-  theme: string,
-  chatTheme: string,
+  theme: LvisThemePayload["theme"],
+  chatTheme: LvisThemePayload["chatTheme"],
 ): Record<string, string> {
   const base = theme === "light" ? _LIGHT_BASE : theme === "high-contrast" ? _HC_BASE : _DARK_BASE;
   if (theme === "high-contrast") return { ...base };
   switch (chatTheme) {
+    case "default":
+      return { ...base };
     case "lg": {
       const surface = theme === "dark" ? _LG_DARK_SURFACE : _LG_LIGHT_SURFACE;
       return { ...base, ...surface, ..._LG_ACCENT };
@@ -115,7 +118,5 @@ export function resolveStoryTokens(
       return theme === "dark"
         ? { ...base, "--lvis-primary": _H(217.2, 91.2, 59.8), "--lvis-ring": _H(224.3, 76.3, 48) }
         : { ...base, "--lvis-primary": _H(224.3, 76.3, 48), "--lvis-ring": _H(217.2, 91.2, 59.8) };
-    default:
-      return { ...base };
   }
 }

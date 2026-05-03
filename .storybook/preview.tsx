@@ -12,10 +12,14 @@ const preview: Preview = {
       useEffect(() => {
         // Apply computed token values directly — no longer relies on
         // data-theme/data-chat-theme CSS selectors in lvis-tokens.css.
-        applyThemeTokens(resolveStoryTokens(theme, chatTheme));
-        // Still set data-theme for debugging / future CSS use.
+        applyThemeTokens(resolveStoryTokens(theme as "light" | "dark" | "high-contrast", chatTheme as "default" | "lg" | "purple" | "orange" | "blue"));
+        // Set data-* attributes for debugging / devtools inspection.
         document.documentElement.setAttribute("data-theme", theme);
-        document.documentElement.removeAttribute("data-chat-theme");
+        if (chatTheme === "default") {
+          document.documentElement.removeAttribute("data-chat-theme");
+        } else {
+          document.documentElement.setAttribute("data-chat-theme", chatTheme);
+        }
       }, [theme, chatTheme]);
       return (
         <div style={{ padding: "1.5rem", background: "var(--lvis-bg)", minHeight: "100vh" }}>
