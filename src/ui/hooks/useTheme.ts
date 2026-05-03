@@ -6,6 +6,10 @@ type PluginBridge = {
   onEvent: (type: string, handler: (data: unknown) => void) => () => void;
 };
 
+const VALID_THEMES = new Set<string>(["light", "dark", "high-contrast"]);
+const VALID_CHAT_THEMES = new Set<string>(["default", "lg", "purple", "orange", "blue"]);
+const VALID_CODE_THEMES = new Set<string>(["light", "dark"]);
+
 /**
  * Subscribe to host theme changes. Sets data-theme / data-chat-theme /
  * data-code-theme on <html> so lvis-tokens.css selectors activate, then
@@ -18,13 +22,14 @@ export function useTheme(bridge: PluginBridge): void {
       const payload = data as Partial<LvisThemePayload>;
       if (!payload) return;
       const root = document.documentElement;
-      if (payload.theme !== undefined) root.setAttribute("data-theme", payload.theme);
-      if (payload.codeTheme !== undefined) root.setAttribute("data-code-theme", payload.codeTheme);
-      // "default" removes the accent attribute so the base :root tokens win.
+      if (payload.theme !== undefined && VALID_THEMES.has(payload.theme))
+        root.setAttribute("data-theme", payload.theme);
+      if (payload.codeTheme !== undefined && VALID_CODE_THEMES.has(payload.codeTheme))
+        root.setAttribute("data-code-theme", payload.codeTheme);
       if (payload.chatTheme !== undefined) {
         if (payload.chatTheme === "default") {
           root.removeAttribute("data-chat-theme");
-        } else {
+        } else if (VALID_CHAT_THEMES.has(payload.chatTheme)) {
           root.setAttribute("data-chat-theme", payload.chatTheme);
         }
       }
