@@ -31,6 +31,7 @@ const CSS = `
 .lvis-btn-sm { padding: 0.25rem 0.625rem; font-size: 0.75rem; }
 .lvis-btn-lg { padding: 0.5rem 1.125rem; font-size: 1rem; }
 `;
+injectTokenCss("lvis-btn", CSS);
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -44,7 +45,6 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export function Button({
   variant = "primary", size = "md", loading, children, className = "", disabled, ...rest
 }: ButtonProps) {
-  injectTokenCss("lvis-btn", CSS);
   const cls = [
     "lvis-btn",
     `lvis-btn-${variant}`,
