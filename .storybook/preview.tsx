@@ -1,6 +1,8 @@
 import React, { useEffect } from "react";
 import type { Preview } from "@storybook/react";
 import "../src/ui/tokens/lvis-tokens.css";
+import { applyThemeTokens } from "../src/ui/tokens/inject.js";
+import { resolveStoryTokens } from "./story-token-map.js";
 
 const preview: Preview = {
   decorators: [
@@ -8,12 +10,12 @@ const preview: Preview = {
       const theme = (ctx.globals.theme as string) ?? "dark";
       const chatTheme = (ctx.globals.chatTheme as string) ?? "purple";
       useEffect(() => {
+        // Apply computed token values directly — no longer relies on
+        // data-theme/data-chat-theme CSS selectors in lvis-tokens.css.
+        applyThemeTokens(resolveStoryTokens(theme, chatTheme));
+        // Still set data-theme for debugging / future CSS use.
         document.documentElement.setAttribute("data-theme", theme);
-        if (chatTheme === "default") {
-          document.documentElement.removeAttribute("data-chat-theme");
-        } else {
-          document.documentElement.setAttribute("data-chat-theme", chatTheme);
-        }
+        document.documentElement.removeAttribute("data-chat-theme");
       }, [theme, chatTheme]);
       return (
         <div style={{ padding: "1.5rem", background: "var(--lvis-bg)", minHeight: "100vh" }}>
