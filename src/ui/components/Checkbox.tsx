@@ -72,7 +72,7 @@ export function Checkbox({ checked, defaultChecked, indeterminate, onChange, lab
   ].filter(Boolean).join(" ");
 
   return (
-    <div id={id} role="checkbox" aria-checked={indeterminate ? "mixed" : isOn} aria-disabled={disabled}
+    <div id={id} role="checkbox" aria-checked={indeterminate ? "mixed" : isOn} aria-disabled={disabled ?? false}
       className={cls} onClick={handleClick} tabIndex={disabled ? -1 : 0}
       onKeyDown={(e) => { if (e.key === " ") { e.preventDefault(); handleClick(); } }}>
       <span className="lvis-checkbox-box" />
