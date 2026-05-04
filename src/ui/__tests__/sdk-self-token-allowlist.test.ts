@@ -55,6 +55,29 @@ describe.skipIf(!_SDK_SRC_PRESENT)("SDK component CSS — token allowlist self-c
     expect(offenders).toEqual([]);
   });
 
+  it("no component hides token references inside JSX/JS string literals (validator-bypass guard)", () => {
+    // Regression for Copilot review on PR #94: a `var(--lvis-*)` placed
+    // inside a JSX attribute string (e.g. `stroke="var(--lvis-primary)"`)
+    // gets erased by `stripCommentsAndStrings` before the allowlist regex
+    // runs, silently bypassing this self-test. Compare a raw scan against
+    // the validator's stripped scan — if the raw count is higher than the
+    // stripped count for any file, the difference is references hiding
+    // inside quoted strings, which means the validator can't see them.
+    // Fix is to move them into template-literal CSS blocks (backticks are
+    // not stripped).
+    const _RAW_VAR_REF = /var\(\s*(--lvis-[a-z0-9-]+)/gi;
+    const offenders: Array<{ file: string; hidden: string[] }> = [];
+    for (const file of listStyleSourceFiles(_COMPONENTS_DIR)) {
+      const css = readFileSync(file, "utf8");
+      const raw = new Set<string>();
+      for (const m of css.matchAll(_RAW_VAR_REF)) raw.add(m[1]);
+      const visible = findLvisTokenReferences(css);
+      const hidden = [...raw].filter((t) => !visible.has(t)).sort();
+      if (hidden.length > 0) offenders.push({ file, hidden });
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it("lvis-tokens.css :root defines only allowlisted tokens (no extras)", () => {
     const css = readFileSync(_TOKENS_CSS, "utf8");
     const r = validateTokenDefinitions(css, { allowDefinitions: true });
