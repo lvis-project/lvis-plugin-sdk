@@ -4,8 +4,10 @@ on:
   pull_request:
     paths:
       - 'src/**'
+      - '__tests__/**'
       - 'package.json'
       - 'bun.lock'
+      - 'tsup.config.ts'
       - 'vitest.config.ts'
       - 'tsconfig*.json'
       - '.github/workflows/test.yml'
@@ -13,11 +15,19 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - '__tests__/**'
       - 'package.json'
       - 'bun.lock'
+      - 'tsup.config.ts'
       - 'vitest.config.ts'
       - 'tsconfig*.json'
   workflow_dispatch: {}
+
+# Drop the workflow's default GITHUB_TOKEN scope to read-only — neither
+# `bun run test` nor the build step needs to write back. Matches the
+# precedent set by drift-check.yml.
+permissions:
+  contents: read
 
 concurrency:
   group: test-${{ github.event_name }}-${{ github.ref }}
@@ -28,11 +38,24 @@ jobs:
     if: github.repository == 'lvis-project/lvis-plugin-sdk'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      # SHA-pinned to match drift-check.yml — supply-chain hardening for
+      # third-party actions. Update both files together when bumping versions.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
         with:
           bun-version: '1.1.38'
       - run: bun install --frozen-lockfile
       - run: bun run test
       - name: Typecheck
         run: bunx tsc --noEmit
+      # Validate that committed dist/ matches what `bun run build` produces.
+      # The SDK ships dist/ via `files: ["src", "schemas", "dist"]` so a
+      # stale committed dist regresses every consumer pinning the SDK by
+      # tag. See feedback-build-success-not-bundle-works.
+      - name: Build and verify dist is in sync with src
+        run: |
+          bun run build
+          if ! git diff --exit-code -- dist/; then
+            echo "::error::dist/ is out of sync with src/. Run 'bun run build' locally and commit the regenerated dist."
+            exit 1
+          fi
