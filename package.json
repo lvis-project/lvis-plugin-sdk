@@ -18,6 +18,10 @@
       "types": "./src/ui/tokens/index.ts",
       "import": "./dist/ui/tokens/index.js"
     },
+    "./ui/tokens/validate": {
+      "types": "./src/ui/tokens/validate.ts",
+      "import": "./dist/ui/tokens/validate.js"
+    },
     "./ui/lvis-tokens.css": "./src/ui/tokens/lvis-tokens.css",
     "./build": {
       "types": "./src/build/tsup.ts",
