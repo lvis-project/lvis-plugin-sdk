@@ -7,6 +7,59 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.8.0] - 2026-05-05
+
+### Added
+- **`@lvis/plugin-sdk/ui/tokens/validate`** — new export path. Build-time
+  validator for `--lvis-*` CSS-token usage. Pure string-scan (no postcss
+  dep). Plugins import from their CI to fail PRs that introduce
+  references outside the 17-name `LVIS_TOKEN_NAMES` allowlist or that
+  redefine canonical tokens. Functions:
+  `findLvisTokenReferences`, `findLvisTokenDefinitions`,
+  `validateTokenUsage`, `validateTokenDefinitions`.
+- **SDK self-test** (`src/ui/__tests__/sdk-self-token-allowlist.test.ts`)
+  — locks every component CSS string against the allowlist, with a
+  `validator-bypass guard` that compares raw vs stripped scan to catch
+  references hidden inside JSX/JS string literals.
+- **`.github/workflows/test.yml`** — first general test workflow on the
+  SDK. Runs `bun run test`, `bunx tsc --noEmit`, and a dist-staleness
+  guard (`bun run build` + `git status --porcelain -- dist/`) on every
+  PR + push to main. Actions SHA-pinned to match `drift-check.yml`.
+- `packageManager: bun@1.1.38` pin in `package.json` so local devs and
+  CI emit byte-identical dist artifacts.
+
+### Improved
+- **Spinner.tsx** — moved `var(--lvis-primary)` from a JSX attribute
+  string into a CSS template-literal block injected via
+  `injectTokenCss`. JSX attribute strings are erased by the validator's
+  `stripCommentsAndStrings` preprocessor, so the prior reference was
+  invisible to validation. Behavior identical (same stroke color via
+  CSS class).
+- Validator regex hardened — case-sensitive allowlist check (CSS
+  custom properties are case-sensitive per spec, so `var(--LVIS-bg)`
+  is now flagged), declaration-context anchor on `_LVIS_DEF` to skip
+  attribute-selector false matches, comment + string-literal stripping
+  before scanning.
+
+### Companion repos (recommended sweep after 3.8.0 publish)
+- `lvis-plugin-template` — add `check-ui-tokens` script + CI step
+  consuming `@lvis/plugin-sdk/ui/tokens/validate`.
+- 7 plugin repos (`meeting`, `local-indexer`, `ms-graph`, `lge-api`,
+  `work-proactive`, `agent-hub`, plus future ones) — same
+  `check-ui-tokens` step. Current scan: zero `var(--lvis-*)` references
+  across all plugins, so the validator's introduction is a clean
+  forward-looking guard rather than a regression fix.
+- `lvis-app` — `docs/references/plugin-tool-schema-design.md` already
+  carries the `host.*` host-only-emit row added in PR #94; needs a
+  matching "UI styling tokens" section pointing plugin authors at the
+  validator (auditor follow-up).
+- `lvis-app` — extend `drift-check.yml` to also watch
+  `src/ipc/domains/plugins.ts:PLUGIN_TOKEN_NAMES` ↔ SDK
+  `LVIS_TOKEN_NAMES` so a one-sided change can't silently diverge
+  (architect follow-up).
+
+---
+
 ## [3.7.0] - 2026-05-04
 
 ### Improved (synced from host SoT)
