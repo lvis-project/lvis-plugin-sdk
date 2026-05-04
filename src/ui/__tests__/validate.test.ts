@@ -40,6 +40,35 @@ describe("findLvisTokenReferences", () => {
     expect([...findLvisTokenReferences("var(--LVIS-BG)")]).toEqual(["--LVIS-BG"]);
     expect([...findLvisTokenReferences("var(--Lvis-bg)")]).toEqual(["--Lvis-bg"]);
   });
+
+  it("flags --lvis-* outside string when comment chain breaks the apparent string", () => {
+    // Per CSS parser: `/* "abc */` is a complete comment, so `var(--lvis-typo)`
+    // between the two comments is real code — the validator must surface it.
+    const r = findLvisTokenReferences(`/* "abc */ var(--lvis-typo) /* abc" */`);
+    expect([...r]).toEqual(["--lvis-typo"]);
+  });
+
+  it("does NOT flag --lvis-* inside a string that contains comment-like sequences", () => {
+    // The string `"/* var(--lvis-typo) */"` is a CSS string literal whose
+    // content includes `/*`. CSS strips comments before strings would even
+    // matter; either order yields the same outcome here — strip the comment
+    // first (eats up to the inner `*/`) → no quote pair → no string strip
+    // needed → bare reference removed in the comment-eat. Lock the behavior.
+    const css = `.x::before { content: "/* var(--lvis-typo) */"; color: var(--lvis-fg); }`;
+    expect([...findLvisTokenReferences(css)]).toEqual(["--lvis-fg"]);
+  });
+});
+
+describe("findLvisTokenDefinitions edge cases", () => {
+  it("captures every same-line declaration when delimiters share a single `;`", () => {
+    // Regression guard: anchor `(?:^|[{};])` consumes the preceding char,
+    // but the next `;` (between same-line declarations) still anchors the
+    // following match. All three must be captured.
+    const css = `:root{--lvis-a:1;--lvis-b:2;--lvis-c:3}`;
+    expect([...findLvisTokenDefinitions(css)].sort()).toEqual([
+      "--lvis-a", "--lvis-b", "--lvis-c",
+    ]);
+  });
 });
 
 describe("findLvisTokenDefinitions", () => {

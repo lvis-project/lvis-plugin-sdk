@@ -84,7 +84,11 @@ describe.skipIf(!_SDK_SRC_PRESENT)("SDK component CSS — token allowlist self-c
     const declared = findLvisTokenDefinitions(readFileSync(_TOKENS_CSS, "utf8"));
     const stale = [...declared].filter((t) => !used.has(t)).sort();
     if (stale.length > 0) {
-      console.warn(`[sdk-self-token-allowlist] declared but unused: ${stale.join(", ")}`);
+      // GitHub Actions parses `::warning::` and renders it on the PR review
+      // panel — a plain console.warn would stay buried in collapsed step
+      // output and a stale entry could linger forever.
+      const msg = `declared in lvis-tokens.css but unused by any component: ${stale.join(", ")}`;
+      console.warn(`::warning title=sdk-self-token-allowlist::${msg}`);
     }
   });
 });

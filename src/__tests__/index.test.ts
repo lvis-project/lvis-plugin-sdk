@@ -744,10 +744,16 @@ describe("PluginHostApi — interface contract (structural)", () => {
       callLlm: async (_prompt, _opts) => "",
       logEvent: (_level, _msg, _data) => {},
       onShutdown: (_handler) => {},
-      // Overloaded signature — stub returns the cookie-flow shape and uses a
-      // cast to satisfy both branches; this is a structural-shape test, not
-      // a behavior test, so the runtime value is intentionally inert.
-      openAuthWindow: (async (_opts: unknown) => []) as unknown as PluginHostApi["openAuthWindow"],
+      // Discriminate on `returnFinalUrl` so each overload branch returns its
+      // declared shape — TS catches future signature drift instead of letting
+      // a `as unknown as` cast hide it.
+      openAuthWindow: (async (
+        opts: import("../index.js").OpenAuthWindowWithFinalUrlOptions
+            | import("../index.js").OpenAuthWindowCookieOptions,
+      ) =>
+        opts.returnFinalUrl === true
+          ? { cookies: [], finalUrl: "" }
+          : []) as PluginHostApi["openAuthWindow"],
       triggerConversation: async (_spec) => ({ accepted: true, source: _spec.source }),
       agentApproval: {
         request: async (_input: { toolName: string; args: unknown; reason: string; scope: string }) =>
