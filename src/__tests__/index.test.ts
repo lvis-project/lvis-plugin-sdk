@@ -744,23 +744,21 @@ describe("PluginHostApi — interface contract (structural)", () => {
       callLlm: async (_prompt, _opts) => "",
       logEvent: (_level, _msg, _data) => {},
       onShutdown: (_handler) => {},
-      openAuthWindow: async (_opts) => [],
+      // Discriminate on `returnFinalUrl` so each overload branch returns its
+      // declared shape — TS catches future signature drift instead of letting
+      // a `as unknown as` cast hide it.
+      openAuthWindow: (async (
+        opts: import("../index.js").OpenAuthWindowWithFinalUrlOptions
+            | import("../index.js").OpenAuthWindowCookieOptions,
+      ) =>
+        opts.returnFinalUrl === true
+          ? { cookies: [], finalUrl: "" }
+          : []) as PluginHostApi["openAuthWindow"],
       triggerConversation: async (_spec) => ({ accepted: true, source: _spec.source }),
-      bridge: {
-        config: {
-          get: async (_key) => undefined,
-          set: async (_key, _value) => {},
-          delete: async (_key) => {},
-        },
-        storage: {
-          get: async (_key) => undefined,
-          set: async (_key, _value) => {},
-          delete: async (_key) => {},
-          list: async () => [],
-        },
-        agentApproval: {
-          respond: async (_id, _decision, _note) => {},
-        },
+      agentApproval: {
+        request: async (_input: { toolName: string; args: unknown; reason: string; scope: string }) =>
+          "deny-once" as const,
+        respond: async (_requestId: string, _choice, _nonce?: string, _hmac?: string) => {},
       },
     };
     expect(api.registerKeywords).toBeTypeOf("function");

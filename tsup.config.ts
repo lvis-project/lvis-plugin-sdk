@@ -4,6 +4,7 @@ export default defineConfig({
     "index": "src/index.ts",
     "ui/index": "src/ui/index.ts",
     "ui/tokens/index": "src/ui/tokens/index.ts",
+    "ui/tokens/validate": "src/ui/tokens/validate.ts",
     "build/tsup": "src/build/tsup.ts",
     "runtime/electron": "src/runtime/electron.ts",
   },
