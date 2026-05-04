@@ -410,6 +410,16 @@
               }
             }
           }
+        },
+        "agentApprovalScopes": {
+          "type": "array",
+          "description": "§8 P0 security — approval action scopes this plugin is permitted to issue and respond to via hostApi.agentApproval. Empty array (default when omitted) means no approval scopes allowed. Known values: 'agent_file_share', 'agent_task_delegate', 'agent_external_api_call'.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "uniqueItems": true
         }
       }
     },
