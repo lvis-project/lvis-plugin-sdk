@@ -51,6 +51,8 @@ export interface PluginAccessTarget {
 
 export interface PluginAccessSpec {
   plugins: PluginAccessTarget[];
+
+  agentApprovalScopes?: string[];
 }
 
 /**
@@ -661,6 +663,13 @@ export interface PluginHostApi {
   triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
 
   agentApproval: {
+
+    request(input: {
+      toolName: string;
+      args: unknown;
+      reason: string;
+      scope: string;
+    }): Promise<ApprovalChoice>;
 
     respond(requestId: string, choice: ApprovalChoice, nonce?: string, hmac?: string): Promise<void>;
   };
