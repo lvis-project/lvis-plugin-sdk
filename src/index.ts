@@ -1,10 +1,41 @@
 // AUTO-GENERATED — DO NOT EDIT. Regenerate via: bun run sync:from-host
-// v3.6.0: bridge.config / bridge.storage / bridge.agentApproval IPC namespaces added.
 //
 // @lvis/plugin-sdk — type-only public surface of the LVIS plugin contract.
 // This file mirrors the host plugin type contract.
 
 export type InstallPolicy = "admin" | "user";
+
+export type AuthWindowCookie = {
+  name: string;
+  value: string;
+  domain?: string;
+  path?: string;
+  secure?: boolean;
+  httpOnly?: boolean;
+  expirationDate?: number;
+};
+
+export type OpenAuthWindowBaseOptions = {
+  url: string;
+  completionUrlPatterns: string[];
+  cookieHosts: string[];
+  timeoutMs?: number;
+  windowTitle?: string;
+  persistPartition?: string;
+};
+
+export type OpenAuthWindowWithFinalUrlOptions = OpenAuthWindowBaseOptions & {
+  returnFinalUrl: true;
+};
+
+export type OpenAuthWindowCookieOptions = OpenAuthWindowBaseOptions & {
+  returnFinalUrl?: false | undefined;
+};
+
+export type OpenAuthWindowFinalUrlResult = {
+  cookies: AuthWindowCookie[];
+  finalUrl: string;
+};
 
 export interface DependencySpec {
   pluginId: string;
@@ -474,74 +505,6 @@ export type PluginLifecycleEvent =
   | { type: "_future"; readonly __exhaustive: never };
 
 /**
- * IPC-backed config namespace on the plugin bridge. Provides async
- * get/set/delete over `lvis:plugin:config:*` IPC channels.
- *
- * Distinct from `PluginHostApi.config` (synchronous manifest-merged config)
- * — this is a persisted, user-editable key-value store backed by the host
- * config service and round-tripped through IPC.
- */
-export interface PluginBridgeConfig {
-  /** Read a persisted config value. Returns `undefined` when the key is absent. */
-  get(key: string): Promise<unknown>;
-  /** Persist a config value. */
-  set(key: string, value: unknown): Promise<void>;
-  /** Remove a persisted config value. */
-  delete(key: string): Promise<void>;
-}
-
-/**
- * IPC-backed storage namespace on the plugin bridge. Provides async
- * get/set/delete/list over `lvis:plugin:storage:*` IPC channels.
- *
- * Distinct from `PluginHostApi.storage` (filesystem-level plugin storage)
- * — this is a simpler key-value interface backed by the host storage service.
- */
-export interface PluginBridgeStorage {
-  /** Read a stored value. Returns `undefined` when the key is absent. */
-  get(key: string): Promise<unknown>;
-  /** Store a value. */
-  set(key: string, value: unknown): Promise<void>;
-  /** Remove a stored value. */
-  delete(key: string): Promise<void>;
-  /** List all stored keys for this plugin. */
-  list(): Promise<string[]>;
-}
-
-/**
- * IPC-backed agent-approval namespace on the plugin bridge. Allows a plugin
- * to respond to an approval request posted by the host's Agent Approval System
- * (§8) over the `lvis:plugin:agentApproval:respond` IPC channel.
- */
-export interface PluginBridgeAgentApproval {
-  /**
-   * Respond to a pending approval request.
-   *
-   * @param approvalId - Stable id of the approval request (provided by the host when the request was created).
-   * @param decision - `"approved"` or `"rejected"`.
-   * @param note - Optional human-readable justification recorded in the audit log. @optional
-   */
-  respond(approvalId: string, decision: "approved" | "rejected", note?: string): Promise<void>;
-}
-
-/**
- * Structured IPC bridge namespaces exposed to a running plugin. Access via
- * `hostApi.bridge.*`. Each namespace maps to a set of `lvis:plugin:*` IPC
- * channels handled by the host.
- *
- * Plugin authors should prefer these typed methods over raw `callTool` IPC
- * patterns for config, storage, and approval flows.
- */
-export interface PluginBridge {
-  /** Persisted, IPC-backed config key-value store. */
-  config: PluginBridgeConfig;
-  /** Persisted, IPC-backed storage key-value store. */
-  storage: PluginBridgeStorage;
-  /** Agent-approval response channel. */
-  agentApproval: PluginBridgeAgentApproval;
-}
-
-/**
  * Services exposed by the host to a running plugin. An instance is provided
  * on `PluginRuntimeContext.hostApi` when the host calls the plugin's
  * `RuntimePluginFactory`.
@@ -658,14 +621,6 @@ export interface PluginHostApi {
   callTool<T = unknown>(toolName: string, payload?: unknown): Promise<T>;
 
   /**
-   * Structured IPC bridge namespaces: `config`, `storage`, and `agentApproval`.
-   * Prefer these over raw `callTool` IPC patterns for config, storage, and
-   * approval flows. See {@link PluginBridge}, {@link PluginBridgeConfig},
-   * {@link PluginBridgeStorage}, and {@link PluginBridgeAgentApproval}.
-   */
-  bridge: PluginBridge;
-
-  /**
    * Invoke the host's configured language model.
    *
    * @param prompt - User prompt string.
@@ -691,22 +646,8 @@ export interface PluginHostApi {
    */
   onShutdown(handler: () => void | Promise<void>): void;
 
-  openAuthWindow(options: {
-    url: string;
-    completionUrlPatterns: string[];
-    cookieHosts: string[];
-    timeoutMs?: number;
-    windowTitle?: string;
-    persistPartition?: string;
-  }): Promise<Array<{
-    name: string;
-    value: string;
-    domain?: string;
-    path?: string;
-    secure?: boolean;
-    httpOnly?: boolean;
-    expirationDate?: number;
-  }>>;
+  openAuthWindow(options: OpenAuthWindowWithFinalUrlOptions): Promise<OpenAuthWindowFinalUrlResult>;
+  openAuthWindow(options: OpenAuthWindowCookieOptions): Promise<AuthWindowCookie[]>;
 
   /**
    * Start a conversation turn from a proactive plugin signal.
@@ -718,7 +659,18 @@ export interface PluginHostApi {
    * `^proactive:[a-z][a-z0-9-]*$`.
    */
   triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
+
+  agentApproval: {
+
+    respond(requestId: string, choice: ApprovalChoice, nonce?: string, hmac?: string): Promise<void>;
+  };
 }
+
+export type ApprovalChoice =
+  | "allow-once"
+  | "allow-always"
+  | "deny-once"
+  | "deny-always";
 
 /** Spec for `PluginHostApi.triggerConversation()`. */
 export interface ConversationTriggerSpec {
