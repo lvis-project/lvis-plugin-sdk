@@ -5,6 +5,38 @@
 
 export type InstallPolicy = "admin" | "user";
 
+export type AuthWindowCookie = {
+  name: string;
+  value: string;
+  domain?: string;
+  path?: string;
+  secure?: boolean;
+  httpOnly?: boolean;
+  expirationDate?: number;
+};
+
+export type OpenAuthWindowBaseOptions = {
+  url: string;
+  completionUrlPatterns: string[];
+  cookieHosts: string[];
+  timeoutMs?: number;
+  windowTitle?: string;
+  persistPartition?: string;
+};
+
+export type OpenAuthWindowWithFinalUrlOptions = OpenAuthWindowBaseOptions & {
+  returnFinalUrl: true;
+};
+
+export type OpenAuthWindowCookieOptions = OpenAuthWindowBaseOptions & {
+  returnFinalUrl?: false | undefined;
+};
+
+export type OpenAuthWindowFinalUrlResult = {
+  cookies: AuthWindowCookie[];
+  finalUrl: string;
+};
+
 export interface DependencySpec {
   pluginId: string;
   versionRange?: string;
@@ -614,22 +646,8 @@ export interface PluginHostApi {
    */
   onShutdown(handler: () => void | Promise<void>): void;
 
-  openAuthWindow(options: {
-    url: string;
-    completionUrlPatterns: string[];
-    cookieHosts: string[];
-    timeoutMs?: number;
-    windowTitle?: string;
-    persistPartition?: string;
-  }): Promise<Array<{
-    name: string;
-    value: string;
-    domain?: string;
-    path?: string;
-    secure?: boolean;
-    httpOnly?: boolean;
-    expirationDate?: number;
-  }>>;
+  openAuthWindow(options: OpenAuthWindowWithFinalUrlOptions): Promise<OpenAuthWindowFinalUrlResult>;
+  openAuthWindow(options: OpenAuthWindowCookieOptions): Promise<AuthWindowCookie[]>;
 
   /**
    * Start a conversation turn from a proactive plugin signal.
@@ -641,7 +659,18 @@ export interface PluginHostApi {
    * `^proactive:[a-z][a-z0-9-]*$`.
    */
   triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
+
+  agentApproval: {
+
+    respond(requestId: string, choice: ApprovalChoice, nonce?: string, hmac?: string): Promise<void>;
+  };
 }
+
+export type ApprovalChoice =
+  | "allow-once"
+  | "allow-always"
+  | "deny-once"
+  | "deny-always";
 
 /** Spec for `PluginHostApi.triggerConversation()`. */
 export interface ConversationTriggerSpec {
