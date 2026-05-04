@@ -7,6 +7,28 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.7.0] - 2026-05-04
+
+### Improved (synced from host SoT)
+- bridge.config / bridge.storage / agentApproval namespace types now reflect v0.2.2 host hardening
+- pluginAccess.agentApprovalScopes manifest field (added 3.6.0 schema, types in 3.7.0)
+- ApprovalChoice union type explicit (was inline string union)
+
+### Drift check
+- `bun run sync:from-host` against `lvis-app` v0.2.2 SoT: **no drift** — src/index.ts already in sync
+
+### Companion repos (require sdk dep ref bump after 3.7.0 publish)
+- lvis-app
+- lvis-plugin-meeting
+- lvis-plugin-local-indexer
+- lvis-plugin-ms-graph
+- lvis-plugin-lge-api
+- lvis-plugin-work-proactive
+- lvis-plugin-agent-hub
+- lvis-plugin-template
+
+---
+
 ## [3.6.0] - 2026-05-04
 
 ### Added (synced from host SoT — `lvis-app/src/plugins/types.ts`)
