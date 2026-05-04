@@ -52,10 +52,17 @@ jobs:
       # The SDK ships dist/ via `files: ["src", "schemas", "dist"]` so a
       # stale committed dist regresses every consumer pinning the SDK by
       # tag. See feedback-build-success-not-bundle-works.
+      #
+      # Catches both modifications to tracked files AND new untracked files
+      # (a fresh module entry produces new `.js`/`.d.ts` that `git diff` alone
+      # would miss).
       - name: Build and verify dist is in sync with src
         run: |
           bun run build
-          if ! git diff --exit-code -- dist/; then
+          STATUS=$(git status --porcelain -- dist/)
+          if [ -n "$STATUS" ]; then
             echo "::error::dist/ is out of sync with src/. Run 'bun run build' locally and commit the regenerated dist."
+            echo "$STATUS"
+            git diff -- dist/ | head -200
             exit 1
           fi

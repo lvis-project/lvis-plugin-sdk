@@ -51,6 +51,7 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "packageManager": "bun@1.1.38",
   "peerDependencies": {
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
