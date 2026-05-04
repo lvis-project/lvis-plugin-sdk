@@ -12,24 +12,42 @@
  * run in a vitest unit test, a CI script, or a plugin's own pre-publish hook
  * without pulling postcss into the build.
  */
-import { LVIS_TOKEN_NAMES } from "./index.js";
+import { LVIS_TOKEN_NAMES, type LvisTokenName } from "./index.js";
 
+// Match `--lvis-*` references and definitions case-insensitively at the
+// REGEX level so a typo like `var(--LVIS-bg)` is also captured — but the
+// captured text preserves its original casing. The allowlist check is then
+// case-sensitive (CSS custom properties are case-sensitive per the CSS
+// Variables spec — `--Lvis-bg` ≠ `--lvis-bg`), so `--LVIS-bg` is flagged
+// as unknown. Without `i` we'd miss the typo entirely.
 const _LVIS_VAR_REF = /var\(\s*(--lvis-[a-z0-9-]+)/gi;
-const _LVIS_DEF = /(--lvis-[a-z0-9-]+)\s*:/gi;
+// Anchor on a declaration-start context (start, `{`, `;`, or `}`) so we
+// don't false-match inside attribute selectors like
+// `[data-x="--lvis-bg"]:hover`. Linear-time — no nested quantifier.
+const _LVIS_DEF = /(?:^|[{};])\s*(--lvis-[a-z0-9-]+)\s*:/gi;
+// Strip CSS block comments and string literals before scanning so a
+// commented-out `var(--lvis-typo)` or a string with an --lvis-* substring
+// doesn't surface as a false positive.
+const _CSS_COMMENT = /\/\*[\s\S]*?\*\//g;
+const _CSS_STRING = /(["'])(?:\\.|(?!\1).)*\1/g;
 
-const _ALLOWED_TOKENS = new Set<string>(LVIS_TOKEN_NAMES);
+const _ALLOWED_TOKENS: ReadonlySet<LvisTokenName> = new Set(LVIS_TOKEN_NAMES);
+
+function stripCommentsAndStrings(css: string): string {
+  return css.replace(_CSS_COMMENT, "").replace(_CSS_STRING, "");
+}
 
 /** Extract every `--lvis-*` token referenced via `var(--lvis-*)`. */
 export function findLvisTokenReferences(css: string): Set<string> {
   const out = new Set<string>();
-  for (const m of css.matchAll(_LVIS_VAR_REF)) out.add(m[1].toLowerCase());
+  for (const m of stripCommentsAndStrings(css).matchAll(_LVIS_VAR_REF)) out.add(m[1]);
   return out;
 }
 
 /** Extract every `--lvis-*` token *defined* (left-hand side of CSS declaration). */
 export function findLvisTokenDefinitions(css: string): Set<string> {
   const out = new Set<string>();
-  for (const m of css.matchAll(_LVIS_DEF)) out.add(m[1].toLowerCase());
+  for (const m of stripCommentsAndStrings(css).matchAll(_LVIS_DEF)) out.add(m[1]);
   return out;
 }
 
@@ -62,14 +80,13 @@ export type TokenDefinitionReport = {
 };
 
 /**
- * Validate that `--lvis-*` definitions in `css`:
- *   1. only use allowlisted names (no inventing new tokens), AND
- *   2. when `allowDefinitions` is `false` (default for plugin code), no
- *      `--lvis-*` declarations exist at all — the host owns canonical values
- *      and plugins must consume via `var(--lvis-*)`, not redefine.
+ * Validate `--lvis-*` definitions in `css`:
  *
- * The SDK's own `lvis-tokens.css` is the one place where definitions ARE
- * legitimate; it should pass the validator with `allowDefinitions: true`.
+ * - Names outside the allowlist always go to `unknown` (mistyped or invented).
+ * - Allowlisted names go to `forbiddenRedefinitions` UNLESS
+ *   `allowDefinitions: true` is passed — the host owns canonical token values
+ *   and plugins must consume via `var(--lvis-*)`, not redefine. The SDK's
+ *   own `lvis-tokens.css` is the one place where definitions are legitimate.
  */
 export function validateTokenDefinitions(
   css: string,

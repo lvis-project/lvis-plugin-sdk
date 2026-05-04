@@ -20,14 +20,13 @@ export type TokenDefinitionReport = {
     forbiddenRedefinitions: string[];
 };
 /**
- * Validate that `--lvis-*` definitions in `css`:
- *   1. only use allowlisted names (no inventing new tokens), AND
- *   2. when `allowDefinitions` is `false` (default for plugin code), no
- *      `--lvis-*` declarations exist at all — the host owns canonical values
- *      and plugins must consume via `var(--lvis-*)`, not redefine.
+ * Validate `--lvis-*` definitions in `css`:
  *
- * The SDK's own `lvis-tokens.css` is the one place where definitions ARE
- * legitimate; it should pass the validator with `allowDefinitions: true`.
+ * - Names outside the allowlist always go to `unknown` (mistyped or invented).
+ * - Allowlisted names go to `forbiddenRedefinitions` UNLESS
+ *   `allowDefinitions: true` is passed — the host owns canonical token values
+ *   and plugins must consume via `var(--lvis-*)`, not redefine. The SDK's
+ *   own `lvis-tokens.css` is the one place where definitions are legitimate.
  */
 export declare function validateTokenDefinitions(css: string, options?: {
     allowDefinitions?: boolean;
