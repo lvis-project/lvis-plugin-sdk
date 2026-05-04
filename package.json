@@ -49,7 +49,9 @@
     "check:drift": "node scripts/sync-from-host.mjs --check",
     "check:schema-drift": "node scripts/sync-schema-from-host.mjs --check",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "sync:tokens-from-host": "node scripts/sync-tokens-from-host.mjs",
+    "check:token-drift": "node scripts/sync-tokens-from-host.mjs --check"
   },
   "packageManager": "bun@1.1.38",
   "peerDependencies": {
