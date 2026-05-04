@@ -159,11 +159,16 @@ function Text({ variant = "body", as: Tag = "p", className = "", children, ...re
 }
 
 // src/ui/components/Spinner.tsx
-import { jsx as jsx5, jsxs as jsxs2 } from "react/jsx-runtime";
+import { jsx as jsx5 } from "react/jsx-runtime";
 var SIZES = { sm: "1rem", md: "1.5rem", lg: "2rem" };
+var CSS5 = `
+.lvis-spinner-circle { stroke: var(--lvis-primary); }
+@keyframes lvis-spin { to { transform: rotate(360deg); } }
+`;
+injectTokenCss("lvis-spinner", CSS5);
 function Spinner({ size = "md", className = "" }) {
   const s = SIZES[size];
-  return /* @__PURE__ */ jsxs2(
+  return /* @__PURE__ */ jsx5(
     "svg",
     {
       width: s,
@@ -172,28 +177,25 @@ function Spinner({ size = "md", className = "" }) {
       fill: "none",
       className,
       style: { animation: "lvis-spin 0.75s linear infinite", display: "inline-block" },
-      children: [
-        /* @__PURE__ */ jsx5("style", { children: `@keyframes lvis-spin{to{transform:rotate(360deg)}}` }),
-        /* @__PURE__ */ jsx5(
-          "circle",
-          {
-            cx: "12",
-            cy: "12",
-            r: "10",
-            stroke: "var(--lvis-primary)",
-            strokeWidth: "3",
-            strokeDasharray: "40 20"
-          }
-        )
-      ]
+      children: /* @__PURE__ */ jsx5(
+        "circle",
+        {
+          className: "lvis-spinner-circle",
+          cx: "12",
+          cy: "12",
+          r: "10",
+          strokeWidth: "3",
+          strokeDasharray: "40 20"
+        }
+      )
     }
   );
 }
 
 // src/ui/components/Checkbox.tsx
 import React from "react";
-import { jsx as jsx6, jsxs as jsxs3 } from "react/jsx-runtime";
-var CSS5 = `
+import { jsx as jsx6, jsxs as jsxs2 } from "react/jsx-runtime";
+var CSS6 = `
 .lvis-checkbox {
   display: inline-flex; align-items: center; gap: 0.5rem;
   cursor: pointer; user-select: none;
@@ -233,7 +235,7 @@ var CSS5 = `
 .lvis-checkbox-disabled { opacity: 0.5; cursor: not-allowed; }
 .lvis-checkbox-label { font-size: 0.875rem; color: var(--lvis-fg); }
 `;
-injectTokenCss("lvis-checkbox", CSS5);
+injectTokenCss("lvis-checkbox", CSS6);
 function Checkbox({ checked, defaultChecked, indeterminate, onChange, label, disabled, id }) {
   const [internal, setInternal] = React.useState(defaultChecked ?? false);
   const isOn = checked !== void 0 ? checked : internal;
@@ -249,7 +251,7 @@ function Checkbox({ checked, defaultChecked, indeterminate, onChange, label, dis
     indeterminate ? "lvis-checkbox-indeterminate" : "",
     disabled ? "lvis-checkbox-disabled" : ""
   ].filter(Boolean).join(" ");
-  return /* @__PURE__ */ jsxs3(
+  return /* @__PURE__ */ jsxs2(
     "div",
     {
       id,
@@ -275,7 +277,7 @@ function Checkbox({ checked, defaultChecked, indeterminate, onChange, label, dis
 
 // src/ui/components/Input.tsx
 import { jsx as jsx7 } from "react/jsx-runtime";
-var CSS6 = `
+var CSS7 = `
 .lvis-input {
   display: block; width: 100%; padding: 0.375rem 0.75rem;
   font-size: 0.875rem; line-height: 1.5;
@@ -290,7 +292,7 @@ var CSS6 = `
 .lvis-input-error { border-color: var(--lvis-danger); }
 .lvis-input-error:focus { border-color: var(--lvis-danger); box-shadow: 0 0 0 2px color-mix(in srgb, var(--lvis-danger) 25%, transparent); }
 `;
-injectTokenCss("lvis-input", CSS6);
+injectTokenCss("lvis-input", CSS7);
 function Input({ error, className = "", ...rest }) {
   const cls = ["lvis-input", error ? "lvis-input-error" : "", className].filter(Boolean).join(" ");
   return /* @__PURE__ */ jsx7("input", { ...rest, className: cls });
@@ -298,7 +300,7 @@ function Input({ error, className = "", ...rest }) {
 
 // src/ui/components/Select.tsx
 import { jsx as jsx8 } from "react/jsx-runtime";
-var CSS7 = `
+var CSS8 = `
 .lvis-select {
   display: block; width: 100%; padding: 0.375rem 2rem 0.375rem 0.75rem;
   font-size: 0.875rem; line-height: 1.5;
@@ -314,7 +316,7 @@ var CSS7 = `
 .lvis-select:focus { border-color: var(--lvis-ring); box-shadow: 0 0 0 2px color-mix(in srgb, var(--lvis-ring) 25%, transparent); }
 .lvis-select:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
-injectTokenCss("lvis-select", CSS7);
+injectTokenCss("lvis-select", CSS8);
 function Select({ className = "", children, ...rest }) {
   const cls = ["lvis-select", className].filter(Boolean).join(" ");
   return /* @__PURE__ */ jsx8("select", { ...rest, className: cls, children });
@@ -322,8 +324,8 @@ function Select({ className = "", children, ...rest }) {
 
 // src/ui/components/Toggle.tsx
 import React2 from "react";
-import { jsx as jsx9, jsxs as jsxs4 } from "react/jsx-runtime";
-var CSS8 = `
+import { jsx as jsx9, jsxs as jsxs3 } from "react/jsx-runtime";
+var CSS9 = `
 .lvis-toggle {
   display: inline-flex; align-items: center; gap: 0.5rem;
   cursor: pointer; user-select: none;
@@ -346,7 +348,7 @@ var CSS8 = `
 .lvis-toggle-disabled { opacity: 0.5; cursor: not-allowed; }
 .lvis-toggle-label { font-size: 0.875rem; color: var(--lvis-fg); }
 `;
-injectTokenCss("lvis-toggle", CSS8);
+injectTokenCss("lvis-toggle", CSS9);
 function Toggle({ checked, defaultChecked, onChange, label, disabled, id }) {
   const [internal, setInternal] = React2.useState(defaultChecked ?? false);
   const isOn = checked !== void 0 ? checked : internal;
@@ -361,7 +363,7 @@ function Toggle({ checked, defaultChecked, onChange, label, disabled, id }) {
     isOn ? "lvis-toggle-checked" : "",
     disabled ? "lvis-toggle-disabled" : ""
   ].filter(Boolean).join(" ");
-  return /* @__PURE__ */ jsxs4(
+  return /* @__PURE__ */ jsxs3(
     "div",
     {
       id,

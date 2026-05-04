@@ -144,6 +144,42 @@ authoring-time SDK validation and runtime host validation. Earlier SDK
 versions used `draft/2020-12`; v2.2.0 unified on draft-07 to close audit
 item HIGH #1 (schema-dialect drift).
 
+## UI token allowlist (build-time validator)
+
+Plugin UI must reference only the 17 `--lvis-*` design tokens enumerated in
+`LVIS_TOKEN_NAMES`. The host validates the same allowlist at theme-broadcast
+time, so any other `var(--lvis-*)` reference would silently render as the CSS
+`initial` keyword — invisible regression. The SDK ships a build-time validator
+that catches the mistake before publish.
+
+```ts
+// plugin's CI script — e.g. scripts/check-ui-tokens.mjs
+import { readFileSync } from "node:fs";
+import { validateTokenUsage, validateTokenDefinitions } from "@lvis/plugin-sdk/ui/tokens/validate";
+
+const css = readFileSync("dist/plugin-ui.css", "utf8");
+
+const usage = validateTokenUsage(css);
+if (!usage.ok) {
+  console.error("Unknown --lvis-* tokens referenced:", usage.unknown);
+  process.exit(1);
+}
+
+const defs = validateTokenDefinitions(css); // allowDefinitions: false (default)
+if (!defs.ok) {
+  console.error("Plugin must not redefine --lvis-* tokens (host owns them):", defs.forbiddenRedefinitions);
+  process.exit(1);
+}
+```
+
+The validator is a pure string-scan (no postcss / CSS-AST dependency), so it
+runs in any Node 18+ context — including a vitest unit test, a `bun run check`
+script, or a GitHub Actions step.
+
+The SDK's own `bun run test` self-checks every component CSS string against
+the allowlist (`src/ui/__tests__/sdk-self-token-allowlist.test.ts`); a typo
+or a stale token entry fails CI immediately.
+
 ## Trust model
 
 Marketplace signing keys are intentionally not part of this SDK. LVIS follows
