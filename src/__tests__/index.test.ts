@@ -738,7 +738,6 @@ describe("PluginHostApi — interface contract (structural)", () => {
       onEvent: (_type, _handler) => () => {},
       getInstalledPluginIds: () => [],
       onPluginsChanged: (_handler) => () => {},
-      addTask: (_task) => {},
       getSecret: (_key) => null,
       callTool: (_name, _payload) => Promise.resolve(undefined) as Promise<never>,
       callLlm: async (_prompt, _opts) => "",
@@ -841,19 +840,6 @@ describe("PluginHostApi — interface contract (structural)", () => {
     expect(classify({ type: "uninstalled", pluginId: "x" })).toBe("uninstall");
   });
 
-  it("PluginHostApi.addTask accepts all priority levels", () => {
-    const tasks: Parameters<PluginHostApi["addTask"]>[0][] = [];
-    const api: Pick<PluginHostApi, "addTask"> = {
-      addTask: (t) => { tasks.push(t); },
-    };
-    api.addTask({ title: "A", source: "plugin:test", priority: "high" });
-    api.addTask({ title: "B", source: "plugin:test", priority: "medium" });
-    api.addTask({ title: "C", source: "plugin:test", priority: "low" });
-    api.addTask({ title: "D", source: "plugin:test" }); // optional priority
-    expect(tasks).toHaveLength(4);
-    expect(tasks[0].priority).toBe("high");
-    expect(tasks[3].priority).toBeUndefined();
-  });
 });
 
 // ─── auth cross-field invariant (H6) ───────────────────────────────────────
