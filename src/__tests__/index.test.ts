@@ -746,6 +746,22 @@ describe("PluginHostApi — interface contract (structural)", () => {
       onShutdown: (_handler) => {},
       openAuthWindow: async (_opts) => [],
       triggerConversation: async (_spec) => ({ accepted: true, source: _spec.source }),
+      bridge: {
+        config: {
+          get: async (_key) => undefined,
+          set: async (_key, _value) => {},
+          delete: async (_key) => {},
+        },
+        storage: {
+          get: async (_key) => undefined,
+          set: async (_key, _value) => {},
+          delete: async (_key) => {},
+          list: async () => [],
+        },
+        agentApproval: {
+          respond: async (_id, _decision, _note) => {},
+        },
+      },
     };
     expect(api.registerKeywords).toBeTypeOf("function");
     expect(api.emitEvent).toBeTypeOf("function");
