@@ -10,28 +10,44 @@
  * the SDK's promise to plugin authors honest.
  */
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   validateTokenUsage,
   validateTokenDefinitions,
   findLvisTokenReferences,
+  findLvisTokenDefinitions,
 } from "../tokens/validate.js";
 
-// vitest runs with cwd = repo root; resolve relative to that so the test
-// works under both `bun run test` and an editor's vitest integration.
-const _UI_DIR = join(process.cwd(), "src", "ui");
+// Anchor on this test file's location, not `process.cwd()` — keeps the test
+// working under VSCode's vitest extension, monorepo runs, and the case
+// where this file lands inside a downstream plugin's `node_modules` (the
+// existsSync guard below no-ops then; this is an SDK-internal check).
+const _HERE = dirname(fileURLToPath(import.meta.url));
+const _UI_DIR = join(_HERE, "..");
 const _COMPONENTS_DIR = join(_UI_DIR, "components");
 const _TOKENS_CSS = join(_UI_DIR, "tokens", "lvis-tokens.css");
+const _STYLE_EXTS = /\.(tsx|css)$/;
 
-function listTsxFiles(dir: string): string[] {
-  return readdirSync(dir).filter((f) => f.endsWith(".tsx")).map((f) => join(dir, f));
+function listStyleSourceFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  // Recursive: catches nested component directories if the SDK ever splits
+  // `components/forms/Field.tsx` etc., plus standalone `.css` modules.
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && _STYLE_EXTS.test(e.name))
+    .map((e) => join(e.parentPath ?? dir, e.name));
 }
 
-describe("SDK component CSS — token allowlist self-check", () => {
+// When this test file lands inside a downstream plugin's `node_modules`
+// (e.g. an IDE picking it up via default vitest discovery), the SDK source
+// dirs don't exist — skip rather than fail-noisy on someone else's project.
+const _SDK_SRC_PRESENT = existsSync(_COMPONENTS_DIR) && existsSync(_TOKENS_CSS);
+
+describe.skipIf(!_SDK_SRC_PRESENT)("SDK component CSS — token allowlist self-check", () => {
   it("every var(--lvis-*) reference in components is in LVIS_TOKEN_NAMES", () => {
     const offenders: Array<{ file: string; unknown: string[] }> = [];
-    for (const file of listTsxFiles(_COMPONENTS_DIR)) {
+    for (const file of listStyleSourceFiles(_COMPONENTS_DIR)) {
       const css = readFileSync(file, "utf8");
       const r = validateTokenUsage(css);
       if (!r.ok) offenders.push({ file, unknown: r.unknown });
@@ -48,7 +64,7 @@ describe("SDK component CSS — token allowlist self-check", () => {
 
   it("component CSS does NOT redefine any --lvis-* token (host owns canonical values)", () => {
     const offenders: Array<{ file: string; redefined: string[] }> = [];
-    for (const file of listTsxFiles(_COMPONENTS_DIR)) {
+    for (const file of listStyleSourceFiles(_COMPONENTS_DIR)) {
       const css = readFileSync(file, "utf8");
       const r = validateTokenDefinitions(css);
       if (!r.ok) offenders.push({ file, redefined: r.forbiddenRedefinitions });
@@ -56,18 +72,19 @@ describe("SDK component CSS — token allowlist self-check", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("every allowlisted token is actually used by at least one component (catches stale entries)", () => {
+  it("every allowlisted token is actually used by at least one component (warn on stale)", () => {
     const used = new Set<string>();
-    for (const file of listTsxFiles(_COMPONENTS_DIR)) {
+    for (const file of listStyleSourceFiles(_COMPONENTS_DIR)) {
       for (const tok of findLvisTokenReferences(readFileSync(file, "utf8"))) used.add(tok);
     }
     // Tokens declared in tokens.css but never consumed by any SDK component
-    // are candidates for removal; surfacing them here lets us choose between
-    // adding a new component that uses them or deleting the entry.
-    const tokensCss = readFileSync(_TOKENS_CSS, "utf8");
-    const declared = new Set<string>();
-    for (const m of tokensCss.matchAll(/(--lvis-[a-z0-9-]+)\s*:/gi)) declared.add(m[1].toLowerCase());
+    // are candidates for removal. Warn rather than fail — a new token landed
+    // before its first consumer is a legitimate sequencing pattern; the warn
+    // surfaces the gap without blocking the merge that introduces the token.
+    const declared = findLvisTokenDefinitions(readFileSync(_TOKENS_CSS, "utf8"));
     const stale = [...declared].filter((t) => !used.has(t)).sort();
-    expect(stale).toEqual([]);
+    if (stale.length > 0) {
+      console.warn(`[sdk-self-token-allowlist] declared but unused: ${stale.join(", ")}`);
+    }
   });
 });

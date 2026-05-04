@@ -25,6 +25,21 @@ describe("findLvisTokenReferences", () => {
   it("tolerates whitespace inside var()", () => {
     expect([...findLvisTokenReferences("var(   --lvis-bg )")]).toEqual(["--lvis-bg"]);
   });
+
+  it("ignores --lvis-* inside CSS block comments", () => {
+    const css = `/* var(--lvis-typo) */ .x { color: var(--lvis-fg); }`;
+    expect([...findLvisTokenReferences(css)]).toEqual(["--lvis-fg"]);
+  });
+
+  it("ignores --lvis-* inside string literals", () => {
+    const css = `.x::before { content: "var(--lvis-typo)"; color: var(--lvis-fg); }`;
+    expect([...findLvisTokenReferences(css)]).toEqual(["--lvis-fg"]);
+  });
+
+  it("captures uppercase references with original case (catches casing typos)", () => {
+    expect([...findLvisTokenReferences("var(--LVIS-BG)")]).toEqual(["--LVIS-BG"]);
+    expect([...findLvisTokenReferences("var(--Lvis-bg)")]).toEqual(["--Lvis-bg"]);
+  });
 });
 
 describe("findLvisTokenDefinitions", () => {
@@ -56,6 +71,12 @@ describe("validateTokenUsage", () => {
     const css = `.x { color: var(--lvis-experimental); }`;
     const r = validateTokenUsage(css, new Set(["--lvis-experimental"]));
     expect(r.ok).toBe(true);
+  });
+
+  it("flags a case-mismatched reference (--LVIS-bg vs allowlisted --lvis-bg)", () => {
+    const r = validateTokenUsage(`.x { color: var(--LVIS-bg); }`);
+    expect(r.ok).toBe(false);
+    expect(r.unknown).toEqual(["--LVIS-bg"]);
   });
 });
 
