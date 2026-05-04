@@ -51,6 +51,14 @@ export interface PluginAccessTarget {
 
 export interface PluginAccessSpec {
   plugins: PluginAccessTarget[];
+  /**
+   * §8 P0 security — approval action scopes this plugin is permitted to
+   * issue and respond to via `hostApi.agentApproval.{request,respond}`.
+   * Omitted or empty array means no approval scopes allowed (host enforces
+   * empty-list semantics). Known values: `agent_file_share`,
+   * `agent_task_delegate`, `agent_external_api_call`.
+   */
+  agentApprovalScopes?: string[];
 }
 
 /**
