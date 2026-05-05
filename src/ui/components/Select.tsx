@@ -3,6 +3,9 @@ import "../tokens/fallback.js";
 import { injectTokenCss } from "../tokens/inject.js";
 
 const CSS = `
+.lvis-select-wrapper {
+  position: relative; display: block; width: 100%;
+}
 .lvis-select {
   display: block; width: 100%; padding: 0.375rem 2rem 0.375rem 0.75rem;
   font-size: 0.875rem; line-height: 1.5;
@@ -11,12 +14,19 @@ const CSS = `
   outline: none; transition: border-color 0.15s;
   box-sizing: border-box; cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.625rem center;
 }
 .lvis-select:focus { border-color: var(--lvis-ring); box-shadow: 0 0 0 2px color-mix(in srgb, var(--lvis-ring) 25%, transparent); }
 .lvis-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.lvis-select-wrapper::after {
+  content: "";
+  position: absolute; right: 0.75rem; top: 50%;
+  transform: translateY(-60%);
+  pointer-events: none;
+  width: 0; height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--lvis-fg-muted);
+}
 `;
 injectTokenCss("lvis-select", CSS);
 
@@ -24,5 +34,9 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
 
 export function Select({ className = "", children, ...rest }: SelectProps) {
   const cls = ["lvis-select", className].filter(Boolean).join(" ");
-  return <select {...rest} className={cls}>{children}</select>;
+  return (
+    <div className="lvis-select-wrapper">
+      <select {...rest} className={cls}>{children}</select>
+    </div>
+  );
 }

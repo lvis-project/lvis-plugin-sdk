@@ -1,6 +1,6 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "3.10.0",
+  "version": "4.0.0",
   "private": false,
   "description": "SDK for authoring LVIS plugins. Type contracts (PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin) re-exported from the host as a single source of truth, plus thin runtime utilities (UI primitives, build helpers, host-context shims for safeStorage / shell.openExternal) shared across plugin repos.",
   "type": "module",
@@ -110,9 +110,7 @@
     "check:drift": "node scripts/sync-from-host.mjs --check",
     "check:schema-drift": "node scripts/sync-schema-from-host.mjs --check",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "sync:tokens-from-host": "node scripts/sync-tokens-from-host.mjs",
-    "check:token-drift": "node scripts/sync-tokens-from-host.mjs --check"
+    "test:watch": "vitest"
   },
   "packageManager": "bun@1.1.38",
   "peerDependencies": {
