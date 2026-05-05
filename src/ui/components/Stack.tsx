@@ -1,5 +1,4 @@
 import React from "react";
-import "../tokens/fallback.js";
 import { injectTokenCss } from "../tokens/inject.js";
 
 // Spacing scale is hardcoded in rems rather than read from design
