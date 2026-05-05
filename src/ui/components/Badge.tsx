@@ -9,7 +9,7 @@ const CSS = `
   font-size: 0.75rem; font-weight: 500; line-height: 1.5;
 }
 .lvis-badge-default { background: var(--lvis-secondary); color: var(--lvis-secondary-fg); }
-.lvis-badge-success { background: var(--lvis-success); color: var(--lvis-bg); }
+.lvis-badge-success { background: var(--lvis-success); color: var(--lvis-success-fg); }
 .lvis-badge-warning { background: var(--lvis-warning); color: var(--lvis-warning-fg); }
 .lvis-badge-danger  { background: var(--lvis-danger);  color: var(--lvis-danger-fg); }
 `;
