@@ -180,29 +180,31 @@ The SDK's own `bun run test` self-checks every component CSS string against
 the allowlist (`src/ui/__tests__/sdk-self-token-allowlist.test.ts`); a typo
 or a stale token entry fails CI immediately.
 
-## Tree-shaking — per-component subpath imports (3.10.0+)
+## UI imports — canonical pattern (3.10.0+)
 
-Each UI component ships as its own subpath export so plugins that use
-only a few primitives don't bundle every component's CSS string. Importing
-the `./ui` barrel pulls all 10 components because each component module
-has a top-level `injectTokenCss(...)` side effect — the bundler can't
-tree-shake side-effects out.
-
-Use the per-component subpath when bundle size matters:
+**Per-component subpath is the canonical import path** for new plugin
+code. The `./ui` barrel still works (no breaking change for existing
+plugins) but is now considered the "prototyping / legacy" path because
+every component module has a top-level `injectTokenCss(...)` side effect
+that bundlers cannot tree-shake — importing one component from the
+barrel pulls all 10.
 
 ```ts
-// barrel — pulls every component (good for prototyping)
-import { Stack, Toggle, Card } from "@lvis/plugin-sdk/ui";
-
-// subpath — only the imported components are bundled
+// canonical — only the imported components ship in the bundle
 import { Stack, Inline } from "@lvis/plugin-sdk/ui/components/Stack";
 import { Toggle } from "@lvis/plugin-sdk/ui/components/Toggle";
 import { Card } from "@lvis/plugin-sdk/ui/components/Card";
+
+// legacy / prototyping — pulls every component into the bundle
+import { Stack, Toggle, Card } from "@lvis/plugin-sdk/ui";
 ```
 
 The fallback `:root { --lvis-*: ... }` block auto-injects via a side-effect
 import in each component file, so per-component imports still get the
-fallback tokens (the bundler dedupes when several components import it).
+fallback tokens. `injectTokenCss` is keyed by stable id (e.g.
+`lvis-tokens-fallback`) so importing it from multiple component bundles
+in the same plugin is safe — the `<style>` element is upserted once,
+never duplicated.
 
 Available subpaths (3.10.0):
 
