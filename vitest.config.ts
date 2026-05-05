@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "jsdom",
-    include: ["src/**/__tests__/**/*.{test,spec}.ts", "__tests__/**/*.{test,spec}.ts"],
+    include: ["src/**/__tests__/**/*.{test,spec}.{ts,tsx}", "__tests__/**/*.{test,spec}.{ts,tsx}"],
     testTimeout: 10000,
     // Pin per-file isolation. `src/runtime/electron.ts` carries module-
     // level test-seam state (`_testSafeStorageOverride`,

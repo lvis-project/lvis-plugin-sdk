@@ -16,4 +16,6 @@ export { Toggle } from "./Toggle.js";
 export type { InputProps } from "./Input.js";
 export type { SelectProps } from "./Select.js";
 export type { ToggleProps } from "./Toggle.js";
+export { Stack, Inline } from "./Stack.js";
+export type { StackProps, InlineProps, StackGap, StackAlign, StackJustify, } from "./Stack.js";
 //# sourceMappingURL=index.d.ts.map
