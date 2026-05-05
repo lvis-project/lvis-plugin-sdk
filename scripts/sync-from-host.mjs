@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 /**
- * Extract type-only declarations from the host repository into src/index.ts.
+ * Extract the host-owned plugin contract into the SDK public surface.
  *
  * Usage:
- *   node scripts/sync-from-host.mjs              # write src/index.ts
+ *   node scripts/sync-from-host.mjs              # write src/index.ts + src/ui/tokens/index.ts
  *   node scripts/sync-from-host.mjs --check      # exit 1 if regenerated output differs from committed
  *
  * Host source resolution (in order):
- *   1. LVIS_HOST_TYPES_PATH env var pointing to a local types.ts file.
- *   2. Git clone via LVIS_HOST_REPO_URL + HOST_REF (default branch: main).
+ *   1. LVIS_HOST_REPO_ROOT env var pointing to a local lvis-app checkout.
+ *   2. LVIS_HOST_TYPES_PATH env var pointing to a local src/plugins/types.ts file.
+ *   3. ../lvis-app sibling checkout.
+ *   4. Git clone via LVIS_HOST_REPO_URL + HOST_REF (default branch: main).
  * If none is available, the script errors out.
  */
 
@@ -24,16 +26,53 @@ const ROOT = path.resolve(__dirname, "..");
 
 let CLONE_TMP_DIR = null;
 
-function resolveHostTypesPath() {
+function buildHostSources(hostRoot, source) {
+  const typesPath = path.join(hostRoot, "src/plugins/types.ts");
+  const tokenContractPath = path.join(hostRoot, "src/shared/plugin-ui-tokens.ts");
+  if (!fs.existsSync(typesPath) || !fs.existsSync(tokenContractPath)) {
+    console.error(
+      `ERROR: host contract files not found under ${hostRoot}. Expected src/plugins/types.ts and src/shared/plugin-ui-tokens.ts.`
+    );
+    process.exit(1);
+  }
+  return { typesPath, tokenContractPath, source };
+}
+
+function resolveHostSources() {
+  const envRoot = process.env.LVIS_HOST_REPO_ROOT;
+  if (envRoot && fs.existsSync(envRoot)) {
+    return buildHostSources(envRoot, `env-root:${envRoot}`);
+  }
+
   const envPath = process.env.LVIS_HOST_TYPES_PATH;
   if (envPath && fs.existsSync(envPath)) {
-    return { path: envPath, source: `env:${envPath}` };
+    const tokenEnvPath = process.env.LVIS_HOST_TOKEN_CONTRACT_PATH;
+    const derivedRoot = path.resolve(path.dirname(envPath), "..", "..");
+    const tokenContractPath = tokenEnvPath && fs.existsSync(tokenEnvPath)
+      ? tokenEnvPath
+      : path.join(derivedRoot, "src/shared/plugin-ui-tokens.ts");
+    if (!fs.existsSync(tokenContractPath)) {
+      console.error(
+        "ERROR: token contract not found. Set LVIS_HOST_TOKEN_CONTRACT_PATH or provide a host root containing src/shared/plugin-ui-tokens.ts."
+      );
+      process.exit(1);
+    }
+    return {
+      typesPath: envPath,
+      tokenContractPath,
+      source: `env:${envPath}`,
+    };
+  }
+
+  const siblingRoot = path.resolve(ROOT, "..", "lvis-app");
+  if (fs.existsSync(siblingRoot)) {
+    return buildHostSources(siblingRoot, `sibling:${siblingRoot}`);
   }
 
   const url = process.env.LVIS_HOST_REPO_URL;
   if (!url) {
     console.error(
-      "ERROR: host types source not configured. Set LVIS_HOST_TYPES_PATH to a local file, place lvis-app next to this repository, or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository."
+      "ERROR: host contract source not configured. Set LVIS_HOST_REPO_ROOT, set LVIS_HOST_TYPES_PATH (and optionally LVIS_HOST_TOKEN_CONTRACT_PATH), place lvis-app next to this repository, or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository."
     );
     process.exit(1);
   }
@@ -48,7 +87,7 @@ function resolveHostTypesPath() {
     console.error(`Failed to clone ${url}.`);
     throw e;
   }
-  return { path: path.join(tmp, "src/plugins/types.ts"), source: `clone@${ref}` };
+  return buildHostSources(tmp, `clone@${ref}`);
 }
 
 function hasExportModifier(stmt) {
@@ -115,6 +154,14 @@ function render(body) {
 //
 // @lvis/plugin-sdk — type-only public surface of the LVIS plugin contract.
 // This file mirrors the host plugin type contract.
+
+${body}`;
+}
+
+function renderTokenContract(body) {
+  return `// AUTO-GENERATED — DO NOT EDIT. Regenerate via: bun run sync:from-host
+//
+// @lvis/plugin-sdk — plugin UI token contract mirrored from the host app.
 
 ${body}`;
 }
@@ -909,15 +956,28 @@ function ensurePluginManifestUiSlots(text) {
 }
 
 try {
-  const { path: hostPath, source } = resolveHostTypesPath();
-  const rendered = render(extract(hostPath));
+  const { typesPath, tokenContractPath, source } = resolveHostSources();
+  const rendered = render(extract(typesPath));
   const sanitized = sanitizeForPublic(rendered);
   const output = normalizeSdkTypeOnlySurface(enrichWithJsDoc(sanitized, JSDOC_CATALOG))
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .replace(/^[ \t]+$/gm, "")
     .replace(/\n{3,}/g, "\n\n");
-  const target = path.join(ROOT, "src/index.ts");
+  const tokenOutput = renderTokenContract(fs.readFileSync(tokenContractPath, "utf8"))
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trimEnd() + "\n";
+  const targets = [
+    { path: path.join(ROOT, "src/index.ts"), output, label: "src/index.ts" },
+    {
+      path: path.join(ROOT, "src/ui/tokens/index.ts"),
+      output: tokenOutput,
+      label: "src/ui/tokens/index.ts",
+    },
+  ];
 
   // Normalize line endings so CRLF/LF differences don't trigger false drift.
   const normalize = (s) =>
@@ -927,15 +987,19 @@ try {
       .trimEnd() + "\n";
 
   if (process.argv.includes("--check")) {
-    const current = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : "";
-    if (normalize(current) !== normalize(output)) {
-      console.error("DRIFT DETECTED: src/index.ts differs from regenerated output.");
-      process.exit(1);
+    for (const target of targets) {
+      const current = fs.existsSync(target.path) ? fs.readFileSync(target.path, "utf8") : "";
+      if (normalize(current) !== normalize(target.output)) {
+        console.error(`DRIFT DETECTED: ${target.label} differs from regenerated output.`);
+        process.exit(1);
+      }
     }
     console.log("No drift.");
   } else {
-    fs.writeFileSync(target, output);
-    console.log(`Wrote ${target} (${output.length} bytes) from ${source}`);
+    for (const target of targets) {
+      fs.writeFileSync(target.path, target.output);
+      console.log(`Wrote ${target.path} (${target.output.length} bytes) from ${source}`);
+    }
   }
 } finally {
   if (CLONE_TMP_DIR) {
