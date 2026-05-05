@@ -19,6 +19,12 @@ import {
   findLvisTokenReferences,
   findLvisTokenDefinitions,
 } from "../tokens/validate.js";
+import { LVIS_TOKEN_NAMES, LVIS_CSS_ONLY_TOKEN_NAMES } from "../tokens/index.js";
+
+// Combined allowlist for lvis-tokens.css: IPC tokens + CSS-only static tokens.
+// CSS-only tokens (shadow, easing) cannot be sent over IPC but are valid
+// definitions in the SDK's offline fallback CSS.
+const _CSS_FULL_ALLOWLIST = new Set<string>([...LVIS_TOKEN_NAMES, ...LVIS_CSS_ONLY_TOKEN_NAMES]);
 
 // Anchor on this test file's location, not `process.cwd()` — keeps the test
 // working under VSCode's vitest extension, monorepo runs, and the case
@@ -80,7 +86,10 @@ describe.skipIf(!_SDK_SRC_PRESENT)("SDK component CSS — token allowlist self-c
 
   it("lvis-tokens.css :root defines only allowlisted tokens (no extras)", () => {
     const css = readFileSync(_TOKENS_CSS, "utf8");
-    const r = validateTokenDefinitions(css, { allowDefinitions: true });
+    // Use the combined allowlist: IPC tokens (LVIS_TOKEN_NAMES) + CSS-only
+    // static tokens (LVIS_CSS_ONLY_TOKEN_NAMES). The latter are valid fallback
+    // definitions in lvis-tokens.css but are never sent over IPC.
+    const r = validateTokenDefinitions(css, { allowDefinitions: true, allowlist: _CSS_FULL_ALLOWLIST });
     expect(r.ok).toBe(true);
     expect(r.unknown).toEqual([]);
   });

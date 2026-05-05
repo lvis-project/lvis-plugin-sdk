@@ -50,6 +50,15 @@ export function useTheme(bridge: PluginBridge): void {
         }
         if (Object.keys(safe).length > 0) applyThemeTokens(safe);
       }
+      if (payload.colorScheme !== undefined) {
+        root.setAttribute("data-color-scheme", payload.colorScheme);
+      }
+      if (typeof payload.reducedMotion === "boolean") {
+        root.setAttribute("data-reduced-motion", String(payload.reducedMotion));
+      }
+      if (payload.fonts?.family) {
+        document.body.style.fontFamily = payload.fonts.family;
+      }
     });
     return unsub;
   }, [bridge]);
