@@ -180,6 +180,40 @@ The SDK's own `bun run test` self-checks every component CSS string against
 the allowlist (`src/ui/__tests__/sdk-self-token-allowlist.test.ts`); a typo
 or a stale token entry fails CI immediately.
 
+## UI imports — canonical pattern (3.10.0+)
+
+**Per-component subpath is the canonical import path** for new plugin
+code. The `./ui` barrel still works (no breaking change for existing
+plugins) but is now considered the "prototyping / legacy" path because
+every component module has a top-level `injectTokenCss(...)` side effect
+that bundlers cannot tree-shake — importing one component from the
+barrel pulls all 10.
+
+```ts
+// canonical — only the imported components ship in the bundle
+import { Stack, Inline } from "@lvis/plugin-sdk/ui/components/Stack";
+import { Toggle } from "@lvis/plugin-sdk/ui/components/Toggle";
+import { Card } from "@lvis/plugin-sdk/ui/components/Card";
+
+// legacy / prototyping — pulls every component into the bundle
+import { Stack, Toggle, Card } from "@lvis/plugin-sdk/ui";
+```
+
+The fallback `:root { --lvis-*: ... }` block auto-injects via a side-effect
+import in each component file, so per-component imports still get the
+fallback tokens. `injectTokenCss` is keyed by stable id (e.g.
+`lvis-tokens-fallback`) so importing it from multiple component bundles
+in the same plugin is safe — the `<style>` element is upserted once,
+never duplicated.
+
+Available subpaths (3.10.0):
+
+- `@lvis/plugin-sdk/ui/components/<Name>` — Badge / Button / Card /
+  Checkbox / Input / Select / Spinner / Stack / Text / Toggle
+- `@lvis/plugin-sdk/ui/hooks/useTheme` — theme-broadcast subscription hook
+- `@lvis/plugin-sdk/ui/tokens/inject` — `injectTokenCss` / `applyThemeTokens`
+- `@lvis/plugin-sdk/ui/tokens/fallback` — `:root` token side-effect injector
+
 ## Trust model
 
 Marketplace signing keys are intentionally not part of this SDK. LVIS follows
