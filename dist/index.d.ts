@@ -504,20 +504,6 @@ export interface PluginHostApi {
      */
     onPluginsChanged(handler: (event: PluginLifecycleEvent) => void): () => void;
     /**
-     * Create a task in the host's task list.
-     *
-     * @param task - Task metadata. `source` identifies the originating plugin
-     *               or feature; `sourceRef` is an optional stable pointer back
-     *               to the originating entity (for example an email id).
-     */
-    addTask(task: {
-        title: string;
-        description?: string;
-        source: string;
-        sourceRef?: string;
-        priority?: "high" | "medium" | "low";
-    }): void;
-    /**
      * Retrieve an encrypted secret previously stored by the host or the user
      * (for example an API key).
      *
