@@ -7,6 +7,31 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.9.0] - 2026-05-05
+
+### Added
+- **`Stack` and `Inline` layout primitives** (PR #98) — first composite
+  primitive in the SDK UI. Vertical / horizontal flex containers with
+  `gap`, `align`, `justify`, `wrap`, and `as` props. Hardcoded rem
+  spacing scale (xs/sm/md/lg/xl) — to be migrated to design tokens
+  when a `--lvis-spacing-*` SoT lands.
+
+### Changed (build path)
+- **dist/ no longer committed** (PR #99). The `prepare` lifecycle script
+  now runs `tsup && tsc -p tsconfig.build.json`, regenerating dist on
+  every consumer `bun install`. Eliminates two recurring CI pain points:
+  TypeScript-side `.d.ts.map` OS drift between Linux and macOS, and
+  the rebase tax on PRs whenever main moved an exported type. Consumer
+  install is ~1-2s slower; that cost is dwarfed by the saved PR cycles.
+
+## [3.8.1] - 2026-05-05
+
+### Removed (BREAKING)
+- **`PluginHostApi.addTask`** removed from interface (PR #97). Host task
+  system removed in lvis-app Phase 4 (PR #551). Plugins that created
+  tasks via `addTask` (e.g. meeting plugin) must migrate to agent-hub
+  task creation tools.
+
 ## [3.8.0] - 2026-05-05
 
 ### Added
