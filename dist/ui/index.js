@@ -387,6 +387,70 @@ function Toggle({ checked, defaultChecked, onChange, label, disabled, id }) {
   );
 }
 
+// src/ui/components/Stack.tsx
+import { jsx as jsx10 } from "react/jsx-runtime";
+var CSS10 = `
+.lvis-stack { display: flex; }
+.lvis-stack-vertical   { flex-direction: column; }
+.lvis-stack-horizontal { flex-direction: row; }
+
+.lvis-stack-gap-xs { gap: 0.25rem; }
+.lvis-stack-gap-sm { gap: 0.5rem; }
+.lvis-stack-gap-md { gap: 0.75rem; }
+.lvis-stack-gap-lg { gap: 1rem; }
+.lvis-stack-gap-xl { gap: 1.5rem; }
+
+.lvis-stack-align-start    { align-items: flex-start; }
+.lvis-stack-align-center   { align-items: center; }
+.lvis-stack-align-end      { align-items: flex-end; }
+.lvis-stack-align-stretch  { align-items: stretch; }
+
+.lvis-stack-justify-start   { justify-content: flex-start; }
+.lvis-stack-justify-center  { justify-content: center; }
+.lvis-stack-justify-end     { justify-content: flex-end; }
+.lvis-stack-justify-between { justify-content: space-between; }
+.lvis-stack-justify-around  { justify-content: space-around; }
+
+.lvis-stack-wrap { flex-wrap: wrap; }
+`;
+injectTokenCss("lvis-stack", CSS10);
+function Stack({
+  gap = "md",
+  align,
+  justify,
+  as: Tag = "div",
+  className = "",
+  children,
+  ...rest
+}) {
+  const cls = buildClass("vertical", gap, align, justify, false, className);
+  return /* @__PURE__ */ jsx10(Tag, { ...rest, className: cls, children });
+}
+function Inline({
+  gap = "sm",
+  align,
+  justify,
+  wrap = false,
+  as: Tag = "div",
+  className = "",
+  children,
+  ...rest
+}) {
+  const cls = buildClass("horizontal", gap, align, justify, wrap, className);
+  return /* @__PURE__ */ jsx10(Tag, { ...rest, className: cls, children });
+}
+function buildClass(direction, gap, align, justify, wrap, extra) {
+  return [
+    "lvis-stack",
+    `lvis-stack-${direction}`,
+    `lvis-stack-gap-${gap}`,
+    align ? `lvis-stack-align-${align}` : "",
+    justify ? `lvis-stack-justify-${justify}` : "",
+    wrap ? "lvis-stack-wrap" : "",
+    extra
+  ].filter(Boolean).join(" ");
+}
+
 // src/ui/hooks/useTheme.ts
 import { useEffect } from "react";
 var VALID_THEMES = /* @__PURE__ */ new Set(["light", "dark", "high-contrast"]);
@@ -426,10 +490,12 @@ export {
   Button,
   Card,
   Checkbox,
+  Inline,
   Input,
   LVIS_TOKEN_NAMES,
   Select,
   Spinner,
+  Stack,
   Text,
   Toggle,
   applyThemeTokens,
