@@ -61,7 +61,13 @@ var LVIS_TOKEN_NAMES = [
   "--lvis-motion-normal"
   // 200ms
 ];
+var LVIS_CSS_ONLY_TOKEN_NAMES = [
+  "--lvis-shadow-sm",
+  "--lvis-shadow-md",
+  "--lvis-easing"
+];
 
 export {
-  LVIS_TOKEN_NAMES
+  LVIS_TOKEN_NAMES,
+  LVIS_CSS_ONLY_TOKEN_NAMES
 };

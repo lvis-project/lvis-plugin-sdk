@@ -54,6 +54,20 @@ export type LvisTokenMap = { readonly [K in LvisTokenName]: string };
 export type LvisThemeTokens = LvisTokenMap;
 
 /**
+ * CSS-only static tokens — defined in lvis-tokens.css as offline fallbacks
+ * but NOT included in LVIS_TOKEN_NAMES and NOT sent over IPC. Their value
+ * syntax (box-shadow, cubic-bezier) cannot pass the host's IPC safety regex.
+ * Plugin components may use `var(--lvis-shadow-sm)` etc. in their CSS.
+ */
+export const LVIS_CSS_ONLY_TOKEN_NAMES = [
+  "--lvis-shadow-sm",
+  "--lvis-shadow-md",
+  "--lvis-easing",
+] as const;
+
+export type LvisCssOnlyTokenName = typeof LVIS_CSS_ONLY_TOKEN_NAMES[number];
+
+/**
  * v2 bridge payload.
  * - `tokens` is required and non-partial: hosts that miss a token get a tsc error.
  * - New fields (`colorScheme`, `reducedMotion`, `fonts`) are optional so existing
