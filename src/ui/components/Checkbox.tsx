@@ -1,5 +1,4 @@
 import React from "react";
-import "../tokens/fallback.js";
 import { injectTokenCss } from "../tokens/inject.js";
 
 const CSS = `
