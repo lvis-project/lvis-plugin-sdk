@@ -7,6 +7,22 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.9.1] - 2026-05-05
+
+### Fixed
+- **`:root` token fallback now auto-injects on `@lvis/plugin-sdk/ui` import.**
+  Plugin webviews previously rendered SDK components with `var(--lvis-*)`
+  resolving to the CSS `initial` keyword (i.e. invisible — Toggle thumb
+  white-on-white) during the brief window between mount and the host's
+  first `host.theme.changed` broadcast. Observed when entering a plugin
+  panel for the first time after app launch — toggling the theme reset
+  unstuck it. The fallback module emits a `:root { --lvis-*: ... }`
+  block via `injectTokenCss` at module load (matching the values in
+  `lvis-tokens.css :root` and the host's `_DARK_BASE` token map) so
+  components paint with sensible dark-mode tokens immediately. The
+  host's broadcast still wins via inline `style.setProperty` once it
+  arrives.
+
 ## [3.9.0] - 2026-05-05
 
 ### Added
