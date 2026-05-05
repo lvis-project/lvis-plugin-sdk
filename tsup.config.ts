@@ -7,6 +7,24 @@ export default defineConfig({
     "ui/tokens/validate": "src/ui/tokens/validate.ts",
     "build/tsup": "src/build/tsup.ts",
     "runtime/electron": "src/runtime/electron.ts",
+    // Per-component subpath entries — let consumers tree-shake by
+    // importing `@lvis/plugin-sdk/ui/components/<Name>` directly. The
+    // `./ui/index` barrel still works for backward compat but pulls in
+    // every component (each has a module-load `injectTokenCss` side
+    // effect, so `export * from` cannot tree-shake them).
+    "ui/components/Badge": "src/ui/components/Badge.tsx",
+    "ui/components/Button": "src/ui/components/Button.tsx",
+    "ui/components/Card": "src/ui/components/Card.tsx",
+    "ui/components/Checkbox": "src/ui/components/Checkbox.tsx",
+    "ui/components/Input": "src/ui/components/Input.tsx",
+    "ui/components/Select": "src/ui/components/Select.tsx",
+    "ui/components/Spinner": "src/ui/components/Spinner.tsx",
+    "ui/components/Stack": "src/ui/components/Stack.tsx",
+    "ui/components/Text": "src/ui/components/Text.tsx",
+    "ui/components/Toggle": "src/ui/components/Toggle.tsx",
+    "ui/hooks/useTheme": "src/ui/hooks/useTheme.ts",
+    "ui/tokens/fallback": "src/ui/tokens/fallback.ts",
+    "ui/tokens/inject": "src/ui/tokens/inject.ts",
   },
   format: ["esm"],
   // dts emission is delegated to `tsc -p tsconfig.build.json` (see package.json
