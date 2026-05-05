@@ -44,6 +44,11 @@ let _fallbackEnsured = false;
 export function ensureFallback(): void {
   if (_fallbackEnsured) return;
   if (typeof document === "undefined") return;
+  // Flip the gate BEFORE the DOM mutation: fallback inject is best-effort.
+  // If `appendChild` throws (e.g. CSP `style-src` violation, frozen <head>),
+  // re-trying every subsequent injectTokenCss call would just rethrow the
+  // same error indefinitely — the host's primary `host.theme.changed`
+  // broadcast still wins via inline `style.setProperty` regardless.
   _fallbackEnsured = true;
   if (document.getElementById("lvis-tokens-fallback")) return;
   const el = document.createElement("style");
