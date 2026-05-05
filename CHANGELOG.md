@@ -16,7 +16,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Stack, Text, Toggle) now ships as its own dist entry with a
   dedicated subpath export. Plugins that import only a few primitives
   (e.g., work-proactive uses Card / Stack / Inline / Toggle / Text /
-  Spinner / Badge — 7/11) can replace the barrel import:
+  Spinner / Badge — 7/10 components, plus useTheme + injectTokenCss
+  helpers) can replace the barrel import:
 
   ```ts
   // before — pulls all 11 component CSS strings into the bundle

@@ -33,6 +33,15 @@ export default defineConfig({
   // tsc directly avoids that code path entirely.
   dts: false,
   clean: true,
+  // Disable code splitting so each per-component subpath produces a
+  // single self-contained dist file. Trade-off: slightly more inlined
+  // shared code (injectTokenCss / fallback) per component bundle vs.
+  // shared `chunk-XXXX.js` files whose content-addressed hashes would
+  // otherwise churn between releases — that churn breaks long-term
+  // caching at consumer bundlers exactly when the point of this layout
+  // is bundle-size predictability. Self-test 197/197 still passes; the
+  // size cost is bounded (~1KB token table per bundle).
+  splitting: false,
   // `tsup` is a peer/dev concern of consumers, not the SDK runtime — keep it
   // external so `@lvis/plugin-sdk/build` doesn't drag the tsup runtime in.
   external: ["react", "react-dom", "tsup"],
