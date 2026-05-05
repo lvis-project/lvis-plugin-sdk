@@ -9,6 +9,15 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [4.0.1] - 2026-05-05
 
+### Added
+
+- **`ensureFallback()`** — new public export from
+  `@lvis/plugin-sdk/ui/tokens/inject`. Idempotent helper that lazily injects
+  the `:root` fallback `<style id="lvis-tokens-fallback">` block. Plugins
+  that mount custom React shells before any SDK component evaluates can
+  pre-warm the fallback by calling `ensureFallback()` directly. Otherwise
+  it runs automatically on the first `injectTokenCss` call.
+
 ### Refactored — fallback ensure-on-inject (architect P0 follow-up to PR #102)
 
 - **`:root` fallback CSS moves into `inject.ts`** as an ensure-on-first-call
@@ -33,7 +42,8 @@ real maintenance smell — future contributors authoring a new component
 have to remember the side-effect import or the fallback drops. Folding
 it into `injectTokenCss` makes the contract automatic.
 
-Pure refactor — runtime behavior identical. 197/197 tests pass.
+Pure refactor — runtime behavior identical. 201/201 tests pass (4 new
+gate-coverage cases added in `inject.test.ts`).
 
 ---
 
