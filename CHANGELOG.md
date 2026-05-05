@@ -7,6 +7,57 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [3.10.0] - 2026-05-05
+
+### Added — per-component subpath exports (tree-shaking optimization)
+
+- **`@lvis/plugin-sdk/ui/components/<Name>`** — each of the 10 UI
+  components (Badge, Button, Card, Checkbox, Input, Select, Spinner,
+  Stack, Text, Toggle) now ships as its own dist entry with a
+  dedicated subpath export. Plugins that import only a few primitives
+  (e.g., work-proactive uses Card / Stack / Inline / Toggle / Text /
+  Spinner / Badge — 7/11) can replace the barrel import:
+
+  ```ts
+  // before — pulls all 11 component CSS strings into the bundle
+  import { Stack, Toggle } from "@lvis/plugin-sdk/ui";
+
+  // after — only Stack + Toggle CSS bundled
+  import { Stack, Inline } from "@lvis/plugin-sdk/ui/components/Stack";
+  import { Toggle } from "@lvis/plugin-sdk/ui/components/Toggle";
+  ```
+
+  Expected impact: lvis-plugin-work-proactive currently bundles every
+  UI component (~1 MB barrel output) but uses only 7/11 — switching
+  the import sites to subpaths should drop bundle size meaningfully.
+  Actual numbers will land with the consumer-side migration PR.
+  React + react-dom remain external, host-provided.
+
+- **`@lvis/plugin-sdk/ui/hooks/useTheme`** — direct hook subpath. Useful
+  for plugins that consume tokens via DOM query without using SDK
+  components.
+- **`@lvis/plugin-sdk/ui/tokens/inject`** and **`@lvis/plugin-sdk/ui/tokens/fallback`** —
+  helper / fallback subpaths for advanced plugin authors who want to
+  invoke `injectTokenCss` directly or pre-load fallback :root tokens
+  outside the standard component path.
+
+### Changed
+
+- Each component file now performs a side-effect `import "../tokens/fallback.js"`
+  so per-component subpath imports automatically include the `:root`
+  fallback (otherwise the fallback would only ship via the `./ui`
+  barrel). The bundler dedupes the import when multiple components
+  appear in the same plugin bundle.
+
+### Backward compatibility
+
+- The `./ui` barrel keeps working unchanged — existing plugins (like
+  the meeting/local-indexer/ms-graph fleet pinned to v3.x) continue
+  to receive all components via the barrel re-export. Subpath imports
+  are an opt-in optimization, not a breaking change.
+
+---
+
 ## [3.9.1] - 2026-05-05
 
 ### Fixed
