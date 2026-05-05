@@ -16,8 +16,8 @@ const CSS = `
 .lvis-toggle-thumb {
   position: absolute; top: 0.125rem; left: 0.125rem;
   width: 1rem; height: 1rem;
-  background: #fff; border-radius: 9999px;
-  transition: transform 0.2s;
+  background: var(--lvis-bg); border-radius: 9999px;
+  transition: transform 0.2s, background 0.18s;
   pointer-events: none;
 }
 .lvis-toggle-checked .lvis-toggle-track { background: var(--lvis-primary); }
