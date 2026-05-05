@@ -53,16 +53,18 @@ jobs:
       # stale committed dist regresses every consumer pinning the SDK by
       # tag. See feedback-build-success-not-bundle-works.
       #
-      # Catches both modifications to tracked files AND new untracked files
-      # (a fresh module entry produces new `.js`/`.d.ts` that `git diff` alone
-      # would miss).
+      # `.d.ts.map` sidecars are excluded from the parity check — TypeScript
+      # 6 emits subtly different VLQ-encoded mappings on Linux vs macOS for
+      # identical input, even with the same TS version. The mappings are
+      # debug-only (source-position lookup); the contract surface (.d.ts /
+      # .js) is byte-identical across OS.
       - name: Build and verify dist is in sync with src
         run: |
           bun run build
-          STATUS=$(git status --porcelain -- dist/)
+          STATUS=$(git status --porcelain -- dist/ | grep -v '\.map$' || true)
           if [ -n "$STATUS" ]; then
             echo "::error::dist/ is out of sync with src/. Run 'bun run build' locally and commit the regenerated dist."
             echo "$STATUS"
-            git diff -- dist/ | head -200
+            git diff -- dist/ | grep -v '^[+-].*\.map' | head -200
             exit 1
           fi
