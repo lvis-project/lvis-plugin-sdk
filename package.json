@@ -91,6 +91,15 @@
     "schemas",
     "dist"
   ],
+  "sideEffects": [
+    "**/components/*.js",
+    "**/components/*.tsx",
+    "**/tokens/fallback.js",
+    "**/tokens/fallback.ts",
+    "**/tokens/inject.js",
+    "**/tokens/inject.ts",
+    "**/lvis-tokens.css"
+  ],
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json",
     "prepare": "tsup && tsc -p tsconfig.build.json",
