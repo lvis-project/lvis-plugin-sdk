@@ -109,6 +109,7 @@
     "sync:schema-from-host": "node scripts/sync-schema-from-host.mjs",
     "check:drift": "node scripts/sync-from-host.mjs --check",
     "check:schema-drift": "node scripts/sync-schema-from-host.mjs --check",
+    "check:dist-drift": "node scripts/check-dist-drift.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
