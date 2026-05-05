@@ -180,6 +180,38 @@ The SDK's own `bun run test` self-checks every component CSS string against
 the allowlist (`src/ui/__tests__/sdk-self-token-allowlist.test.ts`); a typo
 or a stale token entry fails CI immediately.
 
+## Tree-shaking — per-component subpath imports (3.10.0+)
+
+Each UI component ships as its own subpath export so plugins that use
+only a few primitives don't bundle every component's CSS string. Importing
+the `./ui` barrel pulls all 10 components because each component module
+has a top-level `injectTokenCss(...)` side effect — the bundler can't
+tree-shake side-effects out.
+
+Use the per-component subpath when bundle size matters:
+
+```ts
+// barrel — pulls every component (good for prototyping)
+import { Stack, Toggle, Card } from "@lvis/plugin-sdk/ui";
+
+// subpath — only the imported components are bundled
+import { Stack, Inline } from "@lvis/plugin-sdk/ui/components/Stack";
+import { Toggle } from "@lvis/plugin-sdk/ui/components/Toggle";
+import { Card } from "@lvis/plugin-sdk/ui/components/Card";
+```
+
+The fallback `:root { --lvis-*: ... }` block auto-injects via a side-effect
+import in each component file, so per-component imports still get the
+fallback tokens (the bundler dedupes when several components import it).
+
+Available subpaths (3.10.0):
+
+- `@lvis/plugin-sdk/ui/components/<Name>` — Badge / Button / Card /
+  Checkbox / Input / Select / Spinner / Stack / Text / Toggle
+- `@lvis/plugin-sdk/ui/hooks/useTheme` — theme-broadcast subscription hook
+- `@lvis/plugin-sdk/ui/tokens/inject` — `injectTokenCss` / `applyThemeTokens`
+- `@lvis/plugin-sdk/ui/tokens/fallback` — `:root` token side-effect injector
+
 ## Trust model
 
 Marketplace signing keys are intentionally not part of this SDK. LVIS follows

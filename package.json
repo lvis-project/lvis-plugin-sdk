@@ -1,6 +1,6 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "3.9.1",
+  "version": "3.10.0",
   "private": false,
   "description": "SDK for authoring LVIS plugins. Type contracts (PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin) re-exported from the host as a single source of truth, plus thin runtime utilities (UI primitives, build helpers, host-context shims for safeStorage / shell.openExternal) shared across plugin repos.",
   "type": "module",
@@ -21,6 +21,58 @@
     "./ui/tokens/validate": {
       "types": "./src/ui/tokens/validate.ts",
       "import": "./dist/ui/tokens/validate.js"
+    },
+    "./ui/tokens/inject": {
+      "types": "./src/ui/tokens/inject.ts",
+      "import": "./dist/ui/tokens/inject.js"
+    },
+    "./ui/tokens/fallback": {
+      "types": "./src/ui/tokens/fallback.ts",
+      "import": "./dist/ui/tokens/fallback.js"
+    },
+    "./ui/hooks/useTheme": {
+      "types": "./src/ui/hooks/useTheme.ts",
+      "import": "./dist/ui/hooks/useTheme.js"
+    },
+    "./ui/components/Badge": {
+      "types": "./src/ui/components/Badge.tsx",
+      "import": "./dist/ui/components/Badge.js"
+    },
+    "./ui/components/Button": {
+      "types": "./src/ui/components/Button.tsx",
+      "import": "./dist/ui/components/Button.js"
+    },
+    "./ui/components/Card": {
+      "types": "./src/ui/components/Card.tsx",
+      "import": "./dist/ui/components/Card.js"
+    },
+    "./ui/components/Checkbox": {
+      "types": "./src/ui/components/Checkbox.tsx",
+      "import": "./dist/ui/components/Checkbox.js"
+    },
+    "./ui/components/Input": {
+      "types": "./src/ui/components/Input.tsx",
+      "import": "./dist/ui/components/Input.js"
+    },
+    "./ui/components/Select": {
+      "types": "./src/ui/components/Select.tsx",
+      "import": "./dist/ui/components/Select.js"
+    },
+    "./ui/components/Spinner": {
+      "types": "./src/ui/components/Spinner.tsx",
+      "import": "./dist/ui/components/Spinner.js"
+    },
+    "./ui/components/Stack": {
+      "types": "./src/ui/components/Stack.tsx",
+      "import": "./dist/ui/components/Stack.js"
+    },
+    "./ui/components/Text": {
+      "types": "./src/ui/components/Text.tsx",
+      "import": "./dist/ui/components/Text.js"
+    },
+    "./ui/components/Toggle": {
+      "types": "./src/ui/components/Toggle.tsx",
+      "import": "./dist/ui/components/Toggle.js"
     },
     "./ui/lvis-tokens.css": "./src/ui/tokens/lvis-tokens.css",
     "./build": {
