@@ -1,0 +1,1 @@
+{"version":3,"file":"useTheme.d.ts","sourceRoot":"","sources":["../../../src/ui/hooks/useTheme.ts"],"names":[],"mappings":"AAIA,KAAK,YAAY,GAAG;IAClB,OAAO,EAAE,CAAC,IAAI,EAAE,MAAM,EAAE,OAAO,EAAE,CAAC,IAAI,EAAE,OAAO,KAAK,IAAI,KAAK,MAAM,IAAI,CAAC;CACzE,CAAC;AAQF;;;;;;;;;;;;;GAaG;AACH,wBAAgB,QAAQ,CAAC,MAAM,EAAE,YAAY,GAAG,IAAI,CAoCnD"}

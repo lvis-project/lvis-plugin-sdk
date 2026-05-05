@@ -9,8 +9,10 @@
  *   node scripts/sync-schema-from-host.mjs --check      # exit 1 on drift
  *
  * Host source resolution mirrors `sync-from-host.mjs`:
- *   1. LVIS_HOST_SCHEMA_PATH env var (preferred for local dev / CI sparse checkout)
- *   2. LVIS_HOST_REPO_URL clone @ HOST_REF (default branch: main)
+ *   1. LVIS_HOST_REPO_ROOT env var pointing to a local lvis-app checkout.
+ *   2. LVIS_HOST_SCHEMA_PATH env var (preferred for local dev / CI sparse checkout)
+ *   3. ../lvis-app sibling checkout.
+ *   4. LVIS_HOST_REPO_URL clone @ HOST_REF (default branch: main)
  */
 
 import fs from "node:fs";
@@ -27,16 +29,25 @@ const HOST_SCHEMA_REL = "schemas/plugin.schema.json";
 let CLONE_TMP_DIR = null;
 
 function resolveHostSchemaPath() {
+  const envRoot = process.env.LVIS_HOST_REPO_ROOT;
+  if (envRoot && fs.existsSync(envRoot)) {
+    return { path: path.join(envRoot, HOST_SCHEMA_REL), source: `env-root:${envRoot}` };
+  }
+
   const envPath = process.env.LVIS_HOST_SCHEMA_PATH;
   if (envPath && fs.existsSync(envPath)) {
     return { path: envPath, source: `env:${envPath}` };
   }
 
+  const siblingRoot = path.resolve(ROOT, "..", "lvis-app");
+  if (fs.existsSync(siblingRoot)) {
+    return { path: path.join(siblingRoot, HOST_SCHEMA_REL), source: `sibling:${siblingRoot}` };
+  }
+
   const url = process.env.LVIS_HOST_REPO_URL;
   if (!url) {
     console.error(
-      "ERROR: host schema source not configured. Set LVIS_HOST_SCHEMA_PATH to a local file " +
-        "or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository.",
+      "ERROR: host schema source not configured. Set LVIS_HOST_REPO_ROOT, set LVIS_HOST_SCHEMA_PATH, place lvis-app next to this repository, or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository.",
     );
     process.exit(1);
   }
