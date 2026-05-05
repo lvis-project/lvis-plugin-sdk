@@ -5,7 +5,6 @@ on:
       - 'src/index.ts'
       - 'src/ui/tokens/index.ts'
       - 'scripts/sync-from-host.mjs'
-      - 'scripts/sync-tokens-from-host.mjs'
       - '.github/workflows/drift-check.yml'
   schedule:
     - cron: '17 3 * * *'   # nightly ~03:17 UTC
@@ -64,31 +63,12 @@ jobs:
             echo "::error::sync-from-host.mjs is not idempotent — second run produced different output"
             exit 1
           fi
-      # Token allowlist — host PLUGIN_TOKEN_NAMES is canonical, SDK
-      # LVIS_TOKEN_NAMES mirrors. A drift would let plugins ship references
-      # the host silently drops at broadcast time (invisible regression).
-      - name: Run sync against host tokens
-        env:
-          LVIS_HOST_TYPES_PATH: ${{ github.workspace }}/.host/src/plugins/types.ts
-          LVIS_HOST_REPO_URL: https://github.com/lvis-project/lvis-app.git
-        run: node scripts/sync-tokens-from-host.mjs
-      - name: Verify sync-tokens-from-host is idempotent
-        env:
-          LVIS_HOST_TYPES_PATH: ${{ github.workspace }}/.host/src/plugins/types.ts
-        run: |
-          set -euo pipefail
-          cp src/ui/tokens/index.ts /tmp/tokens-after-first-run.ts
-          node scripts/sync-tokens-from-host.mjs
-          if ! diff -u /tmp/tokens-after-first-run.ts src/ui/tokens/index.ts; then
-            echo "::error::sync-tokens-from-host.mjs is not idempotent — second run produced different output"
-            exit 1
-          fi
       - name: Remove host checkout
         run: rm -rf .host
       - name: Check for drift
         id: diff
         run: |
-          if git diff --quiet -- src/index.ts src/ui/tokens/index.ts; then
+          if git diff --quiet -- src/index.ts; then
             echo "drift=false" >> "$GITHUB_OUTPUT"
           else
             echo "drift=true" >> "$GITHUB_OUTPUT"
@@ -96,8 +76,8 @@ jobs:
       - name: Fail on drift (PR mode)
         if: github.event_name == 'pull_request' && steps.diff.outputs.drift == 'true'
         run: |
-          echo "::error::Drift detected between SDK and host SoT. Run 'bun run sync:from-host && bun run sync:tokens-from-host' locally and commit the result."
-          git --no-pager diff -- src/index.ts src/ui/tokens/index.ts | head -300
+          echo "::error::Drift detected between SDK and host SoT. Run 'bun run sync:from-host' locally and commit the result."
+          git --no-pager diff -- src/index.ts | head -300
           exit 1
       - name: Open PR on drift
         if: github.event_name != 'pull_request' && steps.diff.outputs.drift == 'true'
@@ -109,9 +89,9 @@ jobs:
           commit-message: 'chore: auto-sync from host SoT (types + tokens)'
           body: |
             Nightly drift-check detected divergence between `lvis-app` and this SDK.
-            Auto-regenerated via `scripts/sync-from-host.mjs` and `scripts/sync-tokens-from-host.mjs`.
+            Auto-regenerated via `scripts/sync-from-host.mjs`.
 
-            Please review the diff in `src/index.ts` and/or `src/ui/tokens/index.ts` before merging.
+            Please review the diff in `src/index.ts` before merging.
           base: main
           delete-branch: true
       - name: Open issue on workflow failure

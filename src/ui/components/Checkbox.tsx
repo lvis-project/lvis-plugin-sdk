@@ -24,14 +24,14 @@ const CSS = `
   transform: rotate(45deg);
   opacity: 0; transition: opacity 0.1s;
 }
-.lvis-checkbox-checked .lvis-checkbox-box::after { border-color: #fff; opacity: 1; }
+.lvis-checkbox-checked .lvis-checkbox-box::after { border-color: var(--lvis-primary-fg); opacity: 1; }
 .lvis-checkbox-indeterminate .lvis-checkbox-box {
   background: var(--lvis-primary); border-color: var(--lvis-primary);
 }
 .lvis-checkbox-indeterminate .lvis-checkbox-box::after {
   top: 50%; left: 2px; width: 8px; height: 0;
-  border-color: transparent transparent transparent #fff;
-  border-left: 8px solid #fff;
+  border-color: transparent transparent transparent var(--lvis-primary-fg);
+  border-left: 8px solid var(--lvis-primary-fg);
   border-top: none; border-right: none;
   transform: translateY(-50%) rotate(0deg);
   opacity: 1;
