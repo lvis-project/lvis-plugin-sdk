@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useRef } from "react";
+import type { RefObject } from "react";
 
 const activate = vi.fn();
 const deactivate = vi.fn();
@@ -30,7 +30,7 @@ function setupRef(): { current: HTMLElement } {
 describe("useFocusTrap", () => {
   it("activates the trap when active=true and ref.current is set", () => {
     const ref = setupRef();
-    renderHook(() => useFocusTrap(ref as React.RefObject<HTMLElement>, true));
+    renderHook(() => useFocusTrap(ref as RefObject<HTMLElement>, true));
     expect(createFocusTrap).toHaveBeenCalledOnce();
     expect(activate).toHaveBeenCalledOnce();
     expect(deactivate).not.toHaveBeenCalled();
@@ -38,14 +38,14 @@ describe("useFocusTrap", () => {
 
   it("deactivates the trap on unmount", () => {
     const ref = setupRef();
-    const { unmount } = renderHook(() => useFocusTrap(ref as React.RefObject<HTMLElement>, true));
+    const { unmount } = renderHook(() => useFocusTrap(ref as RefObject<HTMLElement>, true));
     unmount();
     expect(deactivate).toHaveBeenCalledOnce();
   });
 
   it("does not activate when active=false", () => {
     const ref = setupRef();
-    renderHook(() => useFocusTrap(ref as React.RefObject<HTMLElement>, false));
+    renderHook(() => useFocusTrap(ref as RefObject<HTMLElement>, false));
     expect(createFocusTrap).not.toHaveBeenCalled();
     expect(activate).not.toHaveBeenCalled();
   });
@@ -60,7 +60,7 @@ describe("useFocusTrap", () => {
     const ref = setupRef();
     const initialFocus = document.createElement("button");
     renderHook(() =>
-      useFocusTrap(ref as React.RefObject<HTMLElement>, true, {
+      useFocusTrap(ref as RefObject<HTMLElement>, true, {
         initialFocus,
         allowOutsideClick: false,
       }),
@@ -73,7 +73,7 @@ describe("useFocusTrap", () => {
 
   it("uses sane defaults when options omitted (no escape/click-outside auto-deactivate)", () => {
     const ref = setupRef();
-    renderHook(() => useFocusTrap(ref as React.RefObject<HTMLElement>, true));
+    renderHook(() => useFocusTrap(ref as RefObject<HTMLElement>, true));
     const opts = createFocusTrap.mock.calls[0]![1];
     expect(opts.escapeDeactivates).toBe(false);
     expect(opts.clickOutsideDeactivates).toBe(false);
@@ -89,7 +89,7 @@ describe("useFocusTrap", () => {
       throw new Error("trap setup failure");
     });
     expect(() =>
-      renderHook(() => useFocusTrap(ref as React.RefObject<HTMLElement>, true)),
+      renderHook(() => useFocusTrap(ref as RefObject<HTMLElement>, true)),
     ).not.toThrow();
     expect(warnSpy).toHaveBeenCalledOnce();
     expect(deactivate).not.toHaveBeenCalled();
@@ -97,9 +97,9 @@ describe("useFocusTrap", () => {
   });
 });
 
-function useRefHelper(): React.RefObject<HTMLElement | null> {
+function useRefHelper(): RefObject<HTMLElement | null> {
   // Helper to expose a null-ref outside of a renderHook callback —
   // mirrors how a consumer would pass `useRef<HTMLElement>(null)` whose
   // current is set later by a JSX `ref` attribute.
-  return { current: null } as React.RefObject<HTMLElement | null>;
+  return { current: null } as RefObject<HTMLElement | null>;
 }
