@@ -7,6 +7,43 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [4.1.0] - 2026-05-06
+
+### Added — Modal primitive + useFocusTrap (PR2 of SDK UI roadmap)
+
+- **`Modal`** — `<Modal open onClose title>` with focus trap (via
+  `focus-trap` MIT), Esc key, body scroll lock, click-outside dismiss,
+  `disableDismiss` for busy states, three sizes (`sm`/`md`/`lg`),
+  optional `caption` + `footer` slots, ARIA `role="dialog"` +
+  `aria-modal="true"` + `aria-labelledby`/`aria-label` based on whether
+  `title` is a plain string.
+- **`useFocusTrap(ref, active, options?)`** — direct hook, exposed for
+  future dropdown / popover primitives. Wraps `focus-trap` with safe
+  defaults (`returnFocusOnDeactivate: true`, no auto-deactivate on
+  Esc/click-outside — Modal handles those itself).
+- **Subpath exports** — `@lvis/plugin-sdk/ui/components/Modal`,
+  `@lvis/plugin-sdk/ui/hooks/useFocusTrap`. Tree-shake-friendly per
+  v3.10.0 contract (Modal uses `injectTokenCss` so the 4.0.1 fallback
+  ensure-on-inject path covers it automatically).
+
+### Why
+
+Implementation survey across LVIS plugins: 2 hand-rolled modals
+(`local-indexer` folder-preview + `agent-hub` ConfirmModal), at least 4
+more on the way. agent-hub's existing modal had no focus trap → a11y
+hole. Standard primitive removes the duplication and closes the gap.
+First consumer migration (agent-hub ConfirmModal) lands as companion PR.
+
+### Dependencies
+
+- `focus-trap@^8.2.0` (MIT) — direct wrap, no `focus-trap-react` shim.
+
+### Companion PR
+
+- `lvis-plugin-agent-hub` — replaces ConfirmModal internals with SDK Modal.
+
+---
+
 ## [4.0.1] - 2026-05-05
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "private": false,
   "description": "SDK for authoring LVIS plugins. Type contracts (PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin) re-exported from the host as a single source of truth, plus thin runtime utilities (UI primitives, build helpers, host-context shims for safeStorage / shell.openExternal) shared across plugin repos.",
   "type": "module",
@@ -34,6 +34,10 @@
       "types": "./src/ui/hooks/useTheme.ts",
       "import": "./dist/ui/hooks/useTheme.js"
     },
+    "./ui/hooks/useFocusTrap": {
+      "types": "./src/ui/hooks/useFocusTrap.ts",
+      "import": "./dist/ui/hooks/useFocusTrap.js"
+    },
     "./ui/components/Badge": {
       "types": "./src/ui/components/Badge.tsx",
       "import": "./dist/ui/components/Badge.js"
@@ -53,6 +57,10 @@
     "./ui/components/Input": {
       "types": "./src/ui/components/Input.tsx",
       "import": "./dist/ui/components/Input.js"
+    },
+    "./ui/components/Modal": {
+      "types": "./src/ui/components/Modal.tsx",
+      "import": "./dist/ui/components/Modal.js"
     },
     "./ui/components/Select": {
       "types": "./src/ui/components/Select.tsx",
@@ -146,5 +154,8 @@
     "typescript": "^6.0.3",
     "vite": "^5.0.0",
     "vitest": "^4.1.5"
+  },
+  "dependencies": {
+    "focus-trap": "^8.2.0"
   }
 }

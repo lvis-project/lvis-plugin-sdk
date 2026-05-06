@@ -536,14 +536,186 @@ function buildClass(direction, gap, align, justify, wrap, extra) {
   ].filter(Boolean).join(" ");
 }
 
-// src/ui/hooks/useTheme.ts
+// src/ui/components/Modal.tsx
+import * as React3 from "react";
+
+// src/ui/hooks/useFocusTrap.ts
 import { useEffect } from "react";
+import { createFocusTrap } from "focus-trap";
+function useFocusTrap(ref, active, options = {}) {
+  const { initialFocus, allowOutsideClick } = options;
+  useEffect(() => {
+    if (!active) return;
+    const node = ref.current;
+    if (!node) return;
+    let trap;
+    try {
+      trap = createFocusTrap(node, {
+        escapeDeactivates: false,
+        clickOutsideDeactivates: false,
+        returnFocusOnDeactivate: true,
+        allowOutsideClick: allowOutsideClick ?? true,
+        initialFocus,
+        fallbackFocus: node
+      });
+      trap.activate();
+    } catch (err) {
+      console.warn("[lvis-plugin-sdk] focus-trap activation failed", err);
+      return;
+    }
+    return () => {
+      try {
+        trap.deactivate();
+      } catch {
+      }
+    };
+  }, [active, ref, initialFocus, allowOutsideClick]);
+}
+
+// src/ui/components/Modal.tsx
+import { jsx as jsx11, jsxs as jsxs4 } from "react/jsx-runtime";
+var CSS11 = `
+.lvis-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgb(0 0 0 / 0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem; z-index: 1000;
+  animation: lvis-modal-fade-in 0.15s ease-out;
+}
+.lvis-modal {
+  background: var(--lvis-surface);
+  color: var(--lvis-fg);
+  border: 1px solid var(--lvis-border);
+  border-radius: var(--lvis-radius);
+  display: flex; flex-direction: column;
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
+  animation: lvis-modal-pop-in 0.18s ease-out;
+}
+.lvis-modal-sm { width: 360px; max-width: 100%; }
+.lvis-modal-md { width: 520px; max-width: 100%; }
+.lvis-modal-lg { width: 760px; max-width: 100%; }
+.lvis-modal-head {
+  padding: 1rem 1.25rem 0.5rem;
+  display: flex; flex-direction: column; gap: 0.25rem;
+}
+.lvis-modal-title {
+  font-size: 1.0625rem; font-weight: 600;
+  margin: 0; color: var(--lvis-fg);
+}
+.lvis-modal-caption {
+  font-size: 0.875rem; color: var(--lvis-fg-muted);
+  margin: 0;
+}
+.lvis-modal-body {
+  padding: 0.5rem 1.25rem 1rem;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  color: var(--lvis-fg);
+}
+.lvis-modal-foot {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--lvis-border);
+  display: flex; gap: 0.5rem; justify-content: flex-end;
+}
+@keyframes lvis-modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes lvis-modal-pop-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lvis-modal-overlay, .lvis-modal { animation: none; }
+}
+`;
+injectTokenCss("lvis-modal", CSS11);
+var _scrollLockCount = 0;
+var _scrollLockOriginal = "";
+function Modal(props) {
+  const {
+    open,
+    onClose,
+    title,
+    caption,
+    children,
+    footer,
+    size = "md",
+    disableDismiss = false,
+    ariaLabel,
+    testId
+  } = props;
+  const dialogRef = React3.useRef(null);
+  const reactId = React3.useId();
+  const titleId = `lvis-modal-title-${reactId}`;
+  useFocusTrap(dialogRef, open);
+  React3.useEffect(() => {
+    if (!open || disableDismiss) return;
+    function onKey(e) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, disableDismiss, onClose]);
+  React3.useEffect(() => {
+    if (!open) return;
+    if (_scrollLockCount === 0) {
+      _scrollLockOriginal = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
+    _scrollLockCount++;
+    return () => {
+      _scrollLockCount--;
+      if (_scrollLockCount === 0) {
+        document.body.style.overflow = _scrollLockOriginal;
+      }
+    };
+  }, [open]);
+  if (!open) return null;
+  const titleIsString = typeof title === "string";
+  return /* @__PURE__ */ jsx11(
+    "div",
+    {
+      className: "lvis-modal-overlay",
+      role: "presentation",
+      "data-testid": testId,
+      onClick: (e) => {
+        if (disableDismiss) return;
+        if (e.target === e.currentTarget) onClose();
+      },
+      children: /* @__PURE__ */ jsxs4(
+        "div",
+        {
+          ref: dialogRef,
+          className: `lvis-modal lvis-modal-${size}`,
+          role: "dialog",
+          "aria-modal": "true",
+          "aria-labelledby": titleIsString ? titleId : void 0,
+          "aria-label": !titleIsString ? ariaLabel : void 0,
+          tabIndex: -1,
+          children: [
+            (title !== void 0 || caption !== void 0) && /* @__PURE__ */ jsxs4("div", { className: "lvis-modal-head", children: [
+              title !== void 0 && (titleIsString ? /* @__PURE__ */ jsx11("h2", { id: titleId, className: "lvis-modal-title", children: title }) : /* @__PURE__ */ jsx11("div", { className: "lvis-modal-title", children: title })),
+              caption !== void 0 && /* @__PURE__ */ jsx11("p", { className: "lvis-modal-caption", children: caption })
+            ] }),
+            /* @__PURE__ */ jsx11("div", { className: "lvis-modal-body", children }),
+            footer !== void 0 && /* @__PURE__ */ jsx11("div", { className: "lvis-modal-foot", children: footer })
+          ]
+        }
+      )
+    }
+  );
+}
+
+// src/ui/hooks/useTheme.ts
+import { useEffect as useEffect3 } from "react";
 var VALID_THEMES = /* @__PURE__ */ new Set(["light", "dark", "high-contrast"]);
 var VALID_CHAT_THEMES = /* @__PURE__ */ new Set(["lg", "purple", "orange", "blue"]);
 var VALID_CODE_THEMES = /* @__PURE__ */ new Set(["light", "dark"]);
 var _ALLOWED_TOKEN_KEYS = new Set(LVIS_TOKEN_NAMES);
 function useTheme(bridge) {
-  useEffect(() => {
+  useEffect3(() => {
     const unsub = bridge.onEvent("host.theme.changed", (data) => {
       const payload = data;
       if (!payload) return;
@@ -588,6 +760,7 @@ export {
   Input,
   LVIS_CSS_ONLY_TOKEN_NAMES,
   LVIS_TOKEN_NAMES,
+  Modal,
   Select,
   Spinner,
   Stack,
@@ -595,5 +768,6 @@ export {
   Toggle,
   applyThemeTokens,
   injectTokenCss,
+  useFocusTrap,
   useTheme
 };
