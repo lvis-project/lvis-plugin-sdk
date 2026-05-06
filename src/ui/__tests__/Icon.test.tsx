@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
-import { Icon } from "../components/Icon.js";
+import { Icon, ICON_NAMES } from "../components/Icon.js";
 
 afterEach(() => {
   cleanup();
@@ -33,16 +33,25 @@ describe("Icon", () => {
     expect(svg?.getAttribute("aria-hidden")).toBe("true");
   });
 
-  it("aria-label removes the implicit aria-hidden", () => {
+  it("aria-label removes the implicit aria-hidden (attribute is omitted, not 'false')", () => {
     const { container } = render(<Icon name="trash" aria-label="삭제" />);
     const svg = container.querySelector("svg");
     expect(svg?.getAttribute("aria-label")).toBe("삭제");
-    expect(svg?.getAttribute("aria-hidden")).not.toBe("true");
+    expect(svg?.hasAttribute("aria-hidden")).toBe(false);
   });
 
-  it("explicit aria-hidden overrides the default", () => {
+  it("explicit aria-hidden=false overrides the default", () => {
     const { container } = render(<Icon name="folder" aria-hidden={false} />);
     const svg = container.querySelector("svg");
+    expect(svg?.getAttribute("aria-hidden")).toBe("false");
+  });
+
+  it("aria-label + explicit aria-hidden=false coexist (defensive caller pattern)", () => {
+    const { container } = render(
+      <Icon name="trash" aria-label="삭제" aria-hidden={false} />,
+    );
+    const svg = container.querySelector("svg");
+    expect(svg?.getAttribute("aria-label")).toBe("삭제");
     expect(svg?.getAttribute("aria-hidden")).toBe("false");
   });
 
@@ -55,23 +64,15 @@ describe("Icon", () => {
     expect(svg?.getAttribute("style")).toContain("color");
   });
 
-  it("covers the 10 names migrated from local-indexer", () => {
-    const localIndexerNames = [
-      "search",
-      "folder",
-      "document",
-      "refresh",
-      "play",
-      "stop",
-      "plus",
-      "trash",
-      "empty",
-      "spark",
-    ] as const;
-    for (const name of localIndexerNames) {
-      const { container, unmount } = render(<Icon name={name} />);
+  it.each(ICON_NAMES)(
+    "every registered name resolves to a renderable lucide component: %s",
+    (name) => {
+      const { container } = render(<Icon name={name} />);
+      // Forward-compat guard against lucide-react export renames — if a
+      // future minor bump removes a re-export we reference, the import
+      // would surface as `undefined` here and React's `Element type is
+      // invalid` error would fire during render.
       expect(container.querySelector("svg")).not.toBeNull();
-      unmount();
-    }
-  });
+    },
+  );
 });

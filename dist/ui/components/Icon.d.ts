@@ -1,3 +1,4 @@
+import "../tokens/fallback.js";
 import * as React from "react";
 declare const ICONS: {
     readonly search: React.ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
@@ -48,6 +49,7 @@ declare const ICONS: {
     readonly phone: React.ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
     readonly "volume-2": React.ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
     readonly "volume-x": React.ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
+    readonly "volume-off": React.ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
     readonly "bell-off": React.ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
     readonly pause: React.ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
     readonly filter: React.ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
@@ -89,6 +91,13 @@ declare const ICONS: {
     readonly tag: React.ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
 };
 export type IconName = keyof typeof ICONS;
+/**
+ * All registered icon names — derived from `ICONS` so adding a new
+ * entry to the map automatically exposes it here. Useful for tests
+ * (assert every name resolves to a renderable component) and for
+ * Storybook controls without hand-duplicating the list.
+ */
+export declare const ICON_NAMES: readonly IconName[];
 export interface IconProps extends Omit<React.SVGAttributes<SVGSVGElement>, "children"> {
     name: IconName;
     /** Icon side length in pixels. Default 16. */

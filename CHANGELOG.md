@@ -11,11 +11,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added — Icon primitive + curated lucide subset (PR3 of SDK UI roadmap)
 
-- **`Icon`** — `<Icon name="folder" size={16} />` with an 87-name
+- **`Icon`** — `<Icon name="folder" size={16} />` with an 88-name
   allowlist curated from real plugin needs across all 5 LVIS plugin
   domains. The 10 names migrated 1:1 from lvis-plugin-local-indexer's
   hand-rolled ICONS dict (search / folder / document / refresh / play /
-  stop / plus / trash / empty / spark) plus 77 forward-compat additions:
+  stop / plus / trash / empty / spark) plus 78 forward-compat additions:
   - **Media controls**: play / pause / stop
   - **State / form**: check / x / edit / copy / download / upload /
     save / loader / warning / info / error / external-link /
@@ -31,7 +31,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - **Visibility / security**: eye / eye-off / lock / unlock /
     shield-check
   - **Meeting / call (with mute/off variants)**: video / video-off /
-    mic / mic-off / phone / volume-2 / volume-x
+    mic / mic-off / phone / volume-2 / volume-x / volume-off
+    (volume-off is a LVIS-side alias for volume-x — name pairs follow
+    `<base>-off` convention)
   - **Tables / KPI / data**: filter / trending-up / trending-down /
     bar-chart / activity
   - **Favorites / saved**: star / pin / bookmark

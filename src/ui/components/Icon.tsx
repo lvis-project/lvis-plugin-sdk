@@ -1,3 +1,11 @@
+// Side-effect: ensure the `:root` token fallback is present so plugins
+// that import only `Icon` and use `var(--lvis-*)` in their own CSS still
+// get sensible token values during the brief mount → host-broadcast
+// window. SDK 4.0.1 ensures `injectTokenCss` lazily emits the fallback,
+// so any component file that *doesn't* call `injectTokenCss` (Icon
+// renders lucide SVGs directly, no CSS injection) breaks the invariant
+// unless we route through the fallback shim explicitly.
+import "../tokens/fallback.js";
 import * as React from "react";
 import {
   Activity,
@@ -102,10 +110,13 @@ const ICONS = {
   trash: Trash2,
   empty: Inbox,
   spark: Sparkles,
-  // 26 forward-compat additions covering the most common UI affordances
+  // 77 forward-compat additions covering the most common UI affordances
   // across LVIS plugins (settings dialogs, action menus, status badges,
   // schedule/calendar widgets, people lists, kebab overflow menus,
-  // visibility toggles).
+  // visibility toggles, meeting/call mute states, KPI/data viz).
+  // Convention: binary on/off pairs use `<base>-off` (e.g. mic/mic-off,
+  // bell/bell-off, eye/eye-off). Volume mute is aliased two ways —
+  // `volume-x` (lucide name) and `volume-off` (LVIS convention).
   check: Check,
   x: X,
   "chevron-down": ChevronDown,
@@ -150,6 +161,7 @@ const ICONS = {
   phone: Phone,
   "volume-2": Volume2,
   "volume-x": VolumeX,
+  "volume-off": VolumeX,
   // Notifications (incl. off-variant)
   "bell-off": BellOff,
   // Media controls
@@ -205,6 +217,14 @@ const ICONS = {
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
+
+/**
+ * All registered icon names — derived from `ICONS` so adding a new
+ * entry to the map automatically exposes it here. Useful for tests
+ * (assert every name resolves to a renderable component) and for
+ * Storybook controls without hand-duplicating the list.
+ */
+export const ICON_NAMES = Object.keys(ICONS) as readonly IconName[];
 
 export interface IconProps
   extends Omit<React.SVGAttributes<SVGSVGElement>, "children"> {

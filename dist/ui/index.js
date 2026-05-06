@@ -831,10 +831,13 @@ var ICONS = {
   trash: Trash2,
   empty: Inbox,
   spark: Sparkles,
-  // 26 forward-compat additions covering the most common UI affordances
+  // 77 forward-compat additions covering the most common UI affordances
   // across LVIS plugins (settings dialogs, action menus, status badges,
   // schedule/calendar widgets, people lists, kebab overflow menus,
-  // visibility toggles).
+  // visibility toggles, meeting/call mute states, KPI/data viz).
+  // Convention: binary on/off pairs use `<base>-off` (e.g. mic/mic-off,
+  // bell/bell-off, eye/eye-off). Volume mute is aliased two ways —
+  // `volume-x` (lucide name) and `volume-off` (LVIS convention).
   check: Check,
   x: X,
   "chevron-down": ChevronDown,
@@ -879,6 +882,7 @@ var ICONS = {
   phone: Phone,
   "volume-2": Volume2,
   "volume-x": VolumeX,
+  "volume-off": VolumeX,
   // Notifications (incl. off-variant)
   "bell-off": BellOff,
   // Media controls
@@ -932,6 +936,7 @@ var ICONS = {
   file: File,
   tag: Tag
 };
+var ICON_NAMES = Object.keys(ICONS);
 function Icon({
   name,
   size = 16,
@@ -1000,6 +1005,7 @@ export {
   Button,
   Card,
   Checkbox,
+  ICON_NAMES,
   Icon,
   Inline,
   Input,

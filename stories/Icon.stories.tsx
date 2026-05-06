@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Icon, type IconName } from "../src/ui/components/Icon.js";
+import { Icon, ICON_NAMES } from "../src/ui/components/Icon.js";
 import { Stack, Inline } from "../src/ui/components/Stack.js";
 import { Text } from "../src/ui/components/Text.js";
 
@@ -9,29 +9,7 @@ const meta: Meta<typeof Icon> = {
   argTypes: {
     name: {
       control: "select",
-      options: [
-        "search", "folder", "document", "refresh", "play", "pause",
-        "stop", "plus", "minus", "trash", "empty", "spark",
-        "check", "x", "chevron-down", "chevron-up", "chevron-left",
-        "chevron-right", "edit", "copy", "download", "upload",
-        "save", "loader", "warning", "info", "error",
-        "external-link", "calendar", "clock", "timer",
-        "bell", "bell-off", "user", "users", "mail", "send",
-        "settings", "more-horizontal", "help-circle",
-        "eye", "eye-off", "lock", "unlock", "shield-check",
-        "video", "video-off", "mic", "mic-off", "phone",
-        "volume-2", "volume-x",
-        "filter", "trending-up", "trending-down", "bar-chart",
-        "activity", "star", "pin", "bookmark",
-        "bot", "briefcase", "home", "building",
-        "arrow-left", "arrow-right",
-        "share", "link", "message-square", "at-sign",
-        "paperclip", "reply", "forward",
-        "check-circle", "x-circle", "circle", "circle-dot",
-        "list", "layout-grid", "map-pin",
-        "power", "zap", "terminal", "archive",
-        "thumbs-up", "file", "tag",
-      ],
+      options: ICON_NAMES,
     },
     size: { control: { type: "number", min: 12, max: 64 } },
   },
@@ -44,30 +22,6 @@ export const Default: Story = {
   args: { name: "folder", size: 24 },
 };
 
-const ALL_NAMES: IconName[] = [
-  "search", "folder", "document", "refresh", "play", "pause",
-  "stop", "plus", "minus", "trash", "empty", "spark",
-  "check", "x", "chevron-down", "chevron-up", "chevron-left",
-  "chevron-right", "edit", "copy", "download", "upload",
-  "save", "loader", "warning", "info", "error",
-  "external-link", "calendar", "clock", "timer",
-  "bell", "bell-off", "user", "users", "mail", "send",
-  "settings", "more-horizontal", "help-circle",
-  "eye", "eye-off", "lock", "unlock", "shield-check",
-  "video", "video-off", "mic", "mic-off", "phone",
-  "volume-2", "volume-x",
-  "filter", "trending-up", "trending-down", "bar-chart",
-  "activity", "star", "pin", "bookmark",
-  "bot", "briefcase", "home", "building",
-  "arrow-left", "arrow-right",
-  "share", "link", "message-square", "at-sign",
-  "paperclip", "reply", "forward",
-  "check-circle", "x-circle", "circle", "circle-dot",
-  "list", "layout-grid", "map-pin",
-  "power", "zap", "terminal", "archive",
-  "thumbs-up", "file", "tag",
-];
-
 export const AllIcons: Story = {
   render: () => (
     <div
@@ -78,7 +32,7 @@ export const AllIcons: Story = {
         padding: "1rem",
       }}
     >
-      {ALL_NAMES.map((name) => (
+      {ICON_NAMES.map((name) => (
         <Stack key={name} gap="xs" align="center">
           <Icon name={name} size={28} />
           <Text variant="muted" style={{ fontSize: "0.75rem" }}>
