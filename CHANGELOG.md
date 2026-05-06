@@ -7,6 +7,17 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [4.3.0] - 2026-05-04
+
+### Added
+
+- **`PluginHostApi.openExternalUrl?(url: string): Promise<void>`** — 외부 URL 을 사용자 정책에 따라 표시. Host 가 routing 결정 (in-app webview vs system browser), plugin 은 정책에 무지각. 정책 SoT: settings 의 `webView.preferredFlow`. *호스트 SDK v4.3.0+ runtime 에서만 동작.*
+- **`PluginHostApi.getAppPreference?<T>(key: string): T | undefined`** — 호스트 글로벌 preference 읽기. plugin 의 자체 분기 (예: OAuth 흐름이 in-app 인지 system-browser 인지) 가 필요할 때 사용. Plugin private namespace (`pluginConfigs.*`) 는 거부 — 호스트가 명시적 allowlist 로 노출 키 결정. *호스트 SDK v4.3.0+ runtime 에서만 동작.*
+
+> ⚠️ **B3 (host) 머지 전 다른 plugin 의 dep bump 금지** — host runtime 이 아직 wiring 안 됐으면 method undefined 호출 시 silent failure. 정확한 sequencing 은 plan 의 §6 참조.
+
+---
+
 ## [4.2.1] - 2026-05-06
 
 ### Fixed
