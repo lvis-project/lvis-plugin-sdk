@@ -7,6 +7,27 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [4.2.1] - 2026-05-06
+
+### Fixed
+
+- **`Icon` default color in dark themes** — Icon now applies a default
+  `.lvis-icon { color: var(--lvis-fg) }` rule via `injectTokenCss`, so
+  lucide's stroke `currentColor` resolves to the host theme's
+  foreground. Plugin webviews that hadn't set body/root
+  `color: var(--lvis-fg)` explicitly previously rendered icons in the
+  browser default (black) — invisible on dark themes' near-black
+  background. Plugins can still override via own className, inline
+  `style.color`, or a wrapping element with `color: …` set explicitly.
+- The `lvis-icon` className is merged with any consumer-supplied
+  className so consumer-defined CSS still wins on specificity / cascade.
+- Removed the explicit `import "../tokens/fallback.js"` shim added in
+  4.2.0 — `injectTokenCss("lvis-icon", …)` itself triggers the v4.0.1
+  fallback ensure, restoring the SDK's "any UI component import emits
+  the `:root` fallback" invariant via the canonical path.
+
+---
+
 ## [4.2.0] - 2026-05-06
 
 ### Added — Icon primitive + curated lucide subset (PR3 of SDK UI roadmap)

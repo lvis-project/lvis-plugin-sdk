@@ -64,6 +64,20 @@ describe("Icon", () => {
     expect(svg?.getAttribute("style")).toContain("color");
   });
 
+  it("applies the lvis-icon class by default for theme-aware color", () => {
+    const { container } = render(<Icon name="folder" />);
+    const svg = container.querySelector("svg");
+    expect(svg?.getAttribute("class")).toContain("lvis-icon");
+  });
+
+  it("merges lvis-icon with consumer className (consumer's selectors retain specificity)", () => {
+    const { container } = render(<Icon name="folder" className="my-icon" />);
+    const svg = container.querySelector("svg");
+    const cls = svg?.getAttribute("class") ?? "";
+    expect(cls).toContain("lvis-icon");
+    expect(cls).toContain("my-icon");
+  });
+
   it.each(ICON_NAMES)(
     "every registered name resolves to a renderable lucide component: %s",
     (name) => {
