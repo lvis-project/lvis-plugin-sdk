@@ -40,15 +40,22 @@ describe("Modal", () => {
     expect(heading?.textContent).toBe("My Title");
   });
 
-  it("links aria-labelledby when title is a ReactNode", () => {
+  it("uses ariaLabel when title is a ReactNode", () => {
     const { getByRole } = render(
       <Modal open onClose={() => {}} title={<span>icon</span>} ariaLabel="dialog name" />,
     );
     const dialog = getByRole("dialog");
-    const labelId = dialog.getAttribute("aria-labelledby");
-    expect(labelId).toBeTruthy();
-    expect(dialog.getAttribute("aria-label")).toBeNull();
-    expect(document.getElementById(labelId!)?.textContent).toBe("icon");
+    expect(dialog.getAttribute("aria-label")).toBe("dialog name");
+    expect(dialog.getAttribute("aria-labelledby")).toBeNull();
+  });
+
+  it("uses default aria-label when ReactNode title has no ariaLabel", () => {
+    const { getByRole } = render(
+      <Modal open onClose={() => {}} title={<span aria-hidden="true">!</span>}>
+        content
+      </Modal>,
+    );
+    expect(getByRole("dialog").getAttribute("aria-label")).toBe("Dialog");
   });
 
   it("uses ariaLabel when no title is provided", () => {
