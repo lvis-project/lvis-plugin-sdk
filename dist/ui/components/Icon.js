@@ -70,9 +70,19 @@ function ensureFallback() {
   el.textContent = _FALLBACK_CSS;
   document.head.appendChild(el);
 }
-
-// src/ui/tokens/fallback.ts
-ensureFallback();
+function injectTokenCss(id, css) {
+  ensureFallback();
+  if (typeof document === "undefined") return;
+  const existing = document.getElementById(id);
+  if (existing) {
+    if (existing.textContent !== css) existing.textContent = css;
+    return;
+  }
+  const el = document.createElement("style");
+  el.id = id;
+  el.textContent = css;
+  document.head.appendChild(el);
+}
 
 // src/ui/components/Icon.tsx
 import {
@@ -165,6 +175,10 @@ import {
   Zap
 } from "lucide-react";
 import { jsx } from "react/jsx-runtime";
+injectTokenCss(
+  "lvis-icon",
+  `.lvis-icon { color: var(--lvis-fg); flex-shrink: 0; }`
+);
 var ICONS = {
   // 10 names migrated 1:1 from lvis-plugin-local-indexer ICONS dict
   search: Search,
@@ -286,16 +300,19 @@ var ICON_NAMES = Object.keys(ICONS);
 function Icon({
   name,
   size = 16,
+  className,
   "aria-hidden": ariaHidden,
   "aria-label": ariaLabel,
   ...rest
 }) {
   const Component = ICONS[name];
   const hidden = ariaHidden ?? (ariaLabel === void 0 ? true : void 0);
+  const mergedClassName = className ? `lvis-icon ${className}` : "lvis-icon";
   return /* @__PURE__ */ jsx(
     Component,
     {
       size,
+      className: mergedClassName,
       "aria-hidden": hidden,
       "aria-label": ariaLabel,
       ...rest
