@@ -59,7 +59,7 @@ describe("Modal", () => {
   });
 
   it("uses ariaLabel when string title is empty or whitespace-only", () => {
-    const { getByRole, queryByRole } = render(
+    const { container, getByRole, queryByRole } = render(
       <Modal open onClose={() => {}} title="   " ariaLabel="explicit dialog">
         content
       </Modal>,
@@ -68,6 +68,7 @@ describe("Modal", () => {
     expect(dialog.getAttribute("aria-label")).toBe("explicit dialog");
     expect(dialog.getAttribute("aria-labelledby")).toBeNull();
     expect(queryByRole("heading")).toBeNull();
+    expect(container.querySelector(".lvis-modal-head")).toBeNull();
   });
 
   it("uses ariaLabel when no title is provided", () => {
