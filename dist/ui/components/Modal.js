@@ -240,7 +240,8 @@ function Modal(props) {
   }, [open]);
   if (!open) return null;
   const titleIsString = typeof title === "string" && title.trim().length > 0;
-  const shouldRenderTitle = title !== void 0 && (typeof title !== "string" || title.trim().length > 0);
+  const shouldRenderTitle = title !== void 0 && title !== null && (typeof title !== "string" || title.trim().length > 0);
+  const shouldRenderHeader = shouldRenderTitle || caption !== void 0 && caption !== null;
   const dialogLabel = titleIsString ? void 0 : ariaLabel ?? "Dialog";
   return /* @__PURE__ */ jsx(
     "div",
@@ -263,7 +264,7 @@ function Modal(props) {
           "aria-label": dialogLabel,
           tabIndex: -1,
           children: [
-            (title !== void 0 || caption !== void 0) && /* @__PURE__ */ jsxs("div", { className: "lvis-modal-head", children: [
+            shouldRenderHeader && /* @__PURE__ */ jsxs("div", { className: "lvis-modal-head", children: [
               shouldRenderTitle && (titleIsString ? /* @__PURE__ */ jsx("h2", { id: titleId, className: "lvis-modal-title", children: title }) : /* @__PURE__ */ jsx("div", { className: "lvis-modal-title", children: title })),
               caption !== void 0 && /* @__PURE__ */ jsx("p", { className: "lvis-modal-caption", children: caption })
             ] }),
