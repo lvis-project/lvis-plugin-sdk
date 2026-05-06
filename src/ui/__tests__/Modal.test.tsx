@@ -58,6 +58,18 @@ describe("Modal", () => {
     expect(getByRole("dialog").getAttribute("aria-label")).toBe("Dialog");
   });
 
+  it("uses ariaLabel when string title is empty or whitespace-only", () => {
+    const { getByRole, queryByRole } = render(
+      <Modal open onClose={() => {}} title="   " ariaLabel="explicit dialog">
+        content
+      </Modal>,
+    );
+    const dialog = getByRole("dialog");
+    expect(dialog.getAttribute("aria-label")).toBe("explicit dialog");
+    expect(dialog.getAttribute("aria-labelledby")).toBeNull();
+    expect(queryByRole("heading")).toBeNull();
+  });
+
   it("uses ariaLabel when no title is provided", () => {
     const { getByRole } = render(
       <Modal open onClose={() => {}} ariaLabel="untitled dialog">
