@@ -9,7 +9,7 @@ export interface ModalProps {
     size?: "sm" | "md" | "lg";
     /** When true, Esc and overlay click are ignored (e.g. while busy). */
     disableDismiss?: boolean;
-    /** Fallback aria-label when title is not a plain string. */
+    /** Accessible name used when title is not a plain string or is omitted. */
     ariaLabel?: string;
     /** data-testid on the overlay element. */
     testId?: string;

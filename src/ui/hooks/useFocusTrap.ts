@@ -3,9 +3,9 @@ import { createFocusTrap, type FocusTrap } from "focus-trap";
 
 export interface UseFocusTrapOptions {
   /**
-   * Element that receives focus when the trap activates if no other
-   * focusable child is found. Defaults to the trap container itself
-   * (must be `tabIndex={-1}` for that to work, or focus-trap will throw).
+   * Element that receives focus when the trap activates. When omitted,
+   * focus-trap uses its own default target selection; `fallbackFocus`
+   * is still set to the trap container so empty dialogs remain valid.
    */
   initialFocus?: HTMLElement | (() => HTMLElement) | false;
   /**
