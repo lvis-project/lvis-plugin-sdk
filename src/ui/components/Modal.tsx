@@ -83,6 +83,21 @@ export interface ModalProps {
 let _scrollLockCount = 0;
 let _scrollLockOriginal = "";
 
+interface ModalDismissEntry {
+  id: symbol;
+  onClose: () => void;
+  disableDismiss: boolean;
+}
+
+const _modalDismissStack: ModalDismissEntry[] = [];
+
+function handleModalKeydown(e: KeyboardEvent): void {
+  if (e.key !== "Escape") return;
+  const top = _modalDismissStack[_modalDismissStack.length - 1];
+  if (top === undefined || top.disableDismiss) return;
+  top.onClose();
+}
+
 export function Modal(props: ModalProps): React.ReactElement | null {
   const {
     open,
@@ -107,12 +122,23 @@ export function Modal(props: ModalProps): React.ReactElement | null {
   useFocusTrap(dialogRef, open);
 
   React.useEffect(() => {
-    if (!open || disableDismiss) return;
-    function onKey(e: KeyboardEvent): void {
-      if (e.key === "Escape") onClose();
+    if (!open) return;
+    const entry: ModalDismissEntry = {
+      id: Symbol("lvis-modal-dismiss"),
+      onClose,
+      disableDismiss,
+    };
+    _modalDismissStack.push(entry);
+    if (_modalDismissStack.length === 1) {
+      document.addEventListener("keydown", handleModalKeydown);
     }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      const idx = _modalDismissStack.findIndex((item) => item.id === entry.id);
+      if (idx !== -1) _modalDismissStack.splice(idx, 1);
+      if (_modalDismissStack.length === 0) {
+        document.removeEventListener("keydown", handleModalKeydown);
+      }
+    };
   }, [open, disableDismiss, onClose]);
 
   React.useEffect(() => {
@@ -132,7 +158,9 @@ export function Modal(props: ModalProps): React.ReactElement | null {
 
   if (!open) return null;
 
+  const hasTitle = title !== undefined;
   const titleIsString = typeof title === "string";
+  const dialogLabel = hasTitle ? undefined : (ariaLabel ?? "Dialog");
 
   return (
     <div
@@ -149,8 +177,8 @@ export function Modal(props: ModalProps): React.ReactElement | null {
         className={`lvis-modal lvis-modal-${size}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleIsString ? titleId : undefined}
-        aria-label={!titleIsString ? ariaLabel : undefined}
+        aria-labelledby={hasTitle ? titleId : undefined}
+        aria-label={dialogLabel}
         tabIndex={-1}
       >
         {(title !== undefined || caption !== undefined) && (
@@ -161,7 +189,9 @@ export function Modal(props: ModalProps): React.ReactElement | null {
                   {title}
                 </h2>
               ) : (
-                <div className="lvis-modal-title">{title}</div>
+                <div id={titleId} className="lvis-modal-title">
+                  {title}
+                </div>
               ))}
             {caption !== undefined && <p className="lvis-modal-caption">{caption}</p>}
           </div>

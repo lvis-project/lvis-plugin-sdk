@@ -181,6 +181,13 @@ var CSS = `
 injectTokenCss("lvis-modal", CSS);
 var _scrollLockCount = 0;
 var _scrollLockOriginal = "";
+var _modalDismissStack = [];
+function handleModalKeydown(e) {
+  if (e.key !== "Escape") return;
+  const top = _modalDismissStack[_modalDismissStack.length - 1];
+  if (top === void 0 || top.disableDismiss) return;
+  top.onClose();
+}
 function Modal(props) {
   const {
     open,
@@ -199,12 +206,23 @@ function Modal(props) {
   const titleId = `lvis-modal-title-${reactId}`;
   useFocusTrap(dialogRef, open);
   React.useEffect(() => {
-    if (!open || disableDismiss) return;
-    function onKey(e) {
-      if (e.key === "Escape") onClose();
+    if (!open) return;
+    const entry = {
+      id: /* @__PURE__ */ Symbol("lvis-modal-dismiss"),
+      onClose,
+      disableDismiss
+    };
+    _modalDismissStack.push(entry);
+    if (_modalDismissStack.length === 1) {
+      document.addEventListener("keydown", handleModalKeydown);
     }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      const idx = _modalDismissStack.findIndex((item) => item.id === entry.id);
+      if (idx !== -1) _modalDismissStack.splice(idx, 1);
+      if (_modalDismissStack.length === 0) {
+        document.removeEventListener("keydown", handleModalKeydown);
+      }
+    };
   }, [open, disableDismiss, onClose]);
   React.useEffect(() => {
     if (!open) return;
@@ -221,7 +239,9 @@ function Modal(props) {
     };
   }, [open]);
   if (!open) return null;
+  const hasTitle = title !== void 0;
   const titleIsString = typeof title === "string";
+  const dialogLabel = hasTitle ? void 0 : ariaLabel ?? "Dialog";
   return /* @__PURE__ */ jsx(
     "div",
     {
@@ -239,12 +259,12 @@ function Modal(props) {
           className: `lvis-modal lvis-modal-${size}`,
           role: "dialog",
           "aria-modal": "true",
-          "aria-labelledby": titleIsString ? titleId : void 0,
-          "aria-label": !titleIsString ? ariaLabel : void 0,
+          "aria-labelledby": hasTitle ? titleId : void 0,
+          "aria-label": dialogLabel,
           tabIndex: -1,
           children: [
             (title !== void 0 || caption !== void 0) && /* @__PURE__ */ jsxs("div", { className: "lvis-modal-head", children: [
-              title !== void 0 && (titleIsString ? /* @__PURE__ */ jsx("h2", { id: titleId, className: "lvis-modal-title", children: title }) : /* @__PURE__ */ jsx("div", { className: "lvis-modal-title", children: title })),
+              title !== void 0 && (titleIsString ? /* @__PURE__ */ jsx("h2", { id: titleId, className: "lvis-modal-title", children: title }) : /* @__PURE__ */ jsx("div", { id: titleId, className: "lvis-modal-title", children: title })),
               caption !== void 0 && /* @__PURE__ */ jsx("p", { className: "lvis-modal-caption", children: caption })
             ] }),
             /* @__PURE__ */ jsx("div", { className: "lvis-modal-body", children }),

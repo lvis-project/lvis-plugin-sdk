@@ -40,13 +40,33 @@ describe("Modal", () => {
     expect(heading?.textContent).toBe("My Title");
   });
 
-  it("uses ariaLabel when title is a ReactNode (not string)", () => {
+  it("links aria-labelledby when title is a ReactNode", () => {
     const { getByRole } = render(
       <Modal open onClose={() => {}} title={<span>icon</span>} ariaLabel="dialog name" />,
     );
     const dialog = getByRole("dialog");
-    expect(dialog.getAttribute("aria-label")).toBe("dialog name");
-    expect(dialog.getAttribute("aria-labelledby")).toBeNull();
+    const labelId = dialog.getAttribute("aria-labelledby");
+    expect(labelId).toBeTruthy();
+    expect(dialog.getAttribute("aria-label")).toBeNull();
+    expect(document.getElementById(labelId!)?.textContent).toBe("icon");
+  });
+
+  it("uses ariaLabel when no title is provided", () => {
+    const { getByRole } = render(
+      <Modal open onClose={() => {}} ariaLabel="untitled dialog">
+        content
+      </Modal>,
+    );
+    expect(getByRole("dialog").getAttribute("aria-label")).toBe("untitled dialog");
+  });
+
+  it("keeps an accessible default name when no title or ariaLabel is provided", () => {
+    const { getByRole } = render(
+      <Modal open onClose={() => {}}>
+        content
+      </Modal>,
+    );
+    expect(getByRole("dialog").getAttribute("aria-label")).toBe("Dialog");
   });
 
   it("Esc key triggers onClose", () => {
@@ -54,6 +74,20 @@ describe("Modal", () => {
     render(<Modal open onClose={onClose} title="x" />);
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("Esc key only closes the topmost dismissible Modal", () => {
+    const outerClose = vi.fn();
+    const innerClose = vi.fn();
+    const outer = render(<Modal open onClose={outerClose} title="outer" />);
+    const inner = render(<Modal open onClose={innerClose} title="inner" />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(innerClose).toHaveBeenCalledOnce();
+    expect(outerClose).not.toHaveBeenCalled();
+    inner.rerender(<Modal open={false} onClose={innerClose} title="inner" />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(outerClose).toHaveBeenCalledOnce();
+    outer.rerender(<Modal open={false} onClose={outerClose} title="outer" />);
   });
 
   it("overlay click triggers onClose; inner click does not", () => {
