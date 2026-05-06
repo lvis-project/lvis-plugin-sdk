@@ -819,6 +819,10 @@ import {
   Zap
 } from "lucide-react";
 import { jsx as jsx12 } from "react/jsx-runtime";
+injectTokenCss(
+  "lvis-icon",
+  `.lvis-icon { color: var(--lvis-fg); flex-shrink: 0; }`
+);
 var ICONS = {
   // 10 names migrated 1:1 from lvis-plugin-local-indexer ICONS dict
   search: Search,
@@ -940,16 +944,19 @@ var ICON_NAMES = Object.keys(ICONS);
 function Icon({
   name,
   size = 16,
+  className,
   "aria-hidden": ariaHidden,
   "aria-label": ariaLabel,
   ...rest
 }) {
   const Component = ICONS[name];
   const hidden = ariaHidden ?? (ariaLabel === void 0 ? true : void 0);
+  const mergedClassName = className ? `lvis-icon ${className}` : "lvis-icon";
   return /* @__PURE__ */ jsx12(
     Component,
     {
       size,
+      className: mergedClassName,
       "aria-hidden": hidden,
       "aria-label": ariaLabel,
       ...rest
