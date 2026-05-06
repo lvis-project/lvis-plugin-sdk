@@ -70,7 +70,7 @@ export interface ModalProps {
   size?: "sm" | "md" | "lg";
   /** When true, Esc and overlay click are ignored (e.g. while busy). */
   disableDismiss?: boolean;
-  /** Fallback aria-label when title is not a plain string. */
+  /** Accessible name used when title is not a plain string or is omitted. */
   ariaLabel?: string;
   /** data-testid on the overlay element. */
   testId?: string;
@@ -158,9 +158,11 @@ export function Modal(props: ModalProps): React.ReactElement | null {
 
   if (!open) return null;
 
-  const hasTitle = title !== undefined;
-  const titleIsString = typeof title === "string";
-  const dialogLabel = hasTitle ? undefined : (ariaLabel ?? "Dialog");
+  const titleIsString = typeof title === "string" && title.trim().length > 0;
+  const shouldRenderTitle =
+    title !== undefined && title !== null && (typeof title !== "string" || title.trim().length > 0);
+  const shouldRenderHeader = shouldRenderTitle || (caption !== undefined && caption !== null);
+  const dialogLabel = titleIsString ? undefined : (ariaLabel ?? "Dialog");
 
   return (
     <div
@@ -177,19 +179,19 @@ export function Modal(props: ModalProps): React.ReactElement | null {
         className={`lvis-modal lvis-modal-${size}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={hasTitle ? titleId : undefined}
+        aria-labelledby={titleIsString ? titleId : undefined}
         aria-label={dialogLabel}
         tabIndex={-1}
       >
-        {(title !== undefined || caption !== undefined) && (
+        {shouldRenderHeader && (
           <div className="lvis-modal-head">
-            {title !== undefined &&
+            {shouldRenderTitle &&
               (titleIsString ? (
                 <h2 id={titleId} className="lvis-modal-title">
                   {title}
                 </h2>
               ) : (
-                <div id={titleId} className="lvis-modal-title">
+                <div className="lvis-modal-title">
                   {title}
                 </div>
               ))}

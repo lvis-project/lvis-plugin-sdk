@@ -691,9 +691,10 @@ function Modal(props) {
     };
   }, [open]);
   if (!open) return null;
-  const hasTitle = title !== void 0;
-  const titleIsString = typeof title === "string";
-  const dialogLabel = hasTitle ? void 0 : ariaLabel ?? "Dialog";
+  const titleIsString = typeof title === "string" && title.trim().length > 0;
+  const shouldRenderTitle = title !== void 0 && title !== null && (typeof title !== "string" || title.trim().length > 0);
+  const shouldRenderHeader = shouldRenderTitle || caption !== void 0 && caption !== null;
+  const dialogLabel = titleIsString ? void 0 : ariaLabel ?? "Dialog";
   return /* @__PURE__ */ jsx11(
     "div",
     {
@@ -711,12 +712,12 @@ function Modal(props) {
           className: `lvis-modal lvis-modal-${size}`,
           role: "dialog",
           "aria-modal": "true",
-          "aria-labelledby": hasTitle ? titleId : void 0,
+          "aria-labelledby": titleIsString ? titleId : void 0,
           "aria-label": dialogLabel,
           tabIndex: -1,
           children: [
-            (title !== void 0 || caption !== void 0) && /* @__PURE__ */ jsxs4("div", { className: "lvis-modal-head", children: [
-              title !== void 0 && (titleIsString ? /* @__PURE__ */ jsx11("h2", { id: titleId, className: "lvis-modal-title", children: title }) : /* @__PURE__ */ jsx11("div", { id: titleId, className: "lvis-modal-title", children: title })),
+            shouldRenderHeader && /* @__PURE__ */ jsxs4("div", { className: "lvis-modal-head", children: [
+              shouldRenderTitle && (titleIsString ? /* @__PURE__ */ jsx11("h2", { id: titleId, className: "lvis-modal-title", children: title }) : /* @__PURE__ */ jsx11("div", { className: "lvis-modal-title", children: title })),
               caption !== void 0 && /* @__PURE__ */ jsx11("p", { className: "lvis-modal-caption", children: caption })
             ] }),
             /* @__PURE__ */ jsx11("div", { className: "lvis-modal-body", children }),
