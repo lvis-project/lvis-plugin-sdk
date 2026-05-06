@@ -159,7 +159,9 @@ export function Modal(props: ModalProps): React.ReactElement | null {
   if (!open) return null;
 
   const titleIsString = typeof title === "string" && title.trim().length > 0;
-  const shouldRenderTitle = title !== undefined && (typeof title !== "string" || title.trim().length > 0);
+  const shouldRenderTitle =
+    title !== undefined && title !== null && (typeof title !== "string" || title.trim().length > 0);
+  const shouldRenderHeader = shouldRenderTitle || (caption !== undefined && caption !== null);
   const dialogLabel = titleIsString ? undefined : (ariaLabel ?? "Dialog");
 
   return (
@@ -181,7 +183,7 @@ export function Modal(props: ModalProps): React.ReactElement | null {
         aria-label={dialogLabel}
         tabIndex={-1}
       >
-        {(title !== undefined || caption !== undefined) && (
+        {shouldRenderHeader && (
           <div className="lvis-modal-head">
             {shouldRenderTitle &&
               (titleIsString ? (
