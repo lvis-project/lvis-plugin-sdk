@@ -7,6 +7,69 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [4.2.0] - 2026-05-06
+
+### Added — Icon primitive + curated lucide subset (PR3 of SDK UI roadmap)
+
+- **`Icon`** — `<Icon name="folder" size={16} />` with an 88-name
+  allowlist curated from real plugin needs across all 5 LVIS plugin
+  domains. The 10 names migrated 1:1 from lvis-plugin-local-indexer's
+  hand-rolled ICONS dict (search / folder / document / refresh / play /
+  stop / plus / trash / empty / spark) plus 78 forward-compat additions:
+  - **Media controls**: play / pause / stop
+  - **State / form**: check / x / edit / copy / download / upload /
+    save / loader / warning / info / error / external-link /
+    check-circle / x-circle / circle / circle-dot / minus / file / tag
+  - **Navigation**: chevron-up / chevron-down / chevron-left /
+    chevron-right / arrow-left / arrow-right
+  - **Schedule + time**: calendar / clock / timer / bell / bell-off
+  - **People / agent**: user / users / bot / briefcase / home / building
+  - **Communication / share**: mail / send / share / link /
+    message-square / at-sign / paperclip / reply / forward
+  - **Settings + overflow + help**: settings (gear) /
+    more-horizontal (kebab) / help-circle
+  - **Visibility / security**: eye / eye-off / lock / unlock /
+    shield-check
+  - **Meeting / call (with mute/off variants)**: video / video-off /
+    mic / mic-off / phone / volume-2 / volume-x / volume-off
+    (volume-off is a LVIS-side alias for volume-x — name pairs follow
+    `<base>-off` convention)
+  - **Tables / KPI / data**: filter / trending-up / trending-down /
+    bar-chart / activity
+  - **Favorites / saved**: star / pin / bookmark
+  - **Layout views**: list / layout-grid
+  - **Location / system**: map-pin / power / zap / terminal / archive
+  - **Feedback**: thumbs-up
+- **A11y default** — `aria-hidden="true"` for decorative use; passing
+  `aria-label` removes the implicit hidden state, matching lucide-react
+  convention.
+- **Subpath export** — `@lvis/plugin-sdk/ui/components/Icon` for tree-
+  shaking (single component bundle pulls all 24 icon refs but no other
+  SDK component CSS).
+
+### Why
+
+Implementation survey across LVIS plugins: 3/5 plugins
+(meeting / local-indexer / lge-api) duplicate ~9 lucide-shaped SVGs as
+inline `<svg>` strings in vanilla JS. Plus agent-hub / work-proactive
+(React) inline their own SVGs case-by-case. Standard primitive removes
+the duplication and locks the curated set to a maintained source.
+
+### Dependencies
+
+- `lucide-react@^1.14.0` (ISC) — full library imported but only the
+  24 referenced icons survive tree-shaking on consumer bundlers.
+
+### Consumer migration
+
+Vanilla plugins (local-indexer, meeting, lge-api) cannot consume the
+React `Icon` primitive directly — their migration to the SDK lands as
+part of the vanilla → React + SDK track (project-plugin-theme-migration-plan
+memo). Until then, the Icon primitive is consumed by React-native
+plugins (work-proactive, agent-hub) on case-by-case need.
+
+---
+
 ## [4.1.0] - 2026-05-06
 
 ### Added — Modal primitive + useFocusTrap (PR2 of SDK UI roadmap)

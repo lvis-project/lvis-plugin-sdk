@@ -16,6 +16,7 @@ export default defineConfig({
     "ui/components/Button": "src/ui/components/Button.tsx",
     "ui/components/Card": "src/ui/components/Card.tsx",
     "ui/components/Checkbox": "src/ui/components/Checkbox.tsx",
+    "ui/components/Icon": "src/ui/components/Icon.tsx",
     "ui/components/Input": "src/ui/components/Input.tsx",
     "ui/components/Modal": "src/ui/components/Modal.tsx",
     "ui/components/Select": "src/ui/components/Select.tsx",

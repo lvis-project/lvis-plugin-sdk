@@ -26,3 +26,5 @@ export type {
 } from "./Stack.js";
 export { Modal } from "./Modal.js";
 export type { ModalProps } from "./Modal.js";
+export { Icon, ICON_NAMES } from "./Icon.js";
+export type { IconProps, IconName } from "./Icon.js";
