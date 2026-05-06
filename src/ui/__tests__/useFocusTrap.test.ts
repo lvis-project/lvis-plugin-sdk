@@ -4,10 +4,13 @@ import { useRef } from "react";
 
 const activate = vi.fn();
 const deactivate = vi.fn();
-const createFocusTrap = vi.fn(() => ({ activate, deactivate }));
+const createFocusTrap = vi.fn(
+  (_node: HTMLElement, _opts: Record<string, unknown>) => ({ activate, deactivate }),
+);
 
 vi.mock("focus-trap", () => ({
-  createFocusTrap: (node: HTMLElement, opts: object) => createFocusTrap(node, opts),
+  createFocusTrap: (node: HTMLElement, opts: Record<string, unknown>) =>
+    createFocusTrap(node, opts),
 }));
 
 import { useFocusTrap } from "../hooks/useFocusTrap.js";
@@ -63,7 +66,7 @@ describe("useFocusTrap", () => {
       }),
     );
     expect(createFocusTrap).toHaveBeenCalledOnce();
-    const opts = createFocusTrap.mock.calls[0]?.[1] as Record<string, unknown>;
+    const opts = createFocusTrap.mock.calls[0]![1];
     expect(opts.initialFocus).toBe(initialFocus);
     expect(opts.allowOutsideClick).toBe(false);
   });
@@ -71,7 +74,7 @@ describe("useFocusTrap", () => {
   it("uses sane defaults when options omitted (no escape/click-outside auto-deactivate)", () => {
     const ref = setupRef();
     renderHook(() => useFocusTrap(ref as React.RefObject<HTMLElement>, true));
-    const opts = createFocusTrap.mock.calls[0]?.[1] as Record<string, unknown>;
+    const opts = createFocusTrap.mock.calls[0]![1];
     expect(opts.escapeDeactivates).toBe(false);
     expect(opts.clickOutsideDeactivates).toBe(false);
     expect(opts.returnFocusOnDeactivate).toBe(true);
