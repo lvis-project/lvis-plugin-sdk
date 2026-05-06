@@ -6,6 +6,8 @@ export interface UseFocusTrapOptions {
    * Element that receives focus when the trap activates. When omitted,
    * focus-trap uses its own default target selection; `fallbackFocus`
    * is still set to the trap container so empty dialogs remain valid.
+   * The container must therefore be programmatically focusable (for
+   * example `tabIndex={-1}`). Passing `false` disables initial focus.
    */
   initialFocus?: HTMLElement | (() => HTMLElement) | false;
   /**
