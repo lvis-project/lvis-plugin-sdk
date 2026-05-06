@@ -1,12 +1,21 @@
-// Side-effect: ensure the `:root` token fallback is present so plugins
-// that import only `Icon` and use `var(--lvis-*)` in their own CSS still
-// get sensible token values during the brief mount → host-broadcast
-// window. SDK 4.0.1 ensures `injectTokenCss` lazily emits the fallback,
-// so any component file that *doesn't* call `injectTokenCss` (Icon
-// renders lucide SVGs directly, no CSS injection) breaks the invariant
-// unless we route through the fallback shim explicitly.
-import "../tokens/fallback.js";
 import * as React from "react";
+import { injectTokenCss } from "../tokens/inject.js";
+
+// Default `color` on the SVG so lucide's stroke `currentColor` resolves
+// to the host theme's foreground. Without this, plugin webviews that
+// haven't set body/root `color: var(--lvis-fg)` render icons in the
+// browser default (black) — invisible against dark themes' near-black
+// background. Plugins can still override via own className, inline
+// `style.color`, or a wrapping element that sets `color`.
+//
+// Calling `injectTokenCss` also triggers the v4.0.1 fallback ensure on
+// first call, so Icon imports preserve the SDK's "any UI component
+// import injects the :root fallback" invariant without a separate
+// fallback-shim side-effect import.
+injectTokenCss(
+  "lvis-icon",
+  `.lvis-icon { color: var(--lvis-fg); flex-shrink: 0; }`,
+);
 import {
   Activity,
   AlertCircle,
@@ -236,6 +245,7 @@ export interface IconProps
 export function Icon({
   name,
   size = 16,
+  className,
   "aria-hidden": ariaHidden,
   "aria-label": ariaLabel,
   ...rest
@@ -245,9 +255,14 @@ export function Icon({
   // with `aria-label` for meaningful icons (which also implicitly removes
   // the hidden state).
   const hidden = ariaHidden ?? (ariaLabel === undefined ? true : undefined);
+  // Merge consumer's className with `lvis-icon` so the default
+  // `color: var(--lvis-fg)` rule applies; consumer's selectors (and
+  // inline `style.color`) still win on specificity / cascade.
+  const mergedClassName = className ? `lvis-icon ${className}` : "lvis-icon";
   return (
     <Component
       size={size}
+      className={mergedClassName}
       aria-hidden={hidden}
       aria-label={ariaLabel}
       {...rest}

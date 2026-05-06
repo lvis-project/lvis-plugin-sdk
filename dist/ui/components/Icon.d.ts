@@ -1,4 +1,3 @@
-import "../tokens/fallback.js";
 import * as React from "react";
 declare const ICONS: {
     readonly search: React.ForwardRefExoticComponent<Omit<import("lucide-react").LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>;
@@ -103,6 +102,6 @@ export interface IconProps extends Omit<React.SVGAttributes<SVGSVGElement>, "chi
     /** Icon side length in pixels. Default 16. */
     size?: number;
 }
-export declare function Icon({ name, size, "aria-hidden": ariaHidden, "aria-label": ariaLabel, ...rest }: IconProps): React.ReactElement;
+export declare function Icon({ name, size, className, "aria-hidden": ariaHidden, "aria-label": ariaLabel, ...rest }: IconProps): React.ReactElement;
 export {};
 //# sourceMappingURL=Icon.d.ts.map
