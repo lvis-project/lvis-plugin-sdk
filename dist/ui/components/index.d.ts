@@ -20,4 +20,6 @@ export { Stack, Inline } from "./Stack.js";
 export type { StackProps, InlineProps, StackGap, StackAlign, StackJustify, } from "./Stack.js";
 export { Modal } from "./Modal.js";
 export type { ModalProps } from "./Modal.js";
+export { Icon } from "./Icon.js";
+export type { IconProps, IconName } from "./Icon.js";
 //# sourceMappingURL=index.d.ts.map

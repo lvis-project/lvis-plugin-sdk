@@ -1,6 +1,6 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "private": false,
   "description": "SDK for authoring LVIS plugins. Type contracts (PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin) re-exported from the host as a single source of truth, plus thin runtime utilities (UI primitives, build helpers, host-context shims for safeStorage / shell.openExternal) shared across plugin repos.",
   "type": "module",
@@ -53,6 +53,10 @@
     "./ui/components/Checkbox": {
       "types": "./src/ui/components/Checkbox.tsx",
       "import": "./dist/ui/components/Checkbox.js"
+    },
+    "./ui/components/Icon": {
+      "types": "./src/ui/components/Icon.tsx",
+      "import": "./dist/ui/components/Icon.js"
     },
     "./ui/components/Input": {
       "types": "./src/ui/components/Input.tsx",
@@ -156,6 +160,7 @@
     "vitest": "^4.1.5"
   },
   "dependencies": {
-    "focus-trap": "^8.2.0"
+    "focus-trap": "^8.2.0",
+    "lucide-react": "^1.14.0"
   }
 }
