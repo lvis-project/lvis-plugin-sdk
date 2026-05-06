@@ -24,3 +24,5 @@ export type {
   StackAlign,
   StackJustify,
 } from "./Stack.js";
+export { Modal } from "./Modal.js";
+export type { ModalProps } from "./Modal.js";
