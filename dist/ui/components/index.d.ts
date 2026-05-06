@@ -18,4 +18,6 @@ export type { SelectProps } from "./Select.js";
 export type { ToggleProps } from "./Toggle.js";
 export { Stack, Inline } from "./Stack.js";
 export type { StackProps, InlineProps, StackGap, StackAlign, StackJustify, } from "./Stack.js";
+export { Modal } from "./Modal.js";
+export type { ModalProps } from "./Modal.js";
 //# sourceMappingURL=index.d.ts.map
