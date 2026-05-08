@@ -652,14 +652,37 @@ export interface PluginHostApi {
    */
   triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
 
-  showOverlay?: (input: {
+  /**
+   * Show a host-rendered overlay attached to a plugin-initiated long
+   * running operation (e.g., async tool call surfacing user-visible
+   * progress + optional CTA). Host owns the actual rendering; plugins
+   * only describe content + lifecycle callbacks.
+   *
+   * Returns a `{ dismiss }` handle the caller MUST invoke when the
+   * underlying operation completes (success or failure) so the host
+   * tears down the overlay. Failing to dismiss leaves the overlay
+   * pinned until session reload.
+   *
+   * Optional — declared via method signature so a host build that
+   * does not yet wire the overlay surface returns `undefined` for the
+   * whole property (matching `openExternalUrl?` / `getAppPreference?`).
+   * Plugins MUST guard with `typeof api.showOverlay === "function"`.
+   *
+   * @param input.title           Short user-visible heading.
+   * @param input.summary         Longer description rendered under the title.
+   * @param input.running         When `true`, host renders an in-progress affordance (spinner). Toggle via re-call.
+   * @param input.primaryActionLabel Optional CTA label shown alongside the dismiss control.
+   * @param input.onPrimaryAction Invoked when the user activates the CTA. Plugin-owned side effects.
+   * @param input.onDismiss       Invoked when the user dismisses the overlay before the plugin calls `dismiss()`.
+   */
+  showOverlay?(input: {
     title: string;
     summary: string;
     running?: boolean;
     primaryActionLabel?: string;
     onPrimaryAction?: () => void;
     onDismiss?: () => void;
-  }) => { dismiss(): void };
+  }): { dismiss(): void };
 
   agentApproval: {
 
@@ -701,10 +724,13 @@ export interface ConversationTriggerSpec {
   /** Suppress duplicate triggers for the same observation; dedupe window enforced by host. @optional */
   dedupeKey?: string;
 
+  /** Short user-visible heading shown in the host's trigger UI (overlay/notification). Plugin-owned text — must NOT contain raw third-party content. @optional */
   title?: string;
 
+  /** Longer user-visible description shown beneath `title` in the host's trigger UI. Plugin-owned text — must NOT contain raw third-party content. @optional */
   summary?: string;
 
+  /** Label for the primary CTA button rendered alongside the trigger UI. When omitted, the host renders only a dismiss affordance. @optional */
   primaryActionLabel?: string;
 }
 
@@ -734,6 +760,7 @@ export interface ConversationTriggerResult {
   /** Echoed from the request so callers can correlate logs. */
   source: string;
 
+  /** Unique identifier minted by the host when `accepted` is `true`. Plugins use this to correlate subsequent host events (e.g., conversation completion, audit entries) with the originating trigger. Absent when `accepted` is `false`. @optional */
   eventId?: string;
 }
 

@@ -4,10 +4,17 @@ import { createFocusTrap, type FocusTrap } from "focus-trap";
 export interface UseFocusTrapOptions {
   /**
    * Element that receives focus when the trap activates. When omitted,
-   * focus-trap uses its own default target selection; `fallbackFocus`
-   * is still set to the trap container so empty dialogs remain valid.
-   * The container must therefore be programmatically focusable (for
-   * example `tabIndex={-1}`). Passing `false` disables initial focus.
+   * focus-trap uses its own default target selection.
+   *
+   * The hook **always** passes the trap container as `fallbackFocus` so
+   * empty dialogs remain valid. The container must therefore be
+   * programmatically focusable — set `tabIndex={-1}` on the ref'd
+   * element. If the container has no tabbable children **and** is not
+   * itself focusable, `focus-trap` throws on activation; the hook
+   * catches the error and emits a single `console.warn` rather than
+   * silently dropping the trap (genuine a11y regression should surface).
+   *
+   * Passing `false` disables initial focus entirely.
    */
   initialFocus?: HTMLElement | (() => HTMLElement) | false;
   /**
