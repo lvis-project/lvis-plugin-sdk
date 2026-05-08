@@ -11,6 +11,34 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+#### Modal aria fallback contract
+
+`Modal` 의 accessible name 결정 로직 정합:
+
+- `title` 가 string non-blank / number 이면 `aria-labelledby` 가 visible heading 을 가리킴.
+- 그 외 ReactNode (element 등) / `undefined` / `null` / `false` (즉 `cond && "X"` 패턴에서 cond 가 false) / blank string 은 `ariaLabel` fallback 으로 자동 전환.
+- `ariaLabel` 이 빈 문자열이거나 whitespace-only 인 경우 unnamed dialog 가 되지 않도록 "Dialog" 기본값으로 자동 전환 (strict `??` 형식이라면 빈 string 을 의도된 accessible name 으로 honour 했을 위험).
+- `shouldRenderHeader` 가 빈 헤더 컨테이너를 렌더하지 않도록 정리.
+- 신규 테스트 추가: `title={false}`, 공백 string title, number title, 비어있는 ReactNode, 빈 / whitespace-only `ariaLabel`.
+
+#### `useFocusTrap.initialFocus` JSDoc 강화
+
+훅이 항상 trap container 를 `fallbackFocus` 로 패스한다는 점, container 가 tabbable 하지 않으면 `focus-trap` 이 throw 하고 hook 이 `console.warn` 으로 surface 한다는 점, `tabIndex={-1}` 요구사항을 명시.
+
+### Documentation
+
+#### Public surface JSDoc — sync-from-host 카탈로그 확장
+
+`scripts/sync-from-host.mjs` 의 `JSDOC_CATALOG` 에 다음 필드/메소드 JSDoc 추가:
+
+- `PluginHostApi.openExternalUrl?` — 외부 URL host 정책 라우팅. runtime guard 의무 명시.
+- `PluginHostApi.getAppPreference?` — host global preference 읽기. allowlist 정책 + runtime guard.
+- `PluginHostApi.showOverlay?` — host-rendered overlay 라이프사이클. dismiss 핸들 의무, capability advisory, runtime guard.
+- `ConversationTriggerSpec.title` / `summary` / `primaryActionLabel` — Q11 Overlay Runner 표시 필드. 플러그인 소유 텍스트 룰.
+- `ConversationTriggerResult.eventId` — host-minted unique ID, 후속 audit/event 상관관계용.
+
+이전엔 host SoT 에 JSDoc 이 있어도 `sanitizeForPublic` 에서 strip 된 뒤 `enrichWithJsDoc` 의 카탈로그에 entry 가 없으면 재주입 되지 않아 SDK public surface 에 누락. SDK API 자체 변경 없음 — 동일 surface 의 문서화 정합 패치.
+
 #### `prepare` 스크립트 제거 — consumer 측 `bun install` 실패 회귀 차단
 
 `package.json` 의 `prepare` 스크립트 (`tsup && tsc -p tsconfig.build.json`) 를 제거하고 동일 내용을 `prepublishOnly` 로 옮겼습니다.
