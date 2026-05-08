@@ -652,6 +652,15 @@ export interface PluginHostApi {
    */
   triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
 
+  showOverlay?: (input: {
+    title: string;
+    summary: string;
+    running?: boolean;
+    primaryActionLabel?: string;
+    onPrimaryAction?: () => void;
+    onDismiss?: () => void;
+  }) => { dismiss(): void };
+
   agentApproval: {
 
     request(input: {
@@ -691,6 +700,12 @@ export interface ConversationTriggerSpec {
 
   /** Suppress duplicate triggers for the same observation; dedupe window enforced by host. @optional */
   dedupeKey?: string;
+
+  title?: string;
+
+  summary?: string;
+
+  primaryActionLabel?: string;
 }
 
 /** Outcome of `PluginHostApi.triggerConversation()`. */
@@ -718,6 +733,8 @@ export interface ConversationTriggerResult {
 
   /** Echoed from the request so callers can correlate logs. */
   source: string;
+
+  eventId?: string;
 }
 
 /**
