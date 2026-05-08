@@ -1,3 +1,13 @@
+// src/ui/tokens/theme-bundles.ts
+var BUNDLE_IDS = [
+  "tokyo-night",
+  "midnight",
+  "forest",
+  "lge-light",
+  "lge-dark",
+  "high-contrast"
+];
+
 // src/ui/tokens/index.ts
 var LVIS_TOKEN_NAMES = [
   "--lvis-bg",
@@ -37,6 +47,7 @@ var LVIS_TOKEN_NAMES = [
   "--lvis-motion-fast",
   "--lvis-motion-normal"
 ];
+var LVIS_THEME_BUNDLE_IDS = Object.freeze([...BUNDLE_IDS]);
 
 // src/ui/tokens/validate.ts
 var _LVIS_VAR_REF = /var\(\s*(--lvis-[a-z0-9-]+)/gi;

@@ -1,6 +1,16 @@
 // src/ui/hooks/useTheme.ts
 import { useEffect } from "react";
 
+// src/ui/tokens/theme-bundles.ts
+var BUNDLE_IDS = [
+  "tokyo-night",
+  "midnight",
+  "forest",
+  "lge-light",
+  "lge-dark",
+  "high-contrast"
+];
+
 // src/ui/tokens/index.ts
 var LVIS_TOKEN_NAMES = [
   "--lvis-bg",
@@ -40,14 +50,7 @@ var LVIS_TOKEN_NAMES = [
   "--lvis-motion-fast",
   "--lvis-motion-normal"
 ];
-var LVIS_THEME_BUNDLE_IDS = [
-  "tokyo-night",
-  "midnight",
-  "forest",
-  "lge-light",
-  "lge-dark",
-  "high-contrast"
-];
+var LVIS_THEME_BUNDLE_IDS = Object.freeze([...BUNDLE_IDS]);
 
 // src/ui/tokens/inject.ts
 var _ALLOWED_KEYS = new Set(LVIS_TOKEN_NAMES);
@@ -72,10 +75,16 @@ function useTheme(bridge) {
       const payload = data;
       if (!payload) return;
       const root = document.documentElement;
-      if (payload.bundleId !== void 0 && VALID_BUNDLE_IDS.has(payload.bundleId))
+      if (payload.bundleId !== void 0 && VALID_BUNDLE_IDS.has(payload.bundleId)) {
         root.setAttribute("data-theme-bundle", payload.bundleId);
-      if (payload.shell !== void 0 && VALID_SHELL_MODES.has(payload.shell))
+      } else {
+        root.removeAttribute("data-theme-bundle");
+      }
+      if (payload.shell !== void 0 && VALID_SHELL_MODES.has(payload.shell)) {
         root.setAttribute("data-shell", payload.shell);
+      } else {
+        root.removeAttribute("data-shell");
+      }
       if (payload.tokens) {
         const safe = {};
         for (const [k, v] of Object.entries(payload.tokens)) {

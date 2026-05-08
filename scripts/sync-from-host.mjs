@@ -29,13 +29,14 @@ let CLONE_TMP_DIR = null;
 function buildHostSources(hostRoot, source) {
   const typesPath = path.join(hostRoot, "src/plugins/types.ts");
   const tokenContractPath = path.join(hostRoot, "src/shared/plugin-ui-tokens.ts");
+  const themeBundlesPath = path.join(hostRoot, "src/shared/theme-bundles.ts");
   if (!fs.existsSync(typesPath) || !fs.existsSync(tokenContractPath)) {
     console.error(
       `ERROR: host contract files not found under ${hostRoot}. Expected src/plugins/types.ts and src/shared/plugin-ui-tokens.ts.`
     );
     process.exit(1);
   }
-  return { typesPath, tokenContractPath, source };
+  return { typesPath, tokenContractPath, themeBundlesPath: fs.existsSync(themeBundlesPath) ? themeBundlesPath : null, source };
 }
 
 function resolveHostSources() {
@@ -956,7 +957,7 @@ function ensurePluginManifestUiSlots(text) {
 }
 
 try {
-  const { typesPath, tokenContractPath, source } = resolveHostSources();
+  const { typesPath, tokenContractPath, themeBundlesPath, source } = resolveHostSources();
   const rendered = render(extract(typesPath));
   const sanitized = sanitizeForPublic(rendered);
   const output = normalizeSdkTypeOnlySurface(enrichWithJsDoc(sanitized, JSDOC_CATALOG))
@@ -978,6 +979,22 @@ try {
       label: "src/ui/tokens/index.ts",
     },
   ];
+  if (themeBundlesPath) {
+    const themeBundlesOutput = `// AUTO-GENERATED — DO NOT EDIT. Regenerate via: bun run sync:from-host
+//
+// Mirrored from lvis-app/src/shared/theme-bundles.ts
+
+${fs.readFileSync(themeBundlesPath, "utf8")
+  .replace(/^\/\*\*[\s\S]*?\*\/\n?/m, "")  // strip leading JSDoc
+  .replace(/\r\n/g, "\n")
+  .replace(/[ \t]+$/gm, "")
+  .trimEnd()}\n`;
+    targets.push({
+      path: path.join(ROOT, "src/ui/tokens/theme-bundles.ts"),
+      output: themeBundlesOutput,
+      label: "src/ui/tokens/theme-bundles.ts",
+    });
+  }
 
   // Normalize line endings so CRLF/LF differences don't trigger false drift.
   const normalize = (s) =>
