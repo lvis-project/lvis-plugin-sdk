@@ -42,6 +42,14 @@ var LVIS_CSS_ONLY_TOKEN_NAMES = [
   "--lvis-shadow-md",
   "--lvis-easing"
 ];
+var LVIS_THEME_BUNDLE_IDS = [
+  "tokyo-night",
+  "midnight",
+  "forest",
+  "lge-light",
+  "lge-dark",
+  "high-contrast"
+];
 
 // src/ui/tokens/inject.ts
 var _ALLOWED_KEYS = new Set(LVIS_TOKEN_NAMES);
@@ -96,6 +104,28 @@ function applyThemeTokens(tokens) {
     if (!_ALLOWED_KEYS.has(k)) continue;
     if (_UNSAFE_VALUE.test(v)) continue;
     root.style.setProperty(k, v);
+  }
+}
+function applyThemeFromHostEvent(event) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (!event) {
+    root.removeAttribute("data-theme-bundle");
+    root.removeAttribute("data-shell");
+    return;
+  }
+  if (LVIS_THEME_BUNDLE_IDS.includes(event.bundleId)) {
+    root.setAttribute("data-theme-bundle", event.bundleId);
+  } else {
+    root.removeAttribute("data-theme-bundle");
+  }
+  if (event.shell === "light" || event.shell === "dark") {
+    root.setAttribute("data-shell", event.shell);
+  } else {
+    root.removeAttribute("data-shell");
+  }
+  if (event.tokens !== null && typeof event.tokens === "object" && !Array.isArray(event.tokens)) {
+    applyThemeTokens(event.tokens);
   }
 }
 
@@ -966,14 +996,7 @@ function Icon({
 
 // src/ui/hooks/useTheme.ts
 import { useEffect as useEffect3 } from "react";
-var VALID_BUNDLE_IDS = /* @__PURE__ */ new Set([
-  "tokyo-night",
-  "midnight",
-  "forest",
-  "lge-light",
-  "lge-dark",
-  "high-contrast"
-]);
+var VALID_BUNDLE_IDS = new Set(LVIS_THEME_BUNDLE_IDS);
 var VALID_SHELL_MODES = /* @__PURE__ */ new Set(["light", "dark"]);
 var _ALLOWED_TOKEN_KEYS = new Set(LVIS_TOKEN_NAMES);
 function useTheme(bridge) {
@@ -1007,6 +1030,7 @@ export {
   Inline,
   Input,
   LVIS_CSS_ONLY_TOKEN_NAMES,
+  LVIS_THEME_BUNDLE_IDS,
   LVIS_TOKEN_NAMES,
   Modal,
   Select,
@@ -1014,6 +1038,7 @@ export {
   Stack,
   Text,
   Toggle,
+  applyThemeFromHostEvent,
   applyThemeTokens,
   injectTokenCss,
   useFocusTrap,

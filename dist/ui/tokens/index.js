@@ -42,7 +42,16 @@ var LVIS_CSS_ONLY_TOKEN_NAMES = [
   "--lvis-shadow-md",
   "--lvis-easing"
 ];
+var LVIS_THEME_BUNDLE_IDS = [
+  "tokyo-night",
+  "midnight",
+  "forest",
+  "lge-light",
+  "lge-dark",
+  "high-contrast"
+];
 export {
   LVIS_CSS_ONLY_TOKEN_NAMES,
+  LVIS_THEME_BUNDLE_IDS,
   LVIS_TOKEN_NAMES
 };

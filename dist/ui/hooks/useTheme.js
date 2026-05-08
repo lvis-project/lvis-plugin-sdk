@@ -40,6 +40,14 @@ var LVIS_TOKEN_NAMES = [
   "--lvis-motion-fast",
   "--lvis-motion-normal"
 ];
+var LVIS_THEME_BUNDLE_IDS = [
+  "tokyo-night",
+  "midnight",
+  "forest",
+  "lge-light",
+  "lge-dark",
+  "high-contrast"
+];
 
 // src/ui/tokens/inject.ts
 var _ALLOWED_KEYS = new Set(LVIS_TOKEN_NAMES);
@@ -55,14 +63,7 @@ function applyThemeTokens(tokens) {
 }
 
 // src/ui/hooks/useTheme.ts
-var VALID_BUNDLE_IDS = /* @__PURE__ */ new Set([
-  "tokyo-night",
-  "midnight",
-  "forest",
-  "lge-light",
-  "lge-dark",
-  "high-contrast"
-]);
+var VALID_BUNDLE_IDS = new Set(LVIS_THEME_BUNDLE_IDS);
 var VALID_SHELL_MODES = /* @__PURE__ */ new Set(["light", "dark"]);
 var _ALLOWED_TOKEN_KEYS = new Set(LVIS_TOKEN_NAMES);
 function useTheme(bridge) {

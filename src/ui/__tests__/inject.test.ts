@@ -123,6 +123,36 @@ describe("applyThemeFromHostEvent", () => {
       expect(document.documentElement.getAttribute("data-theme-bundle")).toBe(bundleId);
     }
   });
+
+  it("does not throw when tokens is null — silent skip", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    expect(() =>
+      applyThemeFromHostEvent({ bundleId: "midnight", shell: "dark", tokens: null as never })
+    ).not.toThrow();
+  });
+
+  it("does not throw when tokens is undefined — silent skip", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    expect(() =>
+      applyThemeFromHostEvent({ bundleId: "midnight", shell: "dark", tokens: undefined as never })
+    ).not.toThrow();
+  });
+
+  it("does not throw when tokens is an array — silent skip", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    expect(() =>
+      applyThemeFromHostEvent({ bundleId: "midnight", shell: "dark", tokens: [] as never })
+    ).not.toThrow();
+  });
+
+  it("does not throw when tokens is an empty object — no properties set", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    const before = document.documentElement.style.getPropertyValue("--lvis-bg");
+    expect(() =>
+      applyThemeFromHostEvent({ bundleId: "midnight", shell: "dark", tokens: {} as never })
+    ).not.toThrow();
+    expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe(before);
+  });
 });
 
 describe("ensureFallback (gate semantics — 3.10.1)", () => {

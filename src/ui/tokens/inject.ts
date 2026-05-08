@@ -120,5 +120,7 @@ export function applyThemeFromHostEvent(event: LvisHostThemeEvent | null): void 
   } else {
     root.removeAttribute("data-shell");
   }
-  applyThemeTokens(event.tokens as Record<string, string>);
+  if (event.tokens !== null && typeof event.tokens === "object" && !Array.isArray(event.tokens)) {
+    applyThemeTokens(event.tokens as Record<string, string>);
+  }
 }
