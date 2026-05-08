@@ -65,6 +65,124 @@ describe("injectTokenCss", () => {
   });
 });
 
+describe("applyThemeFromHostEvent", () => {
+  beforeEach(() => {
+    document.documentElement.removeAttribute("data-theme-bundle");
+    document.documentElement.removeAttribute("data-shell");
+    document.documentElement.style.cssText = "";
+  });
+
+  it("sets data-theme-bundle and data-shell on valid event", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    applyThemeFromHostEvent({ bundleId: "tokyo-night", shell: "dark", tokens: {} as never });
+    expect(document.documentElement.getAttribute("data-theme-bundle")).toBe("tokyo-night");
+    expect(document.documentElement.getAttribute("data-shell")).toBe("dark");
+  });
+
+  it("removes attributes on null event", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    document.documentElement.setAttribute("data-theme-bundle", "midnight");
+    document.documentElement.setAttribute("data-shell", "dark");
+    applyThemeFromHostEvent(null);
+    expect(document.documentElement.hasAttribute("data-theme-bundle")).toBe(false);
+    expect(document.documentElement.hasAttribute("data-shell")).toBe(false);
+  });
+
+  it("removes data-theme-bundle for unknown bundleId", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    document.documentElement.setAttribute("data-theme-bundle", "old-bundle");
+    // Cast to bypass TS type so we can test runtime guard
+    applyThemeFromHostEvent({ bundleId: "unknown-bundle" as never, shell: "dark", tokens: {} as never });
+    expect(document.documentElement.hasAttribute("data-theme-bundle")).toBe(false);
+  });
+
+  it("removes data-shell for invalid shell value", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    document.documentElement.setAttribute("data-shell", "dark");
+    applyThemeFromHostEvent({ bundleId: "forest", shell: "high-contrast" as never, tokens: {} as never });
+    expect(document.documentElement.hasAttribute("data-shell")).toBe(false);
+  });
+
+  it("applies tokens via applyThemeTokens (allowlist + unsafe guard enforced)", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    applyThemeFromHostEvent({
+      bundleId: "lge-light",
+      shell: "light",
+      tokens: { "--lvis-bg": "#ffffff", "--lvis-fg": "#000000" } as never,
+    });
+    expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe("#ffffff");
+    expect(document.documentElement.style.getPropertyValue("--lvis-fg")).toBe("#000000");
+  });
+
+  it("accepts all LVIS_THEME_BUNDLE_IDS values", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    const { LVIS_THEME_BUNDLE_IDS } = await import("../tokens/index.js");
+    for (const bundleId of LVIS_THEME_BUNDLE_IDS) {
+      document.documentElement.removeAttribute("data-theme-bundle");
+      applyThemeFromHostEvent({ bundleId, shell: "dark", tokens: {} as never });
+      expect(document.documentElement.getAttribute("data-theme-bundle")).toBe(bundleId);
+    }
+  });
+
+  it("does not throw when tokens is null — silent skip", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    expect(() =>
+      applyThemeFromHostEvent({ bundleId: "midnight", shell: "dark", tokens: null as never })
+    ).not.toThrow();
+  });
+
+  it("does not throw when tokens is undefined — silent skip", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    expect(() =>
+      applyThemeFromHostEvent({ bundleId: "midnight", shell: "dark", tokens: undefined as never })
+    ).not.toThrow();
+  });
+
+  it("does not throw when tokens is an array — silent skip", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    expect(() =>
+      applyThemeFromHostEvent({ bundleId: "midnight", shell: "dark", tokens: [] as never })
+    ).not.toThrow();
+  });
+
+  it("does not throw when tokens is an empty object — no properties set", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    const before = document.documentElement.style.getPropertyValue("--lvis-bg");
+    expect(() =>
+      applyThemeFromHostEvent({ bundleId: "midnight", shell: "dark", tokens: {} as never })
+    ).not.toThrow();
+    expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe(before);
+  });
+
+  it("null reset removes all inline --lvis-* token styles (Major #2)", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    const { LVIS_TOKEN_NAMES } = await import("../tokens/index.js");
+    // First apply some tokens via a valid event
+    applyThemeFromHostEvent({
+      bundleId: "midnight",
+      shell: "dark",
+      tokens: { "--lvis-bg": "#0f0f13", "--lvis-fg": "#cdd6f4", "--lvis-primary": "#89b4fa" } as never,
+    });
+    expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe("#0f0f13");
+    expect(document.documentElement.style.getPropertyValue("--lvis-fg")).toBe("#cdd6f4");
+    expect(document.documentElement.style.getPropertyValue("--lvis-primary")).toBe("#89b4fa");
+    // Now null reset — all token inline styles must be removed
+    applyThemeFromHostEvent(null);
+    for (const tokenName of LVIS_TOKEN_NAMES) {
+      expect(document.documentElement.style.getPropertyValue(tokenName)).toBe("");
+    }
+  });
+
+  it("null reset removes attrs even when previously set", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    document.documentElement.setAttribute("data-theme-bundle", "midnight");
+    document.documentElement.setAttribute("data-shell", "dark");
+    applyThemeFromHostEvent(null);
+    expect(document.documentElement.hasAttribute("data-theme-bundle")).toBe(false);
+    expect(document.documentElement.hasAttribute("data-shell")).toBe(false);
+  });
+});
+
 describe("ensureFallback (gate semantics — 3.10.1)", () => {
   it("first injectTokenCss call ensures the :root fallback <style>", () => {
     expect(document.getElementById("lvis-tokens-fallback")).toBeNull();
