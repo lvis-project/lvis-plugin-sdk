@@ -19,7 +19,7 @@ v1 필드를 참조하는 모든 plugin 코드가 TypeScript 컴파일 에러를
 
 제거된 필드:
 - `theme: "light" | "dark" | "high-contrast"` → `bundleId` + `shell` 로 대체
-- `chatTheme: string` → `bundleId` 로 대체
+- `chatTheme: "default" | "lg" | "purple" | "orange" | "blue"` → `bundleId` 로 대체
 - `codeTheme: "light" | "dark"` → `bundleId` + `shell` 로 대체
 - `colorScheme?: string` → `shell: "light" | "dark"` 로 대체
 - `reducedMotion?: boolean` → OS-level `prefers-reduced-motion` CSS media query 사용 (SDK 책임 범위 아님)
@@ -33,11 +33,11 @@ v1 필드를 참조하는 모든 plugin 코드가 TypeScript 컴파일 에러를
 | 제거된 필드 | v1 타입 | v2 대체 |
 |---|---|---|
 | `theme` | `"light" \| "dark" \| "high-contrast"` | `bundleId` + `shell` |
-| `chatTheme` | `string` | `bundleId` |
+| `chatTheme` | `"default" \| "lg" \| "purple" \| "orange" \| "blue"` | `bundleId` |
 | `codeTheme` | `"light" \| "dark"` | `bundleId` + `shell` |
 | `colorScheme` | `string` (optional) | `shell: "light" \| "dark"` |
 | `reducedMotion` | `boolean` (optional) | OS-level CSS media query (`prefers-reduced-motion`) — SDK 책임 범위 아님 |
-| `fonts.family` | `string` (optional) | `tokens` 맵 내 `--lvis-*` font token (또는 미포함 시 plugin 자체 폰트 관리) |
+| `fonts?.family` | `string` | `tokens` 맵 내 `--lvis-*` font token (또는 미포함 시 plugin 자체 폰트 관리) |
 
 #### v2 신규 shape
 

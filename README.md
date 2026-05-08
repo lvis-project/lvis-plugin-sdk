@@ -42,11 +42,11 @@ No submodule is required.
 | 제거된 필드 | v1 타입 | v2 대체 |
 |---|---|---|
 | `theme` | `"light" \| "dark" \| "high-contrast"` | `bundleId` + `shell` |
-| `chatTheme` | `string` | `bundleId` |
+| `chatTheme` | `"default" \| "lg" \| "purple" \| "orange" \| "blue"` | `bundleId` |
 | `codeTheme` | `"light" \| "dark"` | `bundleId` + `shell` |
 | `colorScheme` | `string` (optional) | `shell: "light" \| "dark"` |
 | `reducedMotion` | `boolean` (optional) | OS-level CSS media query (`prefers-reduced-motion`) — SDK 책임 범위 아님 |
-| `fonts.family` | `string` (optional) | plugin 자체 폰트 관리 또는 향후 `--lvis-*` font token 예정 |
+| `fonts?.family` | `string` | plugin 자체 폰트 관리 또는 향후 `--lvis-*` font token 예정 |
 
 ### 신규 shape
 
