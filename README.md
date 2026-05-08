@@ -27,12 +27,65 @@ Consume the SDK as a Git dependency pinned to a release tag:
 ```json
 {
   "devDependencies": {
-    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v3.0.0"
+    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v5.0.0"
   }
 }
 ```
 
 No submodule is required.
+
+## v5.0.0 Migration Guide — LvisHostThemeEvent v2 (BREAKING)
+
+**`theme`, `chatTheme`, `codeTheme` 필드가 `LvisHostThemeEvent` 에서 제거되었습니다.**
+하위호환 alias 없음 — atomic cutover.
+
+### 신규 shape
+
+```typescript
+interface LvisHostThemeEvent {
+  bundleId: "tokyo-night" | "midnight" | "forest" | "lge-light" | "lge-dark" | "high-contrast";
+  shell: "light" | "dark";
+  tokens: LvisTokenMap;
+}
+```
+
+### 변경 전 → 후
+
+```typescript
+// ❌ v1 (제거됨)
+bridge.onEvent("host.theme.changed", (data) => {
+  const e = data as LvisHostThemeEvent;
+  root.setAttribute("data-theme", e.theme);          // 없음
+  root.setAttribute("data-chat-theme", e.chatTheme); // 없음
+  root.setAttribute("data-code-theme", e.codeTheme); // 없음
+});
+
+// ✅ v2
+bridge.onEvent("host.theme.changed", (data) => {
+  const e = data as LvisHostThemeEvent;
+  root.setAttribute("data-theme-bundle", e.bundleId);
+  root.setAttribute("data-shell", e.shell);
+  Object.entries(e.tokens).forEach(([k, v]) => {
+    root.style.setProperty(k, v);
+  });
+});
+```
+
+### useTheme 훅 사용자 (변경 없음)
+
+`useTheme(bridge)` 훅은 내부적으로 v2 로 갱신되었습니다. 훅을 그대로 사용하는 plugin 은
+**코드 수정 없이** SDK 버전만 `5.0.0` 으로 올리면 됩니다.
+
+### bundleId 값
+
+| bundleId | shell | 설명 |
+|---|---|---|
+| `"tokyo-night"` | `"dark"` | Tokyo Night 다크 테마 |
+| `"midnight"` | `"dark"` | Midnight 다크 테마 |
+| `"forest"` | `"dark"` | Forest 다크 테마 |
+| `"lge-light"` | `"light"` | LGE 공식 라이트 테마 |
+| `"lge-dark"` | `"dark"` | LGE 공식 다크 테마 |
+| `"high-contrast"` | `"dark"` | 고대비 접근성 테마 |
 
 ### `$schema` URL migration (deprecation in progress)
 

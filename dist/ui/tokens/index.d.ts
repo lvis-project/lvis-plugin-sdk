@@ -19,16 +19,30 @@ export type LvisThemeTokens = LvisTokenMap;
  */
 export declare const LVIS_CSS_ONLY_TOKEN_NAMES: readonly ["--lvis-shadow-sm", "--lvis-shadow-md", "--lvis-easing"];
 export type LvisCssOnlyTokenName = typeof LVIS_CSS_ONLY_TOKEN_NAMES[number];
-export interface LvisThemePayload {
-    v?: 2;
-    theme: "light" | "dark" | "high-contrast";
-    chatTheme: "default" | "lg" | "purple" | "orange" | "blue";
-    codeTheme: "light" | "dark";
-    colorScheme?: "light" | "dark";
-    reducedMotion?: boolean;
-    fonts?: {
-        family: string;
-    };
+/**
+ * Theme bundle identifiers shipped by the host.
+ * Each bundle maps to a full token set (dark/light/contrast variants).
+ */
+export type LvisThemeBundleId = "tokyo-night" | "midnight" | "forest" | "lge-light" | "lge-dark" | "high-contrast";
+/**
+ * LvisHostThemeEvent v2 — broadcast by the host on every theme change.
+ *
+ * **v2 breaking change**: `theme`, `chatTheme`, and `codeTheme` fields
+ * have been removed. Use `bundleId` + `shell` instead.
+ *
+ * Emitted on the `"host.theme.changed"` event bus channel.
+ */
+export interface LvisHostThemeEvent {
+    /** Active theme bundle identifier (e.g. `"tokyo-night"`, `"lge-light"`). */
+    bundleId: LvisThemeBundleId;
+    /** Shell color mode of the active bundle. */
+    shell: "light" | "dark";
+    /** Resolved CSS custom property values for the active bundle. */
     tokens: LvisTokenMap;
 }
+/**
+ * @deprecated Use {@link LvisHostThemeEvent} instead.
+ * Kept only as a type alias name for documentation purposes — no runtime value.
+ */
+export type LvisThemePayload = LvisHostThemeEvent;
 //# sourceMappingURL=index.d.ts.map

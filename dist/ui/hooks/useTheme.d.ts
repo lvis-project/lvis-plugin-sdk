@@ -4,14 +4,13 @@ type PluginBridge = {
 /**
  * Subscribe to host theme changes via the plugin bridge.
  *
- * When `host.theme.changed` fires with a `tokens` field, applies computed
- * `--lvis-*` values directly via style.setProperty (inline style wins over
- * any stylesheet). The `data-theme`/`data-chat-theme`/`data-code-theme`
- * attributes are set for devtools inspection only — there are no CSS selector
- * blocks in lvis-tokens.css that react to them.
+ * When `host.theme.changed` fires, applies the v2 event fields:
+ * - `data-theme-bundle` attribute set to `bundleId` for devtools inspection.
+ * - `data-shell` attribute set to `shell` mode.
+ * - `--lvis-*` CSS custom properties applied via `style.setProperty`.
  *
- * When `tokens` is absent the plugin retains its current token state;
- * initial render uses the :root fallback values in lvis-tokens.css (dark).
+ * Only tokens present in `LVIS_TOKEN_NAMES` are accepted; all others are
+ * silently dropped (security: no CSS exfil / injection surface).
  *
  * Call once at the plugin's root component.
  */

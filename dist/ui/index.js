@@ -966,9 +966,15 @@ function Icon({
 
 // src/ui/hooks/useTheme.ts
 import { useEffect as useEffect3 } from "react";
-var VALID_THEMES = /* @__PURE__ */ new Set(["light", "dark", "high-contrast"]);
-var VALID_CHAT_THEMES = /* @__PURE__ */ new Set(["lg", "purple", "orange", "blue"]);
-var VALID_CODE_THEMES = /* @__PURE__ */ new Set(["light", "dark"]);
+var VALID_BUNDLE_IDS = /* @__PURE__ */ new Set([
+  "tokyo-night",
+  "midnight",
+  "forest",
+  "lge-light",
+  "lge-dark",
+  "high-contrast"
+]);
+var VALID_SHELL_MODES = /* @__PURE__ */ new Set(["light", "dark"]);
 var _ALLOWED_TOKEN_KEYS = new Set(LVIS_TOKEN_NAMES);
 function useTheme(bridge) {
   useEffect3(() => {
@@ -976,32 +982,16 @@ function useTheme(bridge) {
       const payload = data;
       if (!payload) return;
       const root = document.documentElement;
-      if (payload.theme !== void 0 && VALID_THEMES.has(payload.theme))
-        root.setAttribute("data-theme", payload.theme);
-      if (payload.codeTheme !== void 0 && VALID_CODE_THEMES.has(payload.codeTheme))
-        root.setAttribute("data-code-theme", payload.codeTheme);
-      if (payload.chatTheme !== void 0) {
-        if (payload.chatTheme === "default") {
-          root.removeAttribute("data-chat-theme");
-        } else if (VALID_CHAT_THEMES.has(payload.chatTheme)) {
-          root.setAttribute("data-chat-theme", payload.chatTheme);
-        }
-      }
+      if (payload.bundleId !== void 0 && VALID_BUNDLE_IDS.has(payload.bundleId))
+        root.setAttribute("data-theme-bundle", payload.bundleId);
+      if (payload.shell !== void 0 && VALID_SHELL_MODES.has(payload.shell))
+        root.setAttribute("data-shell", payload.shell);
       if (payload.tokens) {
         const safe = {};
         for (const [k, v] of Object.entries(payload.tokens)) {
           if (_ALLOWED_TOKEN_KEYS.has(k) && typeof v === "string") safe[k] = v;
         }
         if (Object.keys(safe).length > 0) applyThemeTokens(safe);
-      }
-      if (payload.colorScheme !== void 0) {
-        root.setAttribute("data-color-scheme", payload.colorScheme);
-      }
-      if (typeof payload.reducedMotion === "boolean") {
-        root.setAttribute("data-reduced-motion", String(payload.reducedMotion));
-      }
-      if (payload.fonts?.family) {
-        document.body.style.fontFamily = payload.fonts.family;
       }
     });
     return unsub;
