@@ -7,6 +7,89 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.0.1] - 2026-05-09
+
+### Fixed
+
+#### Modal aria fallback contract
+
+`Modal` 의 accessible name 결정 로직 정합:
+
+- `title` 가 string non-blank / number 이면 `aria-labelledby` 가 visible heading 을 가리킴.
+- 그 외 ReactNode (element 등) / `undefined` / `null` / `false` (즉 `cond && "X"` 패턴에서 cond 가 false) / blank string 은 `ariaLabel` fallback 으로 자동 전환.
+- `ariaLabel` 이 빈 문자열이거나 whitespace-only 인 경우 unnamed dialog 가 되지 않도록 "Dialog" 기본값으로 자동 전환 (strict `??` 형식이라면 빈 string 을 의도된 accessible name 으로 honour 했을 위험).
+- `shouldRenderHeader` 가 빈 헤더 컨테이너를 렌더하지 않도록 정리.
+- 신규 테스트 추가: `title={false}`, 공백 string title, number title, 비어있는 ReactNode, 빈 / whitespace-only `ariaLabel`.
+
+#### `useFocusTrap.initialFocus` JSDoc 강화
+
+훅이 항상 trap container 를 `fallbackFocus` 로 패스한다는 점, container 가 tabbable 하지 않으면 `focus-trap` 이 throw 하고 hook 이 `console.warn` 으로 surface 한다는 점, `tabIndex={-1}` 요구사항을 명시.
+
+### Documentation
+
+#### Public surface JSDoc — sync-from-host 카탈로그 확장
+
+`scripts/sync-from-host.mjs` 의 `JSDOC_CATALOG` 에 다음 필드/메소드 JSDoc 추가:
+
+- `PluginHostApi.openExternalUrl?` — 외부 URL host 정책 라우팅. runtime guard 의무 명시.
+- `PluginHostApi.getAppPreference?` — host global preference 읽기. allowlist 정책 + runtime guard.
+- `PluginHostApi.showOverlay?` — host-rendered overlay 라이프사이클. dismiss 핸들 의무, capability advisory, runtime guard.
+- `ConversationTriggerSpec.title` / `summary` / `primaryActionLabel` — Q11 Overlay Runner 표시 필드. 플러그인 소유 텍스트 룰.
+- `ConversationTriggerResult.eventId` — host-minted unique ID, 후속 audit/event 상관관계용.
+
+이전엔 host SoT 에 JSDoc 이 있어도 `sanitizeForPublic` 에서 strip 된 뒤 `enrichWithJsDoc` 의 카탈로그에 entry 가 없으면 재주입 되지 않아 SDK public surface 에 누락. SDK API 자체 변경 없음 — 동일 surface 의 문서화 정합 패치.
+
+#### `prepare` 스크립트 제거 — consumer 측 `bun install` 실패 회귀 차단
+
+`package.json` 의 `prepare` 스크립트 (`tsup && tsc -p tsconfig.build.json`) 를 제거하고 동일 내용을 `prepublishOnly` 로 옮겼습니다.
+
+##### 증상
+
+v5.0.0 부터 `github:lvis-project/lvis-plugin-sdk#v5.0.0` 를 의존성으로 받는 모든 plugin (lvis-plugin-meeting, lvis-plugin-lge-api, lvis-plugin-local-indexer 등) 의 `bun install --frozen-lockfile` 이 다음 형태로 실패:
+
+```
+src/ui/components/Toggle.tsx(61,7): error TS7026: JSX element implicitly has type 'any' ...
+src/ui/hooks/useTheme.ts(1,27): error TS7016: Could not find a declaration file for module 'react' ...
+error: prepare script from "@lvis/plugin-sdk" exited with 2
+```
+
+##### 원인 — npm/bun lifecycle script 표준 동작
+
+npm/yarn/bun 은 `git URL` 형식 (`github:org/repo#tag`) 으로 받은 패키지의 경우 clone 직후 자동으로 `prepare` 스크립트를 실행합니다 (npm spec — git 패키지는 published artifact 가 없다고 가정해서 컨슈머 측에서 빌드 단계 필요). 이는 `npm install` 표준 절차의 일부이지 SDK 측에서 끌 수 있는 옵션이 아닙니다.
+
+v5.0.0 의 `prepare` 가 실행하는 `tsc` 는 SDK 의 `devDependencies` (`@types/react`, `@types/node` 등) 가 컨슈머 측 `node_modules` 에 있어야 합니다. 그러나 npm/bun 은 transitive 패키지의 devDeps 를 컨슈머 환경에 설치하지 않습니다 (의존 그래프 비대화 방지). 따라서:
+
+1. 컨슈머 plugin 의 `bun install` 이 SDK clone
+2. bun 이 SDK 의 `prepare` 자동 실행 (npm spec)
+3. `tsc` 가 컨슈머 측 `node_modules` 에서 `@types/react` 를 찾지 못해 exit 2
+4. 전체 `bun install --frozen-lockfile` 실패
+
+같은 패턴은 v3.4.0 → 3.4.1 (PR #77) 에서 한 번 해결됐다가 v3.9.0 (PR #99 — dist 커밋 제거 + prepare 의존) 에서 재도입됐습니다. 이번 5.0.1 은 v3.4.1 과 동일한 방향으로 정리합니다.
+
+##### 수정
+
+| | 이전 | 이후 |
+|---|---|---|
+| `prepare` 스크립트 | `tsup && tsc -p tsconfig.build.json` | **제거** |
+| `prepublishOnly` 스크립트 | (없음) | `bun run build` (npm publish 시에만 동작) |
+| `dist/` git 추적 | committed (v5.0.0 부터) | committed (변동 없음) |
+| `check:dist-drift` CI 가드 | 활성 | 활성 (변동 없음 — 메인테이너가 `bun run build` 후 dist 커밋한 PR 만 통과) |
+
+`prepare` 가 사라져도 컨슈머 plugin 은 정상 동작합니다 — git clone 시점에 이미 dist (`.js` + `.d.ts`) 가 들어있고, `package.json` 의 `exports` 필드가 dist 를 가리키기 때문입니다. 컨슈머 환경 빌드 단계는 더 이상 필요 없습니다.
+
+##### 컨슈머 측 영향
+
+- SDK pin 만 `github:lvis-project/lvis-plugin-sdk#v5.0.0` → `#v5.0.1` 로 올리고 `bun install` 한 뒤 재생성된 `bun.lock` 을 커밋
+- API 무변경 — runtime/타입 모두 v5.0.0 과 동일
+- 컨슈머 plugin 에 `@types/react` 추가 필요 없음
+
+##### 메인테이너 워크플로
+
+- 코드 변경 후 release 전: `bun run build` 실행 → dist 자동 갱신 → `git add dist package.json` 같이 commit
+- `check:dist-drift` CI 가 dist staleness 를 enforce 하므로 빌드 누락이 PR 단계에서 차단됨
+
+---
+
 ## [5.0.0] - 2026-05-08
 
 ### ⚠️ BREAKING CHANGE — LvisHostThemeEvent v2 (atomic cutover, no alias)

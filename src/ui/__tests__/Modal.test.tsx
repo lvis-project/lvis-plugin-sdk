@@ -40,15 +40,35 @@ describe("Modal", () => {
     expect(heading?.textContent).toBe("My Title");
   });
 
-  it("links aria-labelledby when title is a ReactNode", () => {
+  it("uses ariaLabel when title is a ReactNode", () => {
     const { getByRole } = render(
       <Modal open onClose={() => {}} title={<span>icon</span>} ariaLabel="dialog name" />,
     );
     const dialog = getByRole("dialog");
-    const labelId = dialog.getAttribute("aria-labelledby");
-    expect(labelId).toBeTruthy();
-    expect(dialog.getAttribute("aria-label")).toBeNull();
-    expect(document.getElementById(labelId!)?.textContent).toBe("icon");
+    expect(dialog.getAttribute("aria-label")).toBe("dialog name");
+    expect(dialog.getAttribute("aria-labelledby")).toBeNull();
+  });
+
+  it("uses default aria-label when ReactNode title has no ariaLabel", () => {
+    const { getByRole } = render(
+      <Modal open onClose={() => {}} title={<span aria-hidden="true">!</span>}>
+        content
+      </Modal>,
+    );
+    expect(getByRole("dialog").getAttribute("aria-label")).toBe("Dialog");
+  });
+
+  it("uses ariaLabel when string title is empty or whitespace-only", () => {
+    const { container, getByRole, queryByRole } = render(
+      <Modal open onClose={() => {}} title="   " ariaLabel="explicit dialog">
+        content
+      </Modal>,
+    );
+    const dialog = getByRole("dialog");
+    expect(dialog.getAttribute("aria-label")).toBe("explicit dialog");
+    expect(dialog.getAttribute("aria-labelledby")).toBeNull();
+    expect(queryByRole("heading")).toBeNull();
+    expect(container.querySelector(".lvis-modal-head")).toBeNull();
   });
 
   it("uses ariaLabel when no title is provided", () => {
@@ -60,6 +80,51 @@ describe("Modal", () => {
     expect(getByRole("dialog").getAttribute("aria-label")).toBe("untitled dialog");
   });
 
+  it("treats title={false} as no title (`cond && \"X\"` pattern when cond is false)", () => {
+    const { container, getByRole, queryByRole } = render(
+      <Modal open onClose={() => {}} title={false as unknown as React.ReactNode} ariaLabel="explicit">
+        content
+      </Modal>,
+    );
+    const dialog = getByRole("dialog");
+    expect(dialog.getAttribute("aria-label")).toBe("explicit");
+    expect(dialog.getAttribute("aria-labelledby")).toBeNull();
+    expect(queryByRole("heading")).toBeNull();
+    expect(container.querySelector(".lvis-modal-head")).toBeNull();
+  });
+
+  it("links aria-labelledby for numeric title (visible text matches accessible name)", () => {
+    const { getByRole } = render(<Modal open onClose={() => {}} title={123} />);
+    const dialog = getByRole("dialog");
+    const labelId = dialog.getAttribute("aria-labelledby");
+    expect(labelId).toBeTruthy();
+    expect(dialog.getAttribute("aria-label")).toBeNull();
+    expect(document.getElementById(labelId!)?.textContent).toBe("123");
+  });
+
+  it("links aria-labelledby for title={0} (zero is a valid label, not falsy-skipped)", () => {
+    const { getByRole } = render(<Modal open onClose={() => {}} title={0} />);
+    const dialog = getByRole("dialog");
+    const labelId = dialog.getAttribute("aria-labelledby");
+    expect(labelId).toBeTruthy();
+    expect(document.getElementById(labelId!)?.textContent).toBe("0");
+  });
+
+  it("treats caption={false} as no caption (header gates only on real content)", () => {
+    const { container } = render(
+      <Modal
+        open
+        onClose={() => {}}
+        ariaLabel="d"
+        caption={false as unknown as React.ReactNode}
+      >
+        content
+      </Modal>,
+    );
+    expect(container.querySelector(".lvis-modal-head")).toBeNull();
+    expect(container.querySelector(".lvis-modal-caption")).toBeNull();
+  });
+
   it("keeps an accessible default name when no title or ariaLabel is provided", () => {
     const { getByRole } = render(
       <Modal open onClose={() => {}}>
@@ -67,6 +132,21 @@ describe("Modal", () => {
       </Modal>,
     );
     expect(getByRole("dialog").getAttribute("aria-label")).toBe("Dialog");
+  });
+
+  it("ignores empty / whitespace-only ariaLabel and keeps the safety default", () => {
+    // Explicit `ariaLabel=""` (or whitespace-only) MUST NOT override the
+    // "Dialog" default — that would yield an unnamed dialog. Strict `??` would
+    // honour the empty string; the component treats blank as missing.
+    for (const blank of ["", "   ", "\t\n"]) {
+      const { getByRole, unmount } = render(
+        <Modal open onClose={() => {}} ariaLabel={blank}>
+          content
+        </Modal>,
+      );
+      expect(getByRole("dialog").getAttribute("aria-label")).toBe("Dialog");
+      unmount();
+    }
   });
 
   it("Esc key triggers onClose", () => {

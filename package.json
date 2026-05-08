@@ -1,6 +1,6 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "private": false,
   "description": "SDK for authoring LVIS plugins. Type contracts (PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin) re-exported from the host as a single source of truth, plus thin runtime utilities (UI primitives, build helpers, host-context shims for safeStorage / shell.openExternal) shared across plugin repos.",
   "type": "module",
@@ -114,7 +114,7 @@
   ],
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json",
-    "prepare": "tsup && tsc -p tsconfig.build.json",
+    "prepublishOnly": "bun run build",
     "dev:storybook": "storybook dev -p 6006",
     "build:storybook": "storybook build",
     "sync:from-host": "node scripts/sync-from-host.mjs",
