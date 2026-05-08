@@ -80,9 +80,9 @@ bridge.onEvent("host.theme.changed", (data) => {
 });
 ```
 
-**`useTheme` 훅 사용자**: `colorScheme` / `reducedMotion` / `fonts.family` 를 `useTheme` 훅
-반환값에서 꺼내 쓰던 코드가 있다면 제거하세요. 훅은 이제 오직 `bundleId`, `shell`,
-`tokens` 만 처리합니다.
+**`useTheme` 훅 사용자**: `colorScheme` / `reducedMotion` / `fonts.family` 는 훅이
+이전에 DOM에 직접 적용하던 v1 전용 처리입니다 — 훅은 이제 오직 `bundleId`, `shell`,
+`tokens` 만 처리합니다. 해당 필드를 참조하는 코드가 있다면 제거하세요.
 
 SDK `useTheme` 훅을 그대로 사용하는 plugin 은 훅 내부가 자동으로 v2 로 동작하므로
 **훅 호출 코드 수정 불필요** — SDK 버전만 `5.0.0` 으로 올리면 됩니다.

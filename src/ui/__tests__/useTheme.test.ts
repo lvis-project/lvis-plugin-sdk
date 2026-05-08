@@ -61,10 +61,32 @@ describe("useTheme v2", () => {
     expect(document.documentElement.hasAttribute("data-theme-bundle")).toBe(false);
   });
 
+  it("removes stale data-theme-bundle when bundleId becomes invalid (Major #1)", () => {
+    const bridge = makeBridge();
+    renderHook(() => useTheme(bridge));
+    // First apply valid bundleId
+    bridge.fire({ bundleId: "midnight", shell: "dark" });
+    expect(document.documentElement.getAttribute("data-theme-bundle")).toBe("midnight");
+    // Then fire with invalid bundleId — stale attr must be removed
+    bridge.fire({ bundleId: "legacy-dark", shell: "dark" });
+    expect(document.documentElement.hasAttribute("data-theme-bundle")).toBe(false);
+  });
+
   it("rejects invalid shell value — does not set data-shell", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
     bridge.fire({ bundleId: "midnight", shell: "high-contrast" });
+    expect(document.documentElement.hasAttribute("data-shell")).toBe(false);
+  });
+
+  it("removes stale data-shell when shell becomes invalid (Major #1)", () => {
+    const bridge = makeBridge();
+    renderHook(() => useTheme(bridge));
+    // First apply valid shell
+    bridge.fire({ bundleId: "lge-light", shell: "light" });
+    expect(document.documentElement.getAttribute("data-shell")).toBe("light");
+    // Then fire with invalid shell — stale attr must be removed
+    bridge.fire({ bundleId: "lge-light", shell: "high-contrast" });
     expect(document.documentElement.hasAttribute("data-shell")).toBe(false);
   });
 

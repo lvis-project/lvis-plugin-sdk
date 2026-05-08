@@ -108,6 +108,9 @@ export function applyThemeFromHostEvent(event: LvisHostThemeEvent | null): void 
   if (!event) {
     root.removeAttribute("data-theme-bundle");
     root.removeAttribute("data-shell");
+    for (const tokenName of LVIS_TOKEN_NAMES) {
+      root.style.removeProperty(tokenName);
+    }
     return;
   }
   if ((LVIS_THEME_BUNDLE_IDS as ReadonlyArray<string>).includes(event.bundleId)) {

@@ -153,6 +153,34 @@ describe("applyThemeFromHostEvent", () => {
     ).not.toThrow();
     expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe(before);
   });
+
+  it("null reset removes all inline --lvis-* token styles (Major #2)", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    const { LVIS_TOKEN_NAMES } = await import("../tokens/index.js");
+    // First apply some tokens via a valid event
+    applyThemeFromHostEvent({
+      bundleId: "midnight",
+      shell: "dark",
+      tokens: { "--lvis-bg": "#0f0f13", "--lvis-fg": "#cdd6f4", "--lvis-primary": "#89b4fa" } as never,
+    });
+    expect(document.documentElement.style.getPropertyValue("--lvis-bg")).toBe("#0f0f13");
+    expect(document.documentElement.style.getPropertyValue("--lvis-fg")).toBe("#cdd6f4");
+    expect(document.documentElement.style.getPropertyValue("--lvis-primary")).toBe("#89b4fa");
+    // Now null reset — all token inline styles must be removed
+    applyThemeFromHostEvent(null);
+    for (const tokenName of LVIS_TOKEN_NAMES) {
+      expect(document.documentElement.style.getPropertyValue(tokenName)).toBe("");
+    }
+  });
+
+  it("null reset removes attrs even when previously set", async () => {
+    const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
+    document.documentElement.setAttribute("data-theme-bundle", "midnight");
+    document.documentElement.setAttribute("data-shell", "dark");
+    applyThemeFromHostEvent(null);
+    expect(document.documentElement.hasAttribute("data-theme-bundle")).toBe(false);
+    expect(document.documentElement.hasAttribute("data-shell")).toBe(false);
+  });
 });
 
 describe("ensureFallback (gate semantics — 3.10.1)", () => {

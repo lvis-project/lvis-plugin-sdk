@@ -95,8 +95,9 @@ bridge.onEvent("host.theme.changed", (data) => {
 `useTheme(bridge)` 훅은 내부적으로 v2 로 갱신되었습니다. 훅을 그대로 사용하는 plugin 은
 **코드 수정 없이** SDK 버전만 `5.0.0` 으로 올리면 됩니다.
 
-`colorScheme` / `reducedMotion` / `fonts.family` 를 `useTheme` 반환값에서 꺼내 쓰던
-코드가 있다면 제거하세요. 대체:
+`colorScheme` / `reducedMotion` / `fonts.family` 는 `useTheme` 훅이 이전에 DOM에
+직접 적용하던 v1 전용 처리입니다 — v2에서 훅은 `bundleId`, `shell`, `tokens` 만 처리합니다.
+해당 필드를 참조하는 코드가 있다면 제거하세요. 대체:
 - `colorScheme` → `event.shell` (`"light"` / `"dark"`)
 - `reducedMotion` → `window.matchMedia("(prefers-reduced-motion: reduce)").matches`
 - `fonts.family` → plugin 자체 CSS 변수 또는 향후 `--lvis-*` font token

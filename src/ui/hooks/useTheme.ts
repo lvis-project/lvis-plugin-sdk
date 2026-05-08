@@ -30,10 +30,16 @@ export function useTheme(bridge: PluginBridge): void {
       const payload = data as Partial<LvisHostThemeEvent>;
       if (!payload) return;
       const root = document.documentElement;
-      if (payload.bundleId !== undefined && VALID_BUNDLE_IDS.has(payload.bundleId as LvisThemeBundleId))
+      if (payload.bundleId !== undefined && VALID_BUNDLE_IDS.has(payload.bundleId as LvisThemeBundleId)) {
         root.setAttribute("data-theme-bundle", payload.bundleId);
-      if (payload.shell !== undefined && VALID_SHELL_MODES.has(payload.shell))
+      } else {
+        root.removeAttribute("data-theme-bundle");
+      }
+      if (payload.shell !== undefined && VALID_SHELL_MODES.has(payload.shell)) {
         root.setAttribute("data-shell", payload.shell);
+      } else {
+        root.removeAttribute("data-shell");
+      }
       if (payload.tokens) {
         const safe: Record<string, string> = {};
         for (const [k, v] of Object.entries(payload.tokens)) {
