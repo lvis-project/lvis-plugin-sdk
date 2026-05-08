@@ -134,6 +134,21 @@ describe("Modal", () => {
     expect(getByRole("dialog").getAttribute("aria-label")).toBe("Dialog");
   });
 
+  it("ignores empty / whitespace-only ariaLabel and keeps the safety default", () => {
+    // Explicit `ariaLabel=""` (or whitespace-only) MUST NOT override the
+    // "Dialog" default — that would yield an unnamed dialog. Strict `??` would
+    // honour the empty string; the component treats blank as missing.
+    for (const blank of ["", "   ", "\t\n"]) {
+      const { getByRole, unmount } = render(
+        <Modal open onClose={() => {}} ariaLabel={blank}>
+          content
+        </Modal>,
+      );
+      expect(getByRole("dialog").getAttribute("aria-label")).toBe("Dialog");
+      unmount();
+    }
+  });
+
   it("Esc key triggers onClose", () => {
     const onClose = vi.fn();
     render(<Modal open onClose={onClose} title="x" />);

@@ -637,6 +637,17 @@ export interface PluginHostApi {
   openAuthWindow(options: OpenAuthWindowWithFinalUrlOptions): Promise<OpenAuthWindowFinalUrlResult>;
   openAuthWindow(options: OpenAuthWindowCookieOptions): Promise<AuthWindowCookie[]>;
 
+  /**
+   * Open an external URL through the host's preferred-flow policy (in-app
+   * webview vs system browser). Plugin remains policy-agnostic — host decides
+   * routing based on `webView.preferredFlow` setting.
+   *
+   * Optional — declared as `?` so a host build that has not yet wired the
+   * delegate returns `undefined` for the property. Plugins MUST guard with
+   * `typeof api.openExternalUrl === "function"`.
+   *
+   * @optional
+   */
   openExternalUrl?(url: string): Promise<void>;
 
   getAppPreference?<T = unknown>(key: string): T | undefined;
@@ -663,26 +674,24 @@ export interface PluginHostApi {
    * tears down the overlay. Failing to dismiss leaves the overlay
    * pinned until session reload.
    *
-   * Optional — declared via method signature so a host build that
-   * does not yet wire the overlay surface returns `undefined` for the
-   * whole property (matching `openExternalUrl?` / `getAppPreference?`).
-   * Plugins MUST guard with `typeof api.showOverlay === "function"`.
+   * Advisory: declare `host:overlay` capability in `manifest.capabilities[]`.
+   * `running: true` shows spinner + "진행 중…"; `false` (default) shows
+   * summary + actions.
    *
-   * @param input.title           Short user-visible heading.
-   * @param input.summary         Longer description rendered under the title.
-   * @param input.running         When `true`, host renders an in-progress affordance (spinner). Toggle via re-call.
-   * @param input.primaryActionLabel Optional CTA label shown alongside the dismiss control.
-   * @param input.onPrimaryAction Invoked when the user activates the CTA. Plugin-owned side effects.
-   * @param input.onDismiss       Invoked when the user dismisses the overlay before the plugin calls `dismiss()`.
+   * Optional — declared as `?` so a host build that has not yet wired the
+   * overlay surface returns `undefined` for the property. Plugins MUST
+   * guard with `typeof api.showOverlay === "function"`.
+   *
+   * @optional
    */
-  showOverlay?(input: {
+  showOverlay?: (input: {
     title: string;
     summary: string;
     running?: boolean;
     primaryActionLabel?: string;
     onPrimaryAction?: () => void;
     onDismiss?: () => void;
-  }): { dismiss(): void };
+  }) => { dismiss(): void };
 
   agentApproval: {
 
@@ -724,13 +733,13 @@ export interface ConversationTriggerSpec {
   /** Suppress duplicate triggers for the same observation; dedupe window enforced by host. @optional */
   dedupeKey?: string;
 
-  /** Short user-visible heading shown in the host's trigger UI (overlay/notification). Plugin-owned text — must NOT contain raw third-party content. @optional */
+  /** Q11 Overlay Runner — display title for the OverlayCard rendered when the host stages the trigger as an overlay item. Plugin-owned text — must NOT contain raw third-party content. Defaults to the source tag with the `proactive:` prefix stripped. @optional */
   title?: string;
 
-  /** Longer user-visible description shown beneath `title` in the host's trigger UI. Plugin-owned text — must NOT contain raw third-party content. @optional */
+  /** Q11 Overlay Runner — one-line summary shown in the OverlayCard body. Plugin-owned text — must NOT contain raw third-party content. Defaults to the first 200 chars of `prompt`. @optional */
   summary?: string;
 
-  /** Label for the primary CTA button rendered alongside the trigger UI. When omitted, the host renders only a dismiss affordance. @optional */
+  /** Q11 Overlay Runner — label for the OverlayCard primary action button. Defaults to "지금 답하기" when omitted. @optional */
   primaryActionLabel?: string;
 }
 
@@ -760,7 +769,7 @@ export interface ConversationTriggerResult {
   /** Echoed from the request so callers can correlate logs. */
   source: string;
 
-  /** Unique identifier minted by the host when `accepted` is `true`. Plugins use this to correlate subsequent host events (e.g., conversation completion, audit entries) with the originating trigger. Absent when `accepted` is `false`. @optional */
+  /** Q11 Overlay Runner — present when `accepted` is `true` and the trigger was staged as an OverlayItem instead of starting a fresh ConversationLoop. Stable host-minted identifier; plugins use it to correlate subsequent host events (e.g., overlay dismiss, audit entries) with the originating trigger. Absent when `accepted` is `false`. @optional */
   eventId?: string;
 }
 

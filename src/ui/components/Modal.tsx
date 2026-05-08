@@ -175,7 +175,14 @@ export function Modal(props: ModalProps): React.ReactElement | null {
   const captionPresent = caption !== undefined && caption !== null && caption !== false;
   const shouldRenderHeader = shouldRenderTitle || captionPresent;
   const titleHasAccessibleName = titleAsAccessibleLabel !== undefined;
-  const dialogLabel = titleHasAccessibleName ? undefined : (ariaLabel ?? "Dialog");
+  // Treat empty / whitespace-only `ariaLabel` as missing so an explicit
+  // `ariaLabel=""` cannot override the safety fallback ("Dialog") and
+  // produce an unnamed dialog. The strict `?? "Dialog"` form would honour
+  // an empty string as a deliberate accessible name.
+  const ariaLabelHasContent = typeof ariaLabel === "string" && ariaLabel.trim().length > 0;
+  const dialogLabel = titleHasAccessibleName
+    ? undefined
+    : (ariaLabelHasContent ? ariaLabel : "Dialog");
 
   return (
     <div
