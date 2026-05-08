@@ -7,6 +7,61 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.0.1] - 2026-05-09
+
+### Fixed
+
+#### `prepare` 스크립트 제거 — consumer 측 `bun install` 실패 회귀 차단
+
+`package.json` 의 `prepare` 스크립트 (`tsup && tsc -p tsconfig.build.json`) 를 제거하고 동일 내용을 `prepublishOnly` 로 옮겼습니다.
+
+##### 증상
+
+v5.0.0 부터 `github:lvis-project/lvis-plugin-sdk#v5.0.0` 를 의존성으로 받는 모든 plugin (lvis-plugin-meeting, lvis-plugin-lge-api, lvis-plugin-local-indexer 등) 의 `bun install --frozen-lockfile` 이 다음 형태로 실패:
+
+```
+src/ui/components/Toggle.tsx(61,7): error TS7026: JSX element implicitly has type 'any' ...
+src/ui/hooks/useTheme.ts(1,27): error TS7016: Could not find a declaration file for module 'react' ...
+error: prepare script from "@lvis/plugin-sdk" exited with 2
+```
+
+##### 원인 — npm/bun lifecycle script 표준 동작
+
+npm/yarn/bun 은 `git URL` 형식 (`github:org/repo#tag`) 으로 받은 패키지의 경우 clone 직후 자동으로 `prepare` 스크립트를 실행합니다 (npm spec — git 패키지는 published artifact 가 없다고 가정해서 컨슈머 측에서 빌드 단계 필요). 이는 `npm install` 표준 절차의 일부이지 SDK 측에서 끌 수 있는 옵션이 아닙니다.
+
+v5.0.0 의 `prepare` 가 실행하는 `tsc` 는 SDK 의 `devDependencies` (`@types/react`, `@types/node` 등) 가 컨슈머 측 `node_modules` 에 있어야 합니다. 그러나 npm/bun 은 transitive 패키지의 devDeps 를 컨슈머 환경에 설치하지 않습니다 (의존 그래프 비대화 방지). 따라서:
+
+1. 컨슈머 plugin 의 `bun install` 이 SDK clone
+2. bun 이 SDK 의 `prepare` 자동 실행 (npm spec)
+3. `tsc` 가 컨슈머 측 `node_modules` 에서 `@types/react` 를 찾지 못해 exit 2
+4. 전체 `bun install --frozen-lockfile` 실패
+
+같은 패턴은 v3.4.0 → 3.4.1 (PR #77) 에서 한 번 해결됐다가 v3.9.0 (PR #99 — dist 커밋 제거 + prepare 의존) 에서 재도입됐습니다. 이번 5.0.1 은 v3.4.1 과 동일한 방향으로 정리합니다.
+
+##### 수정
+
+| | 이전 | 이후 |
+|---|---|---|
+| `prepare` 스크립트 | `tsup && tsc -p tsconfig.build.json` | **제거** |
+| `prepublishOnly` 스크립트 | (없음) | `bun run build` (npm publish 시에만 동작) |
+| `dist/` git 추적 | committed (v5.0.0 부터) | committed (변동 없음) |
+| `check:dist-drift` CI 가드 | 활성 | 활성 (변동 없음 — 메인테이너가 `bun run build` 후 dist 커밋한 PR 만 통과) |
+
+`prepare` 가 사라져도 컨슈머 plugin 은 정상 동작합니다 — git clone 시점에 이미 dist (`.js` + `.d.ts`) 가 들어있고, `package.json` 의 `exports` 필드가 dist 를 가리키기 때문입니다. 컨슈머 환경 빌드 단계는 더 이상 필요 없습니다.
+
+##### 컨슈머 측 영향
+
+- SDK pin 만 `github:lvis-project/lvis-plugin-sdk#v5.0.0` → `#v5.0.1` 로 올리고 `bun install` 한 뒤 재생성된 `bun.lock` 을 커밋
+- API 무변경 — runtime/타입 모두 v5.0.0 과 동일
+- 컨슈머 plugin 에 `@types/react` 추가 필요 없음
+
+##### 메인테이너 워크플로
+
+- 코드 변경 후 release 전: `bun run build` 실행 → dist 자동 갱신 → `git add dist package.json` 같이 commit
+- `check:dist-drift` CI 가 dist staleness 를 enforce 하므로 빌드 누락이 PR 단계에서 차단됨
+
+---
+
 ## [5.0.0] - 2026-05-08
 
 ### ⚠️ BREAKING CHANGE — LvisHostThemeEvent v2 (atomic cutover, no alias)
