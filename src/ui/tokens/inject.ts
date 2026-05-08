@@ -1,4 +1,4 @@
-import { LVIS_TOKEN_NAMES } from "./index.js";
+import { LVIS_TOKEN_NAMES, LVIS_THEME_BUNDLE_IDS, type LvisHostThemeEvent } from "./index.js";
 
 const _ALLOWED_KEYS = new Set<string>(LVIS_TOKEN_NAMES);
 // Block CSS exfil / injection patterns. Use /<[a-zA-Z]/ for HTML tags
@@ -79,5 +79,51 @@ export function applyThemeTokens(tokens: Record<string, string>): void {
     if (!_ALLOWED_KEYS.has(k)) continue;
     if (_UNSAFE_VALUE.test(v)) continue;
     root.style.setProperty(k, v);
+  }
+}
+
+/**
+ * Apply a `LvisHostThemeEvent` (or `null`) to the document root.
+ *
+ * Convenience helper that removes per-plugin boilerplate for the common
+ * DOM-update pattern:
+ * - Sets `data-theme-bundle` and `data-shell` attributes, or removes them
+ *   when the event is `null` (theme reset).
+ * - Validates `bundleId` against {@link LVIS_THEME_BUNDLE_IDS} before
+ *   writing the attribute (no stale/unknown bundle id leaks into the DOM).
+ * - Validates `shell` to `"light" | "dark"` before writing.
+ * - Applies all token values via {@link applyThemeTokens} (closed allowlist
+ *   + unsafe-value guard are enforced there).
+ *
+ * Plugins that use `useTheme` directly do NOT need to call this helper —
+ * the hook already performs the same logic internally. This is intended for
+ * vanilla-JS plugins or custom React shells that manage the bridge event
+ * subscription themselves.
+ *
+ * @param event - Parsed `LvisHostThemeEvent`, or `null` to clear theme attrs.
+ */
+export function applyThemeFromHostEvent(event: LvisHostThemeEvent | null): void {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (!event) {
+    root.removeAttribute("data-theme-bundle");
+    root.removeAttribute("data-shell");
+    for (const tokenName of LVIS_TOKEN_NAMES) {
+      root.style.removeProperty(tokenName);
+    }
+    return;
+  }
+  if ((LVIS_THEME_BUNDLE_IDS as ReadonlyArray<string>).includes(event.bundleId)) {
+    root.setAttribute("data-theme-bundle", event.bundleId);
+  } else {
+    root.removeAttribute("data-theme-bundle");
+  }
+  if (event.shell === "light" || event.shell === "dark") {
+    root.setAttribute("data-shell", event.shell);
+  } else {
+    root.removeAttribute("data-shell");
+  }
+  if (event.tokens !== null && typeof event.tokens === "object" && !Array.isArray(event.tokens)) {
+    applyThemeTokens(event.tokens as Record<string, string>);
   }
 }

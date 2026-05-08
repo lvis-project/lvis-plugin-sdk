@@ -12,4 +12,4 @@ export * from "./hooks/useTheme.js";
 export { useFocusTrap } from "./hooks/useFocusTrap.js";
 export type { UseFocusTrapOptions } from "./hooks/useFocusTrap.js";
 export * from "./tokens/index.js";
-export { applyThemeTokens, injectTokenCss } from "./tokens/inject.js";
+export { applyThemeTokens, injectTokenCss, applyThemeFromHostEvent } from "./tokens/inject.js";

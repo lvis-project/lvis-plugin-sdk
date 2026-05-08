@@ -7,6 +7,110 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.0.0] - 2026-05-08
+
+### ⚠️ BREAKING CHANGE — LvisHostThemeEvent v2 (atomic cutover, no alias)
+
+**`LvisHostThemeEvent` v1 필드 전면 제거 — `theme`, `chatTheme`, `codeTheme`,
+`colorScheme`, `reducedMotion`, `fonts.family` 모두 삭제.**
+
+v1 shape 의 모든 필드가 삭제되었습니다. 하위호환 alias 없음 — 이 버전으로 올리면
+v1 필드를 참조하는 모든 plugin 코드가 TypeScript 컴파일 에러를 냅니다.
+
+제거된 필드:
+- `theme: "light" | "dark" | "high-contrast"` → `bundleId` + `shell` 로 대체
+- `chatTheme: "default" | "lg" | "purple" | "orange" | "blue"` → `bundleId` 로 대체
+- `codeTheme: "light" | "dark"` → `bundleId` + `shell` 로 대체
+- `colorScheme?: string` → `shell: "light" | "dark"` 로 대체
+- `reducedMotion?: boolean` → OS-level `prefers-reduced-motion` CSS media query 사용 (SDK 책임 범위 아님)
+- `fonts?: { family?: string }` → plugin 자체 폰트 관리 또는 향후 `--lvis-*` font token 예정
+
+#### 제거된 v1 필드 전체 목록
+
+다음 필드들이 `LvisHostThemeEvent` / `LvisThemePayload` 에서 **모두 삭제**되었습니다.
+하위호환 alias 없음 — 참조 시 TypeScript 컴파일 에러 발생.
+
+| 제거된 필드 | v1 타입 | v2 대체 |
+|---|---|---|
+| `theme` | `"light" \| "dark" \| "high-contrast"` | `bundleId` + `shell` |
+| `chatTheme` | `"default" \| "lg" \| "purple" \| "orange" \| "blue"` | `bundleId` |
+| `codeTheme` | `"light" \| "dark"` | `bundleId` + `shell` |
+| `colorScheme` | `string` (optional) | `shell: "light" \| "dark"` |
+| `reducedMotion` | `boolean` (optional) | OS-level CSS media query (`prefers-reduced-motion`) — SDK 책임 범위 아님 |
+| `fonts?.family` | `string` | `tokens` 맵 내 `--lvis-*` font token (또는 미포함 시 plugin 자체 폰트 관리) |
+
+#### v2 신규 shape
+
+```typescript
+interface LvisHostThemeEvent {
+  bundleId: "tokyo-night" | "midnight" | "forest" | "lge-light" | "lge-dark" | "high-contrast";
+  shell: "light" | "dark";
+  tokens: LvisTokenMap;
+}
+```
+
+#### Migration guide
+
+```typescript
+// v1 (제거됨 — 더 이상 동작하지 않음)
+bridge.onEvent("host.theme.changed", (data) => {
+  const e = data as LvisThemePayload; // was LvisThemePayload / LvisHostThemeEvent v1
+  root.setAttribute("data-theme", e.theme);              // ❌ theme 제거
+  root.setAttribute("data-chat-theme", e.chatTheme);     // ❌ chatTheme 제거
+  root.setAttribute("data-code-theme", e.codeTheme);     // ❌ codeTheme 제거
+  // e.colorScheme, e.reducedMotion, e.fonts?.family      // ❌ 모두 제거
+});
+
+// v2 (새 shape)
+bridge.onEvent("host.theme.changed", (data) => {
+  const e = data as LvisHostThemeEvent;
+  root.setAttribute("data-theme-bundle", e.bundleId); // ✅ bundleId
+  root.setAttribute("data-shell", e.shell);            // ✅ shell
+  // tokens 의 key 는 이미 "--lvis-*" 형태 — prefix 추가 불필요
+  Object.entries(e.tokens).forEach(([key, value]) => {
+    document.documentElement.style.setProperty(key, value); // ✅ key = "--lvis-bg" 등
+  });
+});
+
+// v2 — SDK helper 사용 (권장, 보일러플레이트 제거)
+import { applyThemeFromHostEvent } from "@lvis/plugin-sdk/ui";
+
+bridge.onEvent("host.theme.changed", (data) => {
+  applyThemeFromHostEvent(data as LvisHostThemeEvent); // ✅ 단일 호출로 전체 적용
+});
+```
+
+**`useTheme` 훅 사용자**: `colorScheme` / `reducedMotion` / `fonts.family` 는 훅이
+이전에 DOM에 직접 적용하던 v1 전용 처리입니다 — 훅은 이제 오직 `bundleId`, `shell`,
+`tokens` 만 처리합니다. 해당 필드를 참조하는 코드가 있다면 제거하세요.
+
+SDK `useTheme` 훅을 그대로 사용하는 plugin 은 훅 내부가 자동으로 v2 로 동작하므로
+**훅 호출 코드 수정 불필요** — SDK 버전만 `5.0.0` 으로 올리면 됩니다.
+
+#### 영향 범위
+
+- `LvisHostThemeEvent` 타입을 직접 import 하거나 v1 필드(`theme`, `chatTheme`,
+  `codeTheme`)를 참조하는 plugin 코드를 v2 형식으로 교체해야 합니다.
+- `useTheme()` 훅은 내부적으로 이미 v2 로 갱신되었으므로 훅 사용자는 **코드 변경
+  없이** SDK 버전 bump 만으로 완료됩니다.
+- `LvisThemePayload` 는 `LvisHostThemeEvent` 의 type alias 로 유지됩니다 (빈 shim
+  아님 — 완전히 동일한 v2 타입).
+
+#### 동시 진행 중인 변경
+
+- **lvis-app PR #613** — host 가 `bundleId` / `shell` 필드를 실제로 emit 하는 쪽
+  변경. 이 SDK bump 와 pair.
+- **7 plugin repo SDK bump** — 각 plugin 의 `@lvis/plugin-sdk` 의존성을 `5.0.0`
+  으로 올리는 Track C PR 들이 동시 진행 중.
+
+#### 결정 근거
+
+사용자 결정: **atomic cutover** — deprecation alias 없이 즉시 제거. v1/v2 분기
+코드가 장기간 공존하면 host emit 쪽과 plugin 수신 쪽의 field contract 가 영구
+모호해지므로, breaking bump 로 모든 소비자가 한 번에 이행하도록 강제합니다.
+
+---
+
 ## [4.3.0] - 2026-05-04
 
 ### Added

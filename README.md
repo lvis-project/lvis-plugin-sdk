@@ -27,12 +27,91 @@ Consume the SDK as a Git dependency pinned to a release tag:
 ```json
 {
   "devDependencies": {
-    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v3.0.0"
+    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v5.0.0"
   }
 }
 ```
 
 No submodule is required.
+
+## v5.0.0 Migration Guide — LvisHostThemeEvent v2 (BREAKING)
+
+**다음 필드들이 `LvisHostThemeEvent` 에서 모두 제거되었습니다.**
+하위호환 alias 없음 — atomic cutover. 참조 시 TypeScript 컴파일 에러 발생.
+
+| 제거된 필드 | v1 타입 | v2 대체 |
+|---|---|---|
+| `theme` | `"light" \| "dark" \| "high-contrast"` | `bundleId` + `shell` |
+| `chatTheme` | `"default" \| "lg" \| "purple" \| "orange" \| "blue"` | `bundleId` |
+| `codeTheme` | `"light" \| "dark"` | `bundleId` + `shell` |
+| `colorScheme` | `string` (optional) | `shell: "light" \| "dark"` |
+| `reducedMotion` | `boolean` (optional) | OS-level CSS media query (`prefers-reduced-motion`) — SDK 책임 범위 아님 |
+| `fonts?.family` | `string` | plugin 자체 폰트 관리 또는 향후 `--lvis-*` font token 예정 |
+
+### 신규 shape
+
+```typescript
+interface LvisHostThemeEvent {
+  bundleId: "tokyo-night" | "midnight" | "forest" | "lge-light" | "lge-dark" | "high-contrast";
+  shell: "light" | "dark";
+  tokens: LvisTokenMap; // key 는 이미 "--lvis-bg" 형태 — prefix 추가 불필요
+}
+```
+
+### 변경 전 → 후
+
+```typescript
+// ❌ v1 (제거됨)
+bridge.onEvent("host.theme.changed", (data) => {
+  const e = data as LvisHostThemeEvent;
+  root.setAttribute("data-theme", e.theme);              // 없음
+  root.setAttribute("data-chat-theme", e.chatTheme);     // 없음
+  root.setAttribute("data-code-theme", e.codeTheme);     // 없음
+  // e.colorScheme, e.reducedMotion, e.fonts?.family      // 모두 없음
+});
+
+// ✅ v2 — SDK helper 사용 (권장)
+import { applyThemeFromHostEvent } from "@lvis/plugin-sdk/ui";
+
+bridge.onEvent("host.theme.changed", (data) => {
+  applyThemeFromHostEvent(data as LvisHostThemeEvent);
+  // bundleId 검증 + data-theme-bundle/data-shell 속성 설정 + tokens 적용 한 번에 처리
+});
+
+// ✅ v2 — 직접 처리 (helper 없이)
+bridge.onEvent("host.theme.changed", (data) => {
+  const e = data as LvisHostThemeEvent;
+  root.setAttribute("data-theme-bundle", e.bundleId);
+  root.setAttribute("data-shell", e.shell);
+  // tokens 의 key 는 이미 "--lvis-bg" 형태 — `--lvis-${k}` 형태 prefix 추가 금지
+  Object.entries(e.tokens).forEach(([key, value]) => {
+    document.documentElement.style.setProperty(key, value);
+  });
+});
+```
+
+### useTheme 훅 사용자 (변경 없음)
+
+`useTheme(bridge)` 훅은 내부적으로 v2 로 갱신되었습니다. 훅을 그대로 사용하는 plugin 은
+**코드 수정 없이** SDK 버전만 `5.0.0` 으로 올리면 됩니다.
+
+`colorScheme` / `reducedMotion` / `fonts.family` 는 `useTheme` 훅이 이전에 DOM에
+직접 적용하던 v1 전용 처리입니다 — v2에서 훅은 `bundleId`, `shell`, `tokens` 만 처리합니다.
+해당 필드를 참조하는 코드가 있다면 제거하세요. 대체:
+- `colorScheme` → `event.shell` (`"light"` / `"dark"`)
+- `reducedMotion` → `window.matchMedia("(prefers-reduced-motion: reduce)").matches`
+- `fonts.family` → plugin 자체 CSS 변수 또는 향후 `--lvis-*` font token
+
+### bundleId 값
+
+| bundleId | shell | 설명 |
+|---|---|---|
+| `"tokyo-night"` | `"dark"` | Tokyo Night 다크 테마 |
+| `"midnight"` | `"dark"` | Midnight 다크 테마 |
+| `"forest"` | `"dark"` | Forest 다크 테마 |
+| `"lge-light"` | `"light"` | LGE 공식 라이트 테마 |
+| `"lge-dark"` | `"dark"` | LGE 공식 다크 테마 |
+| `"high-contrast"` | `"dark"` | 고대비 접근성 테마 |
 
 ### `$schema` URL migration (deprecation in progress)
 
