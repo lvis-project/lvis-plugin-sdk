@@ -70,7 +70,7 @@ export interface ModalProps {
   size?: "sm" | "md" | "lg";
   /** When true, Esc and overlay click are ignored (e.g. while busy). */
   disableDismiss?: boolean;
-  /** Fallback aria-label when title is not a plain string. */
+  /** Accessible name used when title is not a plain string or is omitted. */
   ariaLabel?: string;
   /** data-testid on the overlay element. */
   testId?: string;
@@ -158,9 +158,31 @@ export function Modal(props: ModalProps): React.ReactElement | null {
 
   if (!open) return null;
 
-  const hasTitle = title !== undefined;
-  const titleIsString = typeof title === "string";
-  const dialogLabel = hasTitle ? undefined : (ariaLabel ?? "Dialog");
+  // Accessible-name decision matrix:
+  //   string non-blank | number     → aria-labelledby points to <h2> (visible text == accessible name)
+  //   other ReactNode (element, etc) → aria-label fallback (visible content unreliable for AT)
+  //   undefined | null | false       → no title rendered (handles `title={cond && "X"}` pattern)
+  //   blank string                   → no title rendered (would yield empty accessible name)
+  const titleAsAccessibleLabel =
+    typeof title === "string"
+      ? title.trim().length > 0 ? title : undefined
+      : typeof title === "number"
+        ? String(title)
+        : undefined;
+  const shouldRenderTitle =
+    title !== undefined && title !== null && title !== false &&
+    (typeof title !== "string" || title.trim().length > 0);
+  const captionPresent = caption !== undefined && caption !== null && caption !== false;
+  const shouldRenderHeader = shouldRenderTitle || captionPresent;
+  const titleHasAccessibleName = titleAsAccessibleLabel !== undefined;
+  // Treat empty / whitespace-only `ariaLabel` as missing so an explicit
+  // `ariaLabel=""` cannot override the safety fallback ("Dialog") and
+  // produce an unnamed dialog. The strict `?? "Dialog"` form would honour
+  // an empty string as a deliberate accessible name.
+  const ariaLabelHasContent = typeof ariaLabel === "string" && ariaLabel.trim().length > 0;
+  const dialogLabel = titleHasAccessibleName
+    ? undefined
+    : (ariaLabelHasContent ? ariaLabel : "Dialog");
 
   return (
     <div
@@ -177,23 +199,23 @@ export function Modal(props: ModalProps): React.ReactElement | null {
         className={`lvis-modal lvis-modal-${size}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={hasTitle ? titleId : undefined}
+        aria-labelledby={titleHasAccessibleName ? titleId : undefined}
         aria-label={dialogLabel}
         tabIndex={-1}
       >
-        {(title !== undefined || caption !== undefined) && (
+        {shouldRenderHeader && (
           <div className="lvis-modal-head">
-            {title !== undefined &&
-              (titleIsString ? (
+            {shouldRenderTitle &&
+              (titleHasAccessibleName ? (
                 <h2 id={titleId} className="lvis-modal-title">
                   {title}
                 </h2>
               ) : (
-                <div id={titleId} className="lvis-modal-title">
+                <div className="lvis-modal-title">
                   {title}
                 </div>
               ))}
-            {caption !== undefined && <p className="lvis-modal-caption">{caption}</p>}
+            {captionPresent && <p className="lvis-modal-caption">{caption}</p>}
           </div>
         )}
         <div className="lvis-modal-body">{children}</div>

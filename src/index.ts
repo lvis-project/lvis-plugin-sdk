@@ -637,6 +637,17 @@ export interface PluginHostApi {
   openAuthWindow(options: OpenAuthWindowWithFinalUrlOptions): Promise<OpenAuthWindowFinalUrlResult>;
   openAuthWindow(options: OpenAuthWindowCookieOptions): Promise<AuthWindowCookie[]>;
 
+  /**
+   * Open an external URL through the host's preferred-flow policy (in-app
+   * webview vs system browser). Plugin remains policy-agnostic — host decides
+   * routing based on `webView.preferredFlow` setting.
+   *
+   * Optional — declared as `?` so a host build that has not yet wired the
+   * delegate returns `undefined` for the property. Plugins MUST guard with
+   * `typeof api.openExternalUrl === "function"`.
+   *
+   * @optional
+   */
   openExternalUrl?(url: string): Promise<void>;
 
   getAppPreference?<T = unknown>(key: string): T | undefined;
@@ -651,6 +662,36 @@ export interface PluginHostApi {
    * `^proactive:[a-z][a-z0-9-]*$`.
    */
   triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
+
+  /**
+   * Show a host-rendered overlay attached to a plugin-initiated long
+   * running operation (e.g., async tool call surfacing user-visible
+   * progress + optional CTA). Host owns the actual rendering; plugins
+   * only describe content + lifecycle callbacks.
+   *
+   * Returns a `{ dismiss }` handle the caller MUST invoke when the
+   * underlying operation completes (success or failure) so the host
+   * tears down the overlay. Failing to dismiss leaves the overlay
+   * pinned until session reload.
+   *
+   * Advisory: declare `host:overlay` capability in `manifest.capabilities[]`.
+   * `running: true` shows spinner + "진행 중…"; `false` (default) shows
+   * summary + actions.
+   *
+   * Optional — declared as `?` so a host build that has not yet wired the
+   * overlay surface returns `undefined` for the property. Plugins MUST
+   * guard with `typeof api.showOverlay === "function"`.
+   *
+   * @optional
+   */
+  showOverlay?: (input: {
+    title: string;
+    summary: string;
+    running?: boolean;
+    primaryActionLabel?: string;
+    onPrimaryAction?: () => void;
+    onDismiss?: () => void;
+  }) => { dismiss(): void };
 
   agentApproval: {
 
@@ -691,6 +732,15 @@ export interface ConversationTriggerSpec {
 
   /** Suppress duplicate triggers for the same observation; dedupe window enforced by host. @optional */
   dedupeKey?: string;
+
+  /** Q11 Overlay Runner — display title for the OverlayCard rendered when the host stages the trigger as an overlay item. Plugin-owned text — must NOT contain raw third-party content. Defaults to the source tag with the `proactive:` prefix stripped. @optional */
+  title?: string;
+
+  /** Q11 Overlay Runner — one-line summary shown in the OverlayCard body. Plugin-owned text — must NOT contain raw third-party content. Defaults to the first 200 chars of `prompt`. @optional */
+  summary?: string;
+
+  /** Q11 Overlay Runner — label for the OverlayCard primary action button. Defaults to "지금 답하기" when omitted. @optional */
+  primaryActionLabel?: string;
 }
 
 /** Outcome of `PluginHostApi.triggerConversation()`. */
@@ -718,6 +768,9 @@ export interface ConversationTriggerResult {
 
   /** Echoed from the request so callers can correlate logs. */
   source: string;
+
+  /** Q11 Overlay Runner — present when `accepted` is `true` and the trigger was staged as an OverlayItem instead of starting a fresh ConversationLoop. Stable host-minted identifier; plugins use it to correlate subsequent host events (e.g., overlay dismiss, audit entries) with the originating trigger. Absent when `accepted` is `false`. @optional */
+  eventId?: string;
 }
 
 /**
