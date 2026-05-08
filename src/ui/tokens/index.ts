@@ -69,16 +69,26 @@ export const LVIS_CSS_ONLY_TOKEN_NAMES = [
 export type LvisCssOnlyTokenName = typeof LVIS_CSS_ONLY_TOKEN_NAMES[number];
 
 /**
+ * Runtime allowlist of theme bundle identifiers shipped by the host.
+ * Single source of truth — `LvisThemeBundleId` is derived from this array.
+ *
+ * Use this for runtime validation (e.g. `LVIS_THEME_BUNDLE_IDS.includes(id)`).
+ */
+export const LVIS_THEME_BUNDLE_IDS = [
+  "tokyo-night",
+  "midnight",
+  "forest",
+  "lge-light",
+  "lge-dark",
+  "high-contrast",
+] as const;
+
+/**
  * Theme bundle identifiers shipped by the host.
  * Each bundle maps to a full token set (dark/light/contrast variants).
+ * Derived from {@link LVIS_THEME_BUNDLE_IDS} — the runtime single source of truth.
  */
-export type LvisThemeBundleId =
-  | "tokyo-night"
-  | "midnight"
-  | "forest"
-  | "lge-light"
-  | "lge-dark"
-  | "high-contrast";
+export type LvisThemeBundleId = (typeof LVIS_THEME_BUNDLE_IDS)[number];
 
 /**
  * LvisHostThemeEvent v2 — broadcast by the host on every theme change.

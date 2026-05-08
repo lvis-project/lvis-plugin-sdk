@@ -1,19 +1,12 @@
 import { useEffect } from "react";
-import { type LvisHostThemeEvent, type LvisThemeBundleId, LVIS_TOKEN_NAMES } from "../tokens/index.js";
+import { type LvisHostThemeEvent, type LvisThemeBundleId, LVIS_TOKEN_NAMES, LVIS_THEME_BUNDLE_IDS } from "../tokens/index.js";
 import { applyThemeTokens } from "../tokens/inject.js";
 
 type PluginBridge = {
   onEvent: (type: string, handler: (data: unknown) => void) => () => void;
 };
 
-const VALID_BUNDLE_IDS = new Set<LvisThemeBundleId>([
-  "tokyo-night",
-  "midnight",
-  "forest",
-  "lge-light",
-  "lge-dark",
-  "high-contrast",
-]);
+const VALID_BUNDLE_IDS = new Set<LvisThemeBundleId>(LVIS_THEME_BUNDLE_IDS);
 const VALID_SHELL_MODES = new Set<string>(["light", "dark"]);
 // Closed allowlist mirrors LVIS_TOKEN_NAMES — same set as inject.ts:_ALLOWED_KEYS.
 const _ALLOWED_TOKEN_KEYS = new Set<string>(LVIS_TOKEN_NAMES);

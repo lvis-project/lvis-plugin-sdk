@@ -36,8 +36,17 @@ No submodule is required.
 
 ## v5.0.0 Migration Guide — LvisHostThemeEvent v2 (BREAKING)
 
-**`theme`, `chatTheme`, `codeTheme` 필드가 `LvisHostThemeEvent` 에서 제거되었습니다.**
-하위호환 alias 없음 — atomic cutover.
+**다음 필드들이 `LvisHostThemeEvent` 에서 모두 제거되었습니다.**
+하위호환 alias 없음 — atomic cutover. 참조 시 TypeScript 컴파일 에러 발생.
+
+| 제거된 필드 | v1 타입 | v2 대체 |
+|---|---|---|
+| `theme` | `"light" \| "dark" \| "high-contrast"` | `bundleId` + `shell` |
+| `chatTheme` | `string` | `bundleId` |
+| `codeTheme` | `"light" \| "dark"` | `bundleId` + `shell` |
+| `colorScheme` | `string` (optional) | `shell: "light" \| "dark"` |
+| `reducedMotion` | `boolean` (optional) | OS-level CSS media query (`prefers-reduced-motion`) — SDK 책임 범위 아님 |
+| `fonts.family` | `string` (optional) | plugin 자체 폰트 관리 또는 향후 `--lvis-*` font token 예정 |
 
 ### 신규 shape
 
@@ -45,7 +54,7 @@ No submodule is required.
 interface LvisHostThemeEvent {
   bundleId: "tokyo-night" | "midnight" | "forest" | "lge-light" | "lge-dark" | "high-contrast";
   shell: "light" | "dark";
-  tokens: LvisTokenMap;
+  tokens: LvisTokenMap; // key 는 이미 "--lvis-bg" 형태 — prefix 추가 불필요
 }
 ```
 
@@ -55,18 +64,28 @@ interface LvisHostThemeEvent {
 // ❌ v1 (제거됨)
 bridge.onEvent("host.theme.changed", (data) => {
   const e = data as LvisHostThemeEvent;
-  root.setAttribute("data-theme", e.theme);          // 없음
-  root.setAttribute("data-chat-theme", e.chatTheme); // 없음
-  root.setAttribute("data-code-theme", e.codeTheme); // 없음
+  root.setAttribute("data-theme", e.theme);              // 없음
+  root.setAttribute("data-chat-theme", e.chatTheme);     // 없음
+  root.setAttribute("data-code-theme", e.codeTheme);     // 없음
+  // e.colorScheme, e.reducedMotion, e.fonts?.family      // 모두 없음
 });
 
-// ✅ v2
+// ✅ v2 — SDK helper 사용 (권장)
+import { applyThemeFromHostEvent } from "@lvis/plugin-sdk/ui";
+
+bridge.onEvent("host.theme.changed", (data) => {
+  applyThemeFromHostEvent(data as LvisHostThemeEvent);
+  // bundleId 검증 + data-theme-bundle/data-shell 속성 설정 + tokens 적용 한 번에 처리
+});
+
+// ✅ v2 — 직접 처리 (helper 없이)
 bridge.onEvent("host.theme.changed", (data) => {
   const e = data as LvisHostThemeEvent;
   root.setAttribute("data-theme-bundle", e.bundleId);
   root.setAttribute("data-shell", e.shell);
-  Object.entries(e.tokens).forEach(([k, v]) => {
-    root.style.setProperty(k, v);
+  // tokens 의 key 는 이미 "--lvis-bg" 형태 — `--lvis-${k}` 형태 prefix 추가 금지
+  Object.entries(e.tokens).forEach(([key, value]) => {
+    document.documentElement.style.setProperty(key, value);
   });
 });
 ```
@@ -75,6 +94,12 @@ bridge.onEvent("host.theme.changed", (data) => {
 
 `useTheme(bridge)` 훅은 내부적으로 v2 로 갱신되었습니다. 훅을 그대로 사용하는 plugin 은
 **코드 수정 없이** SDK 버전만 `5.0.0` 으로 올리면 됩니다.
+
+`colorScheme` / `reducedMotion` / `fonts.family` 를 `useTheme` 반환값에서 꺼내 쓰던
+코드가 있다면 제거하세요. 대체:
+- `colorScheme` → `event.shell` (`"light"` / `"dark"`)
+- `reducedMotion` → `window.matchMedia("(prefers-reduced-motion: reduce)").matches`
+- `fonts.family` → plugin 자체 CSS 변수 또는 향후 `--lvis-*` font token
 
 ### bundleId 값
 
