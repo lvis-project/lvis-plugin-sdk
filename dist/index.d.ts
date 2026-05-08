@@ -552,6 +552,16 @@ export interface PluginHostApi {
      * `^proactive:[a-z][a-z0-9-]*$`.
      */
     triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
+    showOverlay?: (input: {
+        title: string;
+        summary: string;
+        running?: boolean;
+        primaryActionLabel?: string;
+        onPrimaryAction?: () => void;
+        onDismiss?: () => void;
+    }) => {
+        dismiss(): void;
+    };
     agentApproval: {
         request(input: {
             toolName: string;
@@ -577,6 +587,9 @@ export interface ConversationTriggerSpec {
     priority?: "low" | "normal" | "high";
     /** Suppress duplicate triggers for the same observation; dedupe window enforced by host. @optional */
     dedupeKey?: string;
+    title?: string;
+    summary?: string;
+    primaryActionLabel?: string;
 }
 /** Outcome of `PluginHostApi.triggerConversation()`. */
 export interface ConversationTriggerResult {
@@ -595,6 +608,7 @@ export interface ConversationTriggerResult {
     reason?: "capability_denied" | "invalid_source" | "duplicate" | "rate_limited" | "loop_unavailable";
     /** Echoed from the request so callers can correlate logs. */
     source: string;
+    eventId?: string;
 }
 /**
  * Execution context supplied by the host when instantiating a plugin through

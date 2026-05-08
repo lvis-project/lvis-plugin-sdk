@@ -158,11 +158,24 @@ export function Modal(props: ModalProps): React.ReactElement | null {
 
   if (!open) return null;
 
-  const titleIsString = typeof title === "string" && title.trim().length > 0;
+  // Accessible-name decision matrix:
+  //   string non-blank | number     → aria-labelledby points to <h2> (visible text == accessible name)
+  //   other ReactNode (element, etc) → aria-label fallback (visible content unreliable for AT)
+  //   undefined | null | false       → no title rendered (handles `title={cond && "X"}` pattern)
+  //   blank string                   → no title rendered (would yield empty accessible name)
+  const titleAsAccessibleLabel =
+    typeof title === "string"
+      ? title.trim().length > 0 ? title : undefined
+      : typeof title === "number"
+        ? String(title)
+        : undefined;
   const shouldRenderTitle =
-    title !== undefined && title !== null && (typeof title !== "string" || title.trim().length > 0);
-  const shouldRenderHeader = shouldRenderTitle || (caption !== undefined && caption !== null);
-  const dialogLabel = titleIsString ? undefined : (ariaLabel ?? "Dialog");
+    title !== undefined && title !== null && title !== false &&
+    (typeof title !== "string" || title.trim().length > 0);
+  const captionPresent = caption !== undefined && caption !== null && caption !== false;
+  const shouldRenderHeader = shouldRenderTitle || captionPresent;
+  const titleHasAccessibleName = titleAsAccessibleLabel !== undefined;
+  const dialogLabel = titleHasAccessibleName ? undefined : (ariaLabel ?? "Dialog");
 
   return (
     <div
@@ -179,14 +192,14 @@ export function Modal(props: ModalProps): React.ReactElement | null {
         className={`lvis-modal lvis-modal-${size}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleIsString ? titleId : undefined}
+        aria-labelledby={titleHasAccessibleName ? titleId : undefined}
         aria-label={dialogLabel}
         tabIndex={-1}
       >
         {shouldRenderHeader && (
           <div className="lvis-modal-head">
             {shouldRenderTitle &&
-              (titleIsString ? (
+              (titleHasAccessibleName ? (
                 <h2 id={titleId} className="lvis-modal-title">
                   {title}
                 </h2>
@@ -195,7 +208,7 @@ export function Modal(props: ModalProps): React.ReactElement | null {
                   {title}
                 </div>
               ))}
-            {caption !== undefined && <p className="lvis-modal-caption">{caption}</p>}
+            {captionPresent && <p className="lvis-modal-caption">{caption}</p>}
           </div>
         )}
         <div className="lvis-modal-body">{children}</div>

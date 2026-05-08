@@ -80,6 +80,51 @@ describe("Modal", () => {
     expect(getByRole("dialog").getAttribute("aria-label")).toBe("untitled dialog");
   });
 
+  it("treats title={false} as no title (`cond && \"X\"` pattern when cond is false)", () => {
+    const { container, getByRole, queryByRole } = render(
+      <Modal open onClose={() => {}} title={false as unknown as React.ReactNode} ariaLabel="explicit">
+        content
+      </Modal>,
+    );
+    const dialog = getByRole("dialog");
+    expect(dialog.getAttribute("aria-label")).toBe("explicit");
+    expect(dialog.getAttribute("aria-labelledby")).toBeNull();
+    expect(queryByRole("heading")).toBeNull();
+    expect(container.querySelector(".lvis-modal-head")).toBeNull();
+  });
+
+  it("links aria-labelledby for numeric title (visible text matches accessible name)", () => {
+    const { getByRole } = render(<Modal open onClose={() => {}} title={123} />);
+    const dialog = getByRole("dialog");
+    const labelId = dialog.getAttribute("aria-labelledby");
+    expect(labelId).toBeTruthy();
+    expect(dialog.getAttribute("aria-label")).toBeNull();
+    expect(document.getElementById(labelId!)?.textContent).toBe("123");
+  });
+
+  it("links aria-labelledby for title={0} (zero is a valid label, not falsy-skipped)", () => {
+    const { getByRole } = render(<Modal open onClose={() => {}} title={0} />);
+    const dialog = getByRole("dialog");
+    const labelId = dialog.getAttribute("aria-labelledby");
+    expect(labelId).toBeTruthy();
+    expect(document.getElementById(labelId!)?.textContent).toBe("0");
+  });
+
+  it("treats caption={false} as no caption (header gates only on real content)", () => {
+    const { container } = render(
+      <Modal
+        open
+        onClose={() => {}}
+        ariaLabel="d"
+        caption={false as unknown as React.ReactNode}
+      >
+        content
+      </Modal>,
+    );
+    expect(container.querySelector(".lvis-modal-head")).toBeNull();
+    expect(container.querySelector(".lvis-modal-caption")).toBeNull();
+  });
+
   it("keeps an accessible default name when no title or ariaLabel is provided", () => {
     const { getByRole } = render(
       <Modal open onClose={() => {}}>
