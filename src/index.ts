@@ -637,6 +637,10 @@ export interface PluginHostApi {
   openAuthWindow(options: OpenAuthWindowWithFinalUrlOptions): Promise<OpenAuthWindowFinalUrlResult>;
   openAuthWindow(options: OpenAuthWindowCookieOptions): Promise<AuthWindowCookie[]>;
 
+  openExternalUrl?(url: string): Promise<void>;
+
+  getAppPreference?<T = unknown>(key: string): T | undefined;
+
   /**
    * Start a conversation turn from a proactive plugin signal.
    *
@@ -659,32 +663,6 @@ export interface PluginHostApi {
 
     respond(requestId: string, choice: ApprovalChoice, nonce?: string, hmac?: string): Promise<void>;
   };
-
-  /**
-   * 외부 URL 을 사용자 정책에 따라 표시. Host 가 routing 결정 — plugin 은 무지각.
-   * 정책 SoT: settings 의 `webView.preferredFlow`.
-   *
-   * *호스트 SDK v4.3.0+ runtime 에서만 동작* — 그 이전 host 에서는 method undefined.
-   *
-   * @param url - 표시할 외부 URL.
-   * @optional
-   */
-  openExternalUrl?(url: string): Promise<void>;
-
-  /**
-   * 호스트 글로벌 preference 읽기. plugin 의 자체 분기 (예: OAuth 흐름이 in-app 인지
-   * system-browser 인지) 가 필요할 때 사용.
-   *
-   * *Plugin private namespace (`pluginConfigs.*`) 는 거부* — 호스트가 명시적
-   * allowlist 로 노출 키 결정.
-   *
-   * *호스트 SDK v4.3.0+ runtime 에서만 동작*.
-   *
-   * @param key - preference 키 (예: `"webView.preferredFlow"`).
-   * @returns 해당 키의 값, 또는 키가 없거나 allowlist 에서 거부된 경우 `undefined`.
-   * @optional
-   */
-  getAppPreference?<T = unknown>(key: string): T | undefined;
 }
 
 export type ApprovalChoice =
