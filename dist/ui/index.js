@@ -735,7 +735,8 @@ function Modal(props) {
   const captionPresent = caption !== void 0 && caption !== null && caption !== false;
   const shouldRenderHeader = shouldRenderTitle || captionPresent;
   const titleHasAccessibleName = titleAsAccessibleLabel !== void 0;
-  const dialogLabel = titleHasAccessibleName ? void 0 : ariaLabel ?? "Dialog";
+  const ariaLabelHasContent = typeof ariaLabel === "string" && ariaLabel.trim().length > 0;
+  const dialogLabel = titleHasAccessibleName ? void 0 : ariaLabelHasContent ? ariaLabel : "Dialog";
   return /* @__PURE__ */ jsx11(
     "div",
     {
