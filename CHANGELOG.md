@@ -7,6 +7,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.0.2] - 2026-05-10
+
+### Fixed
+
+- Published the manifest schema capability enum update from PR #125 so consumers can validate plugins declaring `host:overlay`.
+
 ## [5.0.1] - 2026-05-09
 
 ### Fixed
