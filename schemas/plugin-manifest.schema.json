@@ -187,7 +187,8 @@
           "worker-client",
           "document-indexer",
           "conversation-trigger",
-          "lifecycle-observer"
+          "lifecycle-observer",
+          "host:overlay"
         ]
       }
     },
