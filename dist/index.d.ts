@@ -560,7 +560,7 @@ export interface PluginHostApi {
     /**
      * Start a conversation turn from a proactive plugin signal.
      *
-     * Capability-gated by `conversation-trigger` in the plugin manifest; missing
+     * Capability-gated by `host:overlay` in the plugin manifest; missing
      * capability returns `{ accepted: false, reason: "capability_denied" }` (no
      * exception). `spec.prompt` MUST be a templated, plugin-owned message — NOT
      * raw third-party content (mail body, transcript). `spec.source` MUST match
@@ -578,7 +578,7 @@ export interface PluginHostApi {
      * tears down the overlay. Failing to dismiss leaves the overlay
      * pinned until session reload.
      *
-     * Advisory: declare `host:overlay` capability in `manifest.capabilities[]`.
+     * Requires the enforced `host:overlay` capability in `manifest.capabilities[]`.
      * `running: true` shows spinner + "진행 중…"; `false` (default) shows
      * summary + actions.
      *
@@ -623,11 +623,11 @@ export interface ConversationTriggerSpec {
     priority?: "low" | "normal" | "high";
     /** Suppress duplicate triggers for the same observation; dedupe window enforced by host. @optional */
     dedupeKey?: string;
-    /** Q11 Overlay Runner — display title for the OverlayCard rendered when the host stages the trigger as an overlay item. Plugin-owned text — must NOT contain raw third-party content. Defaults to the source tag with the `proactive:` prefix stripped. @optional */
+    /** Overlay Runner — display title for the OverlayCard rendered when the host stages the trigger as an overlay item. Plugin-owned text — must NOT contain raw third-party content. Defaults to the source tag with the `proactive:` prefix stripped. @optional */
     title?: string;
-    /** Q11 Overlay Runner — one-line summary shown in the OverlayCard body. Plugin-owned text — must NOT contain raw third-party content. Defaults to the first 200 chars of `prompt`. @optional */
+    /** Overlay Runner — one-line summary shown in the OverlayCard body. Plugin-owned text — must NOT contain raw third-party content. Defaults to the first 200 chars of `prompt`. @optional */
     summary?: string;
-    /** Q11 Overlay Runner — label for the OverlayCard primary action button. Defaults to "지금 답하기" when omitted. @optional */
+    /** Overlay Runner — label for the OverlayCard primary action button. Defaults to "지금 답하기" when omitted. @optional */
     primaryActionLabel?: string;
 }
 /** Outcome of `PluginHostApi.triggerConversation()`. */
@@ -636,7 +636,7 @@ export interface ConversationTriggerResult {
     accepted: boolean;
     /**
      * Cause when `accepted` is `false`:
-     *  - `capability_denied` — plugin lacks `conversation-trigger`.
+     *  - `capability_denied` — plugin lacks `host:overlay`.
      *  - `invalid_source` — `source` does not match `^proactive:[a-z][a-z0-9-]*$`, or `prompt` empty/oversized.
      *  - `duplicate` — `dedupeKey` matched a recent trigger.
      *  - `rate_limited` — per-plugin call cap exceeded.
@@ -647,7 +647,7 @@ export interface ConversationTriggerResult {
     reason?: "capability_denied" | "invalid_source" | "duplicate" | "rate_limited" | "loop_unavailable";
     /** Echoed from the request so callers can correlate logs. */
     source: string;
-    /** Q11 Overlay Runner — present when `accepted` is `true` and the trigger was staged as an OverlayItem instead of starting a fresh ConversationLoop. Stable host-minted identifier; plugins use it to correlate subsequent host events (e.g., overlay dismiss, audit entries) with the originating trigger. Absent when `accepted` is `false`. @optional */
+    /** Overlay Runner — present when `accepted` is `true` and the trigger was staged as an OverlayItem instead of starting a fresh ConversationLoop. Stable host-minted identifier; plugins use it to correlate subsequent host events (e.g., overlay dismiss, audit entries) with the originating trigger. Absent when `accepted` is `false`. @optional */
     eventId?: string;
 }
 /**
