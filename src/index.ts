@@ -5,6 +5,8 @@
 
 export type InstallPolicy = "admin" | "user";
 
+export type PluginToolCategory = "read" | "write" | "shell" | "network";
+
 export type AuthWindowCookie = {
   name: string;
   value: string;
@@ -201,6 +203,10 @@ export interface PluginManifest {
     {
       /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */
       description: string;
+
+      category: PluginToolCategory;
+
+      pathFields?: string[];
 
       /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
       version?: string;
@@ -437,6 +443,8 @@ export interface PluginMarketplaceItem {
   tools: string[];
 
   version?: string;
+
+  artifactSha256?: string;
 
   channel?: "stable";
   /** Default configuration seeded into the plugin on first install. Users may override this. @optional */

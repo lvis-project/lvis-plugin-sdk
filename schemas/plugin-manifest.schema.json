@@ -476,11 +476,12 @@
     },
     "toolSchemas": {
       "type": "object",
-      "description": "LLM이 메서드를 호출할 때 사용하는 JSON Schema (draft-07). 키: method 이름, 값: { description, inputSchema }",
+      "description": "LLM이 메서드를 호출할 때 사용하는 JSON Schema (draft-07)와 권한 정책 메타데이터. 키: method 이름, 값: { description, category, pathFields?, inputSchema }",
       "additionalProperties": {
         "type": "object",
         "required": [
           "description",
+          "category",
           "inputSchema"
         ],
         "additionalProperties": false,
@@ -489,6 +490,26 @@
             "type": "string",
             "minLength": 10,
             "description": "LLM이 이해할 메서드 설명 (when/what/returns)"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write",
+              "shell",
+              "network"
+            ],
+            "description": "Host permission policy category. 'meta' is host-only and cannot be declared by plugins."
+          },
+          "pathFields": {
+            "type": "array",
+            "description": "Input field names whose values are filesystem paths and must be checked against allowed directories. Dotted paths address nested object fields.",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$"
+            },
+            "uniqueItems": true
           },
           "inputSchema": {
             "type": "object",
