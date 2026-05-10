@@ -1,4 +1,6 @@
 export type InstallPolicy = "admin" | "user";
+export declare const KNOWN_TOOL_CATEGORIES: readonly ["read", "write", "network", "meta"];
+export type ToolCategory = (typeof KNOWN_TOOL_CATEGORIES)[number];
 export type AuthWindowCookie = {
     name: string;
     value: string;
@@ -167,6 +169,7 @@ export interface PluginManifest {
     toolSchemas?: Record<string, {
         /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */
         description: string;
+        category?: ToolCategory;
         /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
         version?: string;
         /** Stable SemVer marking the manifest version that deprecated this tool. Triggers a runtime warn on call. @optional */

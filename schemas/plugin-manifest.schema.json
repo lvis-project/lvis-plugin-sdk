@@ -493,7 +493,7 @@
           "category": {
             "type": "string",
             "enum": ["read", "write", "network", "meta"],
-            "description": "Q12 permission-policy classification. read = side-effect-free data return; write = mutates plugin/backend state; network = external API call; meta = UI / window / clipboard / lifecycle. Host uses this for tool-grouping in the permission UI."
+            "description": "Q12 permission-policy classification (plugin-side). read = side-effect-free data return; write = mutates plugin/backend state; network = external API call; meta = UI / window / clipboard / lifecycle. Distinct from the host-side built-in tool category (`read | write | dangerous`) — see `KNOWN_TOOL_CATEGORIES` in src/index.ts for the SoT. Host uses this for tool-grouping in the permission UI."
           },
           "inputSchema": {
             "type": "object",

@@ -1,4 +1,5 @@
 // src/index.ts
+var KNOWN_TOOL_CATEGORIES = ["read", "write", "network", "meta"];
 var MissingDependenciesError = class extends Error {
   missing;
   constructor(missing) {
@@ -10,5 +11,6 @@ var MissingDependenciesError = class extends Error {
   }
 };
 export {
+  KNOWN_TOOL_CATEGORIES,
   MissingDependenciesError
 };

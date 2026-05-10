@@ -7,11 +7,21 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [5.0.3] - 2026-05-10
+## [5.1.0] - 2026-05-10
+
+### Added
+
+- `toolSchemas[*].category` (plugin manifest) — new Q12 permission-policy classification field. Closed enum: `read` (side-effect-free data return) / `write` (mutates plugin or backend state) / `network` (external API call) / `meta` (UI / window / clipboard / lifecycle). Authored by plugin developers, surfaced to the host's permission UI for tool-grouping.
+- `KNOWN_TOOL_CATEGORIES` constant + `ToolCategory` type (TS surface) — single source of truth for the closed enum so a typo fails both the type-check and the AJV validator. Schema description cross-references this SoT.
 
 ### Fixed
 
-- `plugin-manifest.schema.json`: declare `toolSchemas[*].category` so plugin manifests carrying the Q12 permission-policy classification (`read` / `write` / `network` / `meta`) validate. Without this, `additionalProperties: false` on the per-tool schema rejected every plugin that adopted the Q12 convention (lvis-plugin-agent-hub PR #116, lvis-plugin-meeting PR #86, lvis-plugin-lge-api PR #48). validate-manifest CI on those repos has been failing on `main` since the Q12 PRs merged; this restores green main + unblocks dependent plugin PRs.
+- `plugin-manifest.schema.json` previously rejected manifests declaring `category` because the per-tool spec was `additionalProperties: false` and `category` wasn't listed. validate-manifest CI on every plugin that adopted Q12 (lvis-plugin-agent-hub PR #116, lvis-plugin-meeting PR #86, lvis-plugin-lge-api PR #48) had been failing on `main` since those PRs merged; this restores green main + unblocks dependent plugin PRs.
+
+### Compatibility
+
+- Manifests without `category` continue to validate (field is optional). Existing plugin manifests that pre-date Q12 require no change.
+- Distinct from the host-side built-in tool category (`read | write | dangerous` in `lvis-app/src/permissions/permission-manager.ts`) — that vocabulary covers built-in / system tools and uses `dangerous` as its highest-risk bucket; the plugin-side enum splits the high-risk bucket into `network` + `write`. A future cross-vocabulary mapping is tracked separately.
 
 ## [5.0.2] - 2026-05-10
 
