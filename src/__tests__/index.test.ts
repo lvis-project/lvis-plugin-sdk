@@ -87,6 +87,43 @@ describe("PluginManifest — schema validation", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
+  it("requires SDK-backed authority metadata for toolSchemas", () => {
+    const withAuthority: PluginManifest = {
+      ...VALID_MINIMAL,
+      toolSchemas: {
+        my_plugin_ping: {
+          description: "Ping the plugin and return a status object.",
+          category: "read",
+          inputSchema: { type: "object", properties: {} },
+        },
+      },
+    };
+    const validAuthority = validateManifest(withAuthority);
+    expect(validAuthority.valid, `Errors: ${validAuthority.errors.join(", ")}`).toBe(true);
+
+    const missingCategory = {
+      ...VALID_MINIMAL,
+      toolSchemas: {
+        my_plugin_ping: {
+          description: "Ping the plugin and return a status object.",
+          inputSchema: { type: "object", properties: {} },
+        },
+      },
+    };
+    expect(validateManifest(missingCategory).valid).toBe(false);
+
+    const hostOnlyMeta = {
+      ...withAuthority,
+      toolSchemas: {
+        my_plugin_ping: {
+          ...withAuthority.toolSchemas!.my_plugin_ping,
+          category: "meta",
+        },
+      },
+    };
+    expect(validateManifest(hostOnlyMeta).valid).toBe(false);
+  });
+
   it("rejects manifest missing required field: id", () => {
     const { id: _, ...noId } = VALID_MINIMAL;
     const { valid } = validateManifest(noId);
@@ -604,7 +641,8 @@ describe("MissingDependenciesError", () => {
   });
 
   it("handles empty missing array without throwing", () => {
-    expect(() => new MissingDependenciesError([])).not.toThrow();
+    const err = new MissingDependenciesError([]);
+    expect(err.missing).toEqual([]);
   });
 });
 
