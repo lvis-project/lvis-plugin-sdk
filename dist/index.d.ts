@@ -558,13 +558,14 @@ export interface PluginHostApi {
     openExternalUrl?(url: string): Promise<void>;
     getAppPreference?<T = unknown>(key: string): T | undefined;
     /**
-     * Start a conversation turn from a proactive plugin signal.
+     * Request host overlay staging for a plugin-authored suggestion.
      *
      * Capability-gated by `host:overlay` in the plugin manifest; missing
      * capability returns `{ accepted: false, reason: "capability_denied" }` (no
-     * exception). `spec.prompt` MUST be a templated, plugin-owned message — NOT
-     * raw third-party content (mail body, transcript). `spec.source` MUST match
-     * `^proactive:[a-z][a-z0-9-]*$`.
+     * exception). The host inserts the prompt into chat only after the user accepts
+     * the overlay CTA. `spec.prompt` MUST be a templated, plugin-owned message —
+     * NOT raw third-party content (mail body, transcript). `spec.source` MUST match
+     * `^overlay:[a-z][a-z0-9-]*$`.
      */
     triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
     /**
@@ -613,7 +614,7 @@ export type ApprovalChoice = "allow-once" | "allow-always" | "deny-once" | "deny
 export interface ConversationTriggerSpec {
     /** Templated, plugin-owned message. NEVER raw third-party content (mail body, transcript). Recorded into audit. */
     prompt: string;
-    /** Origin tag. Must match `^proactive:[a-z][a-z0-9-]*$`. */
+    /** Origin tag. Must match `^overlay:[a-z][a-z0-9-]*$`. */
     source: string;
     /** Audit-only side-channel. NOT plumbed into the conversation loop — embed any ID needed by the LLM or tools in `prompt` instead. @optional */
     context?: Record<string, unknown>;
@@ -623,7 +624,7 @@ export interface ConversationTriggerSpec {
     priority?: "low" | "normal" | "high";
     /** Suppress duplicate triggers for the same observation; dedupe window enforced by host. @optional */
     dedupeKey?: string;
-    /** Overlay Runner — display title for the OverlayCard rendered when the host stages the trigger as an overlay item. Plugin-owned text — must NOT contain raw third-party content. Defaults to the source tag with the `proactive:` prefix stripped. @optional */
+    /** Overlay Runner — display title for the OverlayCard rendered when the host stages the trigger as an overlay item. Plugin-owned text — must NOT contain raw third-party content. Defaults to the source tag with the `overlay:` prefix stripped. @optional */
     title?: string;
     /** Overlay Runner — one-line summary shown in the OverlayCard body. Plugin-owned text — must NOT contain raw third-party content. Defaults to the first 200 chars of `prompt`. @optional */
     summary?: string;
@@ -637,7 +638,7 @@ export interface ConversationTriggerResult {
     /**
      * Cause when `accepted` is `false`:
      *  - `capability_denied` — plugin lacks `host:overlay`.
-     *  - `invalid_source` — `source` does not match `^proactive:[a-z][a-z0-9-]*$`, or `prompt` empty/oversized.
+     *  - `invalid_source` — `source` does not match `^overlay:[a-z][a-z0-9-]*$`, or `prompt` empty/oversized.
      *  - `duplicate` — `dedupeKey` matched a recent trigger.
      *  - `rate_limited` — per-plugin call cap exceeded.
      *  - `loop_unavailable` — ConversationLoop not yet bound at boot.
