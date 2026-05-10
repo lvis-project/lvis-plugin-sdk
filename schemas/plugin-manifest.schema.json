@@ -186,7 +186,6 @@
           "background-watcher",
           "worker-client",
           "document-indexer",
-          "conversation-trigger",
           "lifecycle-observer",
           "host:overlay"
         ]

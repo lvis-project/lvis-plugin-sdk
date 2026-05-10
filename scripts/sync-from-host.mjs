@@ -479,13 +479,14 @@ const JSDOC_CATALOG = {
  * chance to flush state.
  */`,
       triggerConversation: `/**
- * Start a conversation turn from a proactive plugin signal.
+ * Request host overlay staging for a plugin-authored suggestion.
  *
  * Capability-gated by \`host:overlay\` in the plugin manifest; missing
  * capability returns \`{ accepted: false, reason: "capability_denied" }\` (no
- * exception). \`spec.prompt\` MUST be a templated, plugin-owned message — NOT
- * raw third-party content (mail body, transcript). \`spec.source\` MUST match
- * \`^proactive:[a-z][a-z0-9-]*$\`.
+ * exception). The host inserts the prompt into chat only after the user accepts
+ * the overlay CTA. \`spec.prompt\` MUST be a templated, plugin-owned message —
+ * NOT raw third-party content (mail body, transcript). \`spec.source\` MUST match
+ * \`^overlay:[a-z][a-z0-9-]*$\`.
  */`,
       getInstalledPluginIds: `/**
  * Snapshot of plugin ids currently loaded into the host runtime, in insertion
@@ -569,12 +570,12 @@ const JSDOC_CATALOG = {
     leading: `/** Spec for \`PluginHostApi.triggerConversation()\`. */`,
     fields: {
       prompt: `/** Templated, plugin-owned message. NEVER raw third-party content (mail body, transcript). Recorded into audit. */`,
-      source: `/** Origin tag. Must match \`^proactive:[a-z][a-z0-9-]*$\`. */`,
+      source: `/** Origin tag. Must match \`^overlay:[a-z][a-z0-9-]*$\`. */`,
       context: `/** Audit-only side-channel. NOT plumbed into the conversation loop — embed any ID needed by the LLM or tools in \`prompt\` instead. @optional */`,
       visibility: `/** UI mode: \`silent\` / \`summary-only\` (default) / \`user-visible\`. P0 treats all three identically. @optional */`,
       priority: `/** Queueing hint when multiple triggers compete. Audit-only in P0. @optional */`,
       dedupeKey: `/** Suppress duplicate triggers for the same observation; dedupe window enforced by host. @optional */`,
-      title: `/** Overlay Runner — display title for the OverlayCard rendered when the host stages the trigger as an overlay item. Plugin-owned text — must NOT contain raw third-party content. Defaults to the source tag with the \`proactive:\` prefix stripped. @optional */`,
+      title: `/** Overlay Runner — display title for the OverlayCard rendered when the host stages the trigger as an overlay item. Plugin-owned text — must NOT contain raw third-party content. Defaults to the source tag with the \`overlay:\` prefix stripped. @optional */`,
       summary: `/** Overlay Runner — one-line summary shown in the OverlayCard body. Plugin-owned text — must NOT contain raw third-party content. Defaults to the first 200 chars of \`prompt\`. @optional */`,
       primaryActionLabel: `/** Overlay Runner — label for the OverlayCard primary action button. Defaults to "지금 답하기" when omitted. @optional */`,
     },
@@ -586,7 +587,7 @@ const JSDOC_CATALOG = {
       reason: `/**
  * Cause when \`accepted\` is \`false\`:
  *  - \`capability_denied\` — plugin lacks \`host:overlay\`.
- *  - \`invalid_source\` — \`source\` does not match \`^proactive:[a-z][a-z0-9-]*$\`, or \`prompt\` empty/oversized.
+ *  - \`invalid_source\` — \`source\` does not match \`^overlay:[a-z][a-z0-9-]*$\`, or \`prompt\` empty/oversized.
  *  - \`duplicate\` — \`dedupeKey\` matched a recent trigger.
  *  - \`rate_limited\` — per-plugin call cap exceeded.
  *  - \`loop_unavailable\` — ConversationLoop not yet bound at boot.
