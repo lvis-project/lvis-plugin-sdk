@@ -7,6 +7,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.0.3] - 2026-05-10
+
+### Fixed
+
+- `plugin-manifest.schema.json`: declare `toolSchemas[*].category` so plugin manifests carrying the Q12 permission-policy classification (`read` / `write` / `network` / `meta`) validate. Without this, `additionalProperties: false` on the per-tool schema rejected every plugin that adopted the Q12 convention (lvis-plugin-agent-hub PR #116, lvis-plugin-meeting PR #86, lvis-plugin-lge-api PR #48). validate-manifest CI on those repos has been failing on `main` since the Q12 PRs merged; this restores green main + unblocks dependent plugin PRs.
+
 ## [5.0.2] - 2026-05-10
 
 ### Fixed
