@@ -48,7 +48,7 @@ jobs:
           - lvis-plugin-template
     steps:
       - name: Checkout SDK
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # `continue-on-error: true` is intentional: the GitHub App that backs
       # this workflow may not be installed on every plugin repo yet (org
