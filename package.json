@@ -143,9 +143,9 @@
     }
   },
   "devDependencies": {
-    "@storybook/addon-themes": "^8.0.0",
-    "@storybook/addon-toolbars": "8.6.18",
-    "@storybook/react-vite": "^8.0.0",
+    "@storybook/addon-toolbars": "9.0.8",
+    "@storybook/react": "10.3.6",
+    "@storybook/react-vite": "10.3.6",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^25.6.0",
     "@types/react": "^18.3.0",
@@ -153,7 +153,7 @@
     "jsdom": "^29.1.1",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "storybook": "^8.0.0",
+    "storybook": "10.3.6",
     "tsup": "^8.0.0",
     "typescript": "^6.0.3",
     "vite": "^5.0.0",
