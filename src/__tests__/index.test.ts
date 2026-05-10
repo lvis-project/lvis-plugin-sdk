@@ -531,7 +531,7 @@ describe("EventSubscription — structural validation", () => {
 
 // ─── Capability-vs-event matrix ────────────────────────────────────────────
 describe("PluginManifest — capability / event declarations", () => {
-  it("capabilities field accepts arbitrary string tags", () => {
+  it("capabilities field accepts canonical capability tags", () => {
     const manifest: PluginManifest = {
       id: "com.example.cap",
       name: "Cap",
@@ -539,10 +539,10 @@ describe("PluginManifest — capability / event declarations", () => {
       entry: "dist/index.js",
       tools: [],
       description: "Test fixture.",
-      capabilities: ["calendar-source", "mail-source", "meeting-recorder", "conversation-trigger"],
+      capabilities: ["calendar-source", "mail-source", "meeting-recorder", "host:overlay"],
     };
     expect(manifest.capabilities).toContain("calendar-source");
-    expect(manifest.capabilities).toContain("conversation-trigger");
+    expect(manifest.capabilities).toContain("host:overlay");
   });
 
   it("schema accepts lifecycle-observer capability (issue #57)", () => {
@@ -651,10 +651,10 @@ describe("ConversationTriggerSpec + ConversationTriggerResult", () => {
   it("ConversationTriggerSpec minimal form", () => {
     const spec: ConversationTriggerSpec = {
       prompt: "Summarise the meeting",
-      source: "proactive:meeting-summary",
+      source: "overlay:meeting-summary",
     };
     expect(spec.prompt).toBe("Summarise the meeting");
-    expect(spec.source).toBe("proactive:meeting-summary");
+    expect(spec.source).toBe("overlay:meeting-summary");
     expect(spec.visibility).toBeUndefined();
     expect(spec.priority).toBeUndefined();
     expect(spec.dedupeKey).toBeUndefined();
@@ -663,7 +663,7 @@ describe("ConversationTriggerSpec + ConversationTriggerResult", () => {
   it("ConversationTriggerSpec full form", () => {
     const spec: ConversationTriggerSpec = {
       prompt: "Check email",
-      source: "proactive:email-check",
+      source: "overlay:email-check",
       context: { emailId: "abc123" },
       visibility: "user-visible",
       priority: "high",
@@ -678,7 +678,7 @@ describe("ConversationTriggerSpec + ConversationTriggerResult", () => {
   it("ConversationTriggerResult accepted=true shape", () => {
     const result: ConversationTriggerResult = {
       accepted: true,
-      source: "proactive:meeting-summary",
+      source: "overlay:meeting-summary",
     };
     expect(result.accepted).toBe(true);
     expect(result.reason).toBeUndefined();
@@ -695,7 +695,7 @@ describe("ConversationTriggerSpec + ConversationTriggerResult", () => {
     for (const reason of reasons) {
       const result: ConversationTriggerResult = {
         accepted: false,
-        source: "proactive:test",
+        source: "overlay:test",
         reason,
       };
       expect(result.reason).toBe(reason);
