@@ -183,38 +183,32 @@ describe("applyThemeFromHostEvent", () => {
   });
 });
 
-describe("ensureFallback (gate semantics — 3.10.1)", () => {
-  it("first injectTokenCss call ensures the :root fallback <style>", () => {
+describe("injectTokenCss — no automatic fallback <style> (#667 cleanup)", () => {
+  // The pre-broadcast fallback `<style id="lvis-tokens-fallback">` was deleted
+  // along with `_FALLBACK_CSS` / `fallback-dark.json`. The race window the
+  // fallback compensated for (plugin webview paint before the host's first
+  // `host.theme.changed` broadcast) is closed by
+  // `lvis-app/src/main.ts:initialThemeArgs` (lvis-app commit `1696f92`) —
+  // every BrowserWindow's webPreferences.additionalArguments carry the host's
+  // primed token payload so plugins paint correctly from frame 0 without any
+  // SDK-side fallback. `injectTokenCss` now writes only the caller's CSS.
+  it("does NOT auto-inject a #lvis-tokens-fallback <style>", () => {
     expect(document.getElementById("lvis-tokens-fallback")).toBeNull();
     mod.injectTokenCss("c1", ":root { --x: 1; }");
-    const fb = document.getElementById("lvis-tokens-fallback");
-    expect(fb).not.toBeNull();
-    expect(fb?.textContent).toContain("--lvis-bg:");
-    expect(fb?.textContent).toContain("--lvis-radius:");
+    expect(document.getElementById("lvis-tokens-fallback")).toBeNull();
   });
 
-  it("multiple injectTokenCss calls produce exactly one fallback <style>", () => {
-    mod.injectTokenCss("c1", ":root { --x: 1; }");
-    mod.injectTokenCss("c2", ":root { --y: 2; }");
-    mod.injectTokenCss("c3", ":root { --z: 3; }");
-    expect(document.head.querySelectorAll("#lvis-tokens-fallback").length).toBe(1);
-  });
-
-  it("preserves a pre-existing #lvis-tokens-fallback (host-injected) without overwrite", () => {
+  it("writes ONLY the caller-supplied CSS, leaving any host-managed fallback element untouched", () => {
     const pre = document.createElement("style");
     pre.id = "lvis-tokens-fallback";
     pre.textContent = ":root { --lvis-bg: hostvalue; }";
     document.head.appendChild(pre);
     mod.injectTokenCss("c1", ":root { --x: 1; }");
-    const fb = document.getElementById("lvis-tokens-fallback");
-    expect(fb?.textContent).toBe(":root { --lvis-bg: hostvalue; }");
-    expect(document.head.querySelectorAll("#lvis-tokens-fallback").length).toBe(1);
+    expect(pre.textContent).toBe(":root { --lvis-bg: hostvalue; }");
+    expect(document.getElementById("c1")?.textContent).toBe(":root { --x: 1; }");
   });
 
-  it("ensureFallback() is idempotent — repeated calls no-op", () => {
-    mod.ensureFallback();
-    mod.ensureFallback();
-    mod.ensureFallback();
-    expect(document.head.querySelectorAll("#lvis-tokens-fallback").length).toBe(1);
+  it("no longer exports `ensureFallback` (consumer API removed)", () => {
+    expect((mod as Record<string, unknown>).ensureFallback).toBeUndefined();
   });
 });

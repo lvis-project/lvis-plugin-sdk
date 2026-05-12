@@ -1,5 +1,4 @@
 import { type LvisHostThemeEvent } from "./index.js";
-export declare function ensureFallback(targetDoc?: Document | null): void;
 export declare function injectTokenCss(id: string, css: string, targetDoc?: Document | null): void;
 /**
  * Apply token CSS custom properties to `target`.
