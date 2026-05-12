@@ -1,6 +1,6 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "5.3.0",
+  "version": "5.4.0",
   "private": false,
   "description": "SDK for authoring LVIS plugins. Type contracts (PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin) re-exported from the host as a single source of truth, plus thin runtime utilities (UI primitives, build helpers, host-context shims for safeStorage / shell.openExternal) shared across plugin repos.",
   "type": "module",
@@ -25,10 +25,6 @@
     "./ui/tokens/inject": {
       "types": "./src/ui/tokens/inject.ts",
       "import": "./dist/ui/tokens/inject.js"
-    },
-    "./ui/tokens/fallback": {
-      "types": "./src/ui/tokens/fallback.ts",
-      "import": "./dist/ui/tokens/fallback.js"
     },
     "./ui/hooks/useTheme": {
       "types": "./src/ui/hooks/useTheme.ts",
@@ -90,8 +86,6 @@
       "types": "./src/ui/components/Toggle.tsx",
       "import": "./dist/ui/components/Toggle.js"
     },
-    "./ui/lvis-tokens.css": "./src/ui/tokens/lvis-tokens.css",
-    "./ui/tokens/fallback-dark.json": "./src/ui/tokens/fallback-dark.json",
     "./build": {
       "types": "./src/build/tsup.ts",
       "import": "./dist/build/tsup.js"
@@ -111,16 +105,10 @@
   "sideEffects": [
     "**/components/*.js",
     "**/components/*.tsx",
-    "**/tokens/fallback.js",
-    "**/tokens/fallback.ts",
     "**/tokens/inject.js",
-    "**/tokens/inject.ts",
-    "**/lvis-tokens.css"
+    "**/tokens/inject.ts"
   ],
   "scripts": {
-    "generate:fallback": "node scripts/generate-fallback-artifacts.mjs",
-    "check:fallback-drift": "node scripts/generate-fallback-artifacts.mjs --check",
-    "prebuild": "node scripts/generate-fallback-artifacts.mjs",
     "build": "tsup && tsc -p tsconfig.build.json",
     "prepublishOnly": "bun run build",
     "dev:storybook": "storybook dev -p 6006",

@@ -172,11 +172,8 @@ export interface PluginManifest {
         description: string;
         category: PluginToolCategory;
         pathFields?: string[];
-        /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
         version?: string;
-        /** Stable SemVer marking the manifest version that deprecated this tool. Triggers a runtime warn on call. @optional */
         deprecatedSince?: string;
-        /** Tool name that supersedes this deprecated tool — host transparently redirects calls. @optional */
         replacedBy?: string;
         inputSchema: {
             $schema?: string;
@@ -281,6 +278,12 @@ export interface PluginUiExtension {
     /** Path (relative to the plugin root) of the HTML page to load for `embedded-page`. @optional */
     page?: string;
     window?: {
+        width?: number;
+        height?: number;
+        minWidth?: number;
+        minHeight?: number;
+        resizable?: boolean;
+        alwaysOnTop?: boolean;
         defaultMode?: "embedded" | "detached";
     };
 }
