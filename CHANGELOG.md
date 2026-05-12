@@ -7,6 +7,42 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.3.0] - 2026-05-12
+
+### Added
+
+#### `primeTheme(bridge, opts?)` — single entry for plugin theme sync
+
+플러그인이 mount 시 호출하는 하나의 함수로 `getTheme()` pull + `host.theme.changed` subscribe + 토큰 paint 3 경로를 캡슐화. 이전에는 각 플러그인이 직접 조합해야 했음 (예: agent-hub `work-board-panel.tsx:600-684` 의 inline triple-prime). 자세한 배경은 `lvis-app` `docs/architecture/proposals/2026-05-12-plugin-theme-unification.md` 참조.
+
+- `primeTheme(bridge, { target?, onPayload? }): { dispose }` — React/vanilla 양쪽에서 사용. `target` 은 `Document | HTMLElement` 로 detached `BrowserWindow` document / scoped sidebar root 까지 흡수. `onPayload` 콜백이 sidebar custom 토큰 매핑 같은 use-case 흡수 → 이전의 "useTheme + 별도 `bridge.onEvent` 두 번째 구독" 안티패턴 해소.
+- `useTheme(bridge, opts?)` 가 `primeTheme` 의 React wrapper 로 재구현됨. 기존 1-arg 호출자 (`useTheme(bridge)`) 는 그대로 동작 — opts 미전달 시 default target = `document.documentElement`.
+
+#### Token JSON SoT — `src/ui/tokens/fallback-dark.json`
+
+이전 3-place lockstep (`inject.ts:_FALLBACK_CSS` ↔ `lvis-tokens.css :root` ↔ host `_DARK_BASE`) 을 단일 JSON SoT 로 통합.
+
+- `scripts/generate-fallback-artifacts.mjs` 가 JSON 으로부터 `_generated-fallback-css.ts` 와 `lvis-tokens.css` 를 빌드타임 generate. 호스트 `lvis-app` 의 `_DARK_BASE` 는 JSON 을 직접 re-import (별 PR 로 연결).
+- `bun run generate:fallback` 으로 수동 재생성, `bun run check:fallback-drift` 가 CI drift gate.
+- `prebuild` hook 으로 `bun run build` 가 자동으로 generate 먼저 실행.
+- 부수 효과: 직전 `_FALLBACK_CSS` 의 17 token 누락 (radius-xs / spacing / typography / motion 19 종) 회복.
+
+### Changed
+
+- `applyThemeTokens(tokens, target?)`, `applyThemeFromHostEvent(event, target?)`, `ensureFallback(targetDoc?)`, `injectTokenCss(id, css, targetDoc?)` 모두 optional target 인자 추가 — detached BrowserWindow document / scoped sub-tree 지원. 기존 무인자 호출은 `document.documentElement` / `document` 디폴트로 동일 동작.
+- `_fallbackEnsured` 가 module-level boolean → `WeakSet<Document>` 로 — multi-document 환경 (detached window) 에서 각 document 가 자기 fallback `<style>` 을 받게.
+
+### Subpath exports
+
+- `@lvis/plugin-sdk/ui/hooks/primeTheme` 신규
+- `@lvis/plugin-sdk/ui/tokens/fallback-dark.json` 신규 (host 의 `_DARK_BASE` re-import 용)
+
+### Migration notes
+
+기존 코드 변경 불필요 — 모든 SDK API 가 backward-compatible. 다만 새 통일 패턴 (lvis-app PR #660 design memo 참조) 적용 시 각 플러그인의 inline triple-prime / scoped helper 가 `primeTheme(bridge, { target })` 한 줄로 축소 가능. 권장 마이그 시퀀스는 design memo §5.
+
+---
+
 ## [5.0.2] - 2026-05-10
 
 ### Fixed

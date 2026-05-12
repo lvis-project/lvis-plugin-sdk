@@ -1,21 +1,17 @@
-/* @lvis/plugin-sdk — Plugin UI Tokens (AUTO-GENERATED)
- *
- * Generated from src/ui/tokens/fallback-dark.json by
- * scripts/generate-fallback-artifacts.mjs. Edit the JSON, not this file.
- *
- * SDK-owned offline fallback. Host sends real values via IPC; these apply
- * only before the first bridge event (host.theme.changed → useTheme() →
- * applyThemeTokens()). Once tokens arrive, inline style.setProperty()
- * overwrites these values.
- *
- * See: src/ui/tokens/inject.ts:applyThemeTokens, src/ui/hooks/useTheme.ts,
- *      src/ui/hooks/primeTheme.ts
- */
+// AUTO-GENERATED — DO NOT EDIT.
+// Source: src/ui/tokens/fallback-dark.json
+// Regenerate: bun run generate:fallback
 
-/* ─── Dark (default fallback) ────────────────────────────
- * Source of truth: src/ui/tokens/fallback-dark.json.
- * ────────────────────────────────────────────────────── */
-:root {
+/**
+ * Offline fallback CSS string applied via injectTokenCss() on first
+ * `ensureFallback()` call. Mirrors :root in lvis-tokens.css.
+ *
+ * Single source of truth: fallback-dark.json. The build script
+ * (scripts/generate-fallback-artifacts.mjs) regenerates this file +
+ * lvis-tokens.css from the JSON, and `bun run check:fallback-drift`
+ * enforces that they match.
+ */
+export const _FALLBACK_CSS = `:root {
   --lvis-bg:               hsl(222.2, 84%, 4.9%);
   --lvis-surface:          hsl(222.2, 84%, 7%);
   --lvis-surface-overlay:  hsl(222.2, 60%, 10%);
@@ -52,10 +48,7 @@
   --lvis-space-4:          1rem;
   --lvis-motion-fast:      150ms;
   --lvis-motion-normal:    200ms;
-
-  /* ─── Static tokens (theme-invariant, CSS-only) ─────── */
-  /* Not sent over IPC — value format is too complex for the safety regex. */
   --lvis-shadow-sm:        0 1px 3px hsl(222, 84%, 5%, 0.4);
   --lvis-shadow-md:        0 4px 12px hsl(222, 84%, 5%, 0.6);
   --lvis-easing:           cubic-bezier(0.4, 0, 0.2, 1);
-}
+}`;

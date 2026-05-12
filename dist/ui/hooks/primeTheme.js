@@ -1,6 +1,3 @@
-// src/ui/hooks/useTheme.ts
-import { useEffect } from "react";
-
 // src/ui/tokens/theme-bundles.ts
 var BUNDLE_IDS = [
   "tokyo-night",
@@ -130,14 +127,6 @@ function primeTheme(bridge, opts = {}) {
   }
   return { dispose: unsub };
 }
-
-// src/ui/hooks/useTheme.ts
-function useTheme(bridge, opts) {
-  useEffect(() => {
-    const handle = primeTheme(bridge, opts);
-    return () => handle.dispose();
-  }, [bridge]);
-}
 export {
-  useTheme
+  primeTheme
 };
