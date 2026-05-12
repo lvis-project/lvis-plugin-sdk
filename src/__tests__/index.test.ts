@@ -791,6 +791,7 @@ describe("PluginHostApi — interface contract (structural)", () => {
         opts.returnFinalUrl === true
           ? { cookies: [], finalUrl: "" }
           : []) as PluginHostApi["openAuthWindow"],
+      openAuthPartitionViewer: async (_opts: { url: string; windowTitle?: string }) => {},
       triggerConversation: async (_spec) => ({ accepted: true, source: _spec.source }),
       agentApproval: {
         request: async (_input: { toolName: string; args: unknown; reason: string; scope: string }) =>
@@ -937,6 +938,105 @@ describe("PluginManifest — auth ⇒ uiCallable invariant (H6)", () => {
       entry: "dist/index.js",
       tools: ["ping"],
       description: "No auth contract — uiCallable not required.",
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+});
+
+// ─── auth.partitionDomains schema (#649) ────────────────────────────────────
+describe("PluginManifest — auth.partitionDomains schema", () => {
+  // Forms a baseline manifest with a valid auth block; subtests only vary
+  // `auth.partitionDomains` so each error message points squarely at the
+  // field under test.
+  function withDomains(partitionDomains: unknown) {
+    return {
+      id: "com.example.partition-test",
+      name: "Partition Test",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: ["status_tool", "login_tool"],
+      description: "Partition allow-list test.",
+      uiCallable: ["status_tool", "login_tool"],
+      auth: {
+        statusTool: "status_tool",
+        loginTool: "login_tool",
+        partitionDomains,
+      },
+    };
+  }
+
+  it("accepts a single multi-label hostname", () => {
+    const { valid, errors } = validateManifest(withDomains(["outlook.office.com"]));
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts multiple hostnames", () => {
+    const { valid, errors } = validateManifest(
+      withDomains(["outlook.office.com", "login.microsoftonline.com", "office365.com"]),
+    );
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("rejects an empty array", () => {
+    const { valid } = validateManifest(withDomains([]));
+    expect(valid).toBe(false);
+  });
+
+  it("rejects more than 16 entries", () => {
+    const many = Array.from({ length: 17 }, (_, i) => `h${i}.example.com`);
+    const { valid } = validateManifest(withDomains(many));
+    expect(valid).toBe(false);
+  });
+
+  it("rejects duplicate entries", () => {
+    const { valid } = validateManifest(
+      withDomains(["outlook.office.com", "outlook.office.com"]),
+    );
+    expect(valid).toBe(false);
+  });
+
+  it("rejects single-label hostnames (would blanket-match every subdomain)", () => {
+    const { valid } = validateManifest(withDomains(["localhost"]));
+    expect(valid).toBe(false);
+  });
+
+  it("rejects wildcard entries", () => {
+    expect(validateManifest(withDomains(["*"])).valid).toBe(false);
+    expect(validateManifest(withDomains(["*.office.com"])).valid).toBe(false);
+  });
+
+  it("rejects URL-pasted-as-host", () => {
+    expect(validateManifest(withDomains(["https://outlook.office.com/"])).valid).toBe(
+      false,
+    );
+    expect(validateManifest(withDomains(["outlook.office.com/path"])).valid).toBe(
+      false,
+    );
+  });
+
+  it("rejects uppercase letters (hostnames are case-insensitive but the schema enforces lowercase to keep the SoT canonical)", () => {
+    expect(validateManifest(withDomains(["Outlook.Office.com"])).valid).toBe(false);
+  });
+
+  it("rejects entries with a port suffix", () => {
+    expect(validateManifest(withDomains(["outlook.office.com:443"])).valid).toBe(false);
+  });
+
+  it("rejects non-string array elements", () => {
+    expect(validateManifest(withDomains([42])).valid).toBe(false);
+    expect(validateManifest(withDomains([null])).valid).toBe(false);
+  });
+
+  it("does not require partitionDomains on auth — plugins that never open a viewer can omit it", () => {
+    const { valid, errors } = validateManifest({
+      id: "com.example.no-viewer",
+      name: "No Viewer",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: ["status_tool", "login_tool"],
+      description: "Auth contract without partitionDomains.",
+      uiCallable: ["status_tool", "login_tool"],
+      auth: { statusTool: "status_tool", loginTool: "login_tool" },
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
