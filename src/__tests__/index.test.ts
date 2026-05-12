@@ -791,6 +791,7 @@ describe("PluginHostApi — interface contract (structural)", () => {
         opts.returnFinalUrl === true
           ? { cookies: [], finalUrl: "" }
           : []) as PluginHostApi["openAuthWindow"],
+      openAuthPartitionViewer: async (_opts: { url: string; windowTitle?: string }) => {},
       triggerConversation: async (_spec) => ({ accepted: true, source: _spec.source }),
       agentApproval: {
         request: async (_input: { toolName: string; args: unknown; reason: string; scope: string }) =>
@@ -939,6 +940,177 @@ describe("PluginManifest — auth ⇒ uiCallable invariant (H6)", () => {
       description: "No auth contract — uiCallable not required.",
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+});
+
+// ─── auth.partitionDomains schema (#649) ────────────────────────────────────
+describe("PluginManifest — auth.partitionDomains schema", () => {
+  // Forms a baseline manifest with a valid auth block; subtests only vary
+  // `auth.partitionDomains` so each error message points squarely at the
+  // field under test.
+  function withDomains(partitionDomains: unknown) {
+    return {
+      id: "com.example.partition-test",
+      name: "Partition Test",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: ["status_tool", "login_tool"],
+      description: "Partition allow-list test.",
+      uiCallable: ["status_tool", "login_tool"],
+      auth: {
+        statusTool: "status_tool",
+        loginTool: "login_tool",
+        partitionDomains,
+      },
+    };
+  }
+
+  it("accepts a single multi-label hostname", () => {
+    const { valid, errors } = validateManifest(withDomains(["outlook.office.com"]));
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts multiple hostnames", () => {
+    const { valid, errors } = validateManifest(
+      withDomains(["outlook.office.com", "login.microsoftonline.com", "office365.com"]),
+    );
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  // Pins the inner-group `?` of the label regex — a future tightening to
+  // `[a-z0-9][a-z0-9-]{0,61}[a-z0-9]` (no optional) would silently regress
+  // single-char labels (`a.example.com`) without this fixture.
+  it("accepts single-char labels (`a.example.com`)", () => {
+    const { valid, errors } = validateManifest(withDomains(["a.example.com"]));
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  // Pins the punycode reject pattern as boundary-only — a label that
+  // *contains* `xn--` mid-token is not real IDN encoding and must pass.
+  // If a future patch tightens the regex to bare `/xn--/`, this fixture
+  // catches the false-positive.
+  it("accepts mid-label `xn--` (not actual IDN encoding)", () => {
+    const { valid, errors } = validateManifest(
+      withDomains(["foo-xn--bar.example.com"]),
+    );
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("rejects an empty array", () => {
+    const { valid } = validateManifest(withDomains([]));
+    expect(valid).toBe(false);
+  });
+
+  it("rejects more than 16 entries", () => {
+    const many = Array.from({ length: 17 }, (_, i) => `h${i}.example.com`);
+    const { valid } = validateManifest(withDomains(many));
+    expect(valid).toBe(false);
+  });
+
+  it("rejects duplicate entries", () => {
+    const { valid } = validateManifest(
+      withDomains(["outlook.office.com", "outlook.office.com"]),
+    );
+    expect(valid).toBe(false);
+  });
+
+  it("rejects single-label hostnames (would blanket-match every subdomain)", () => {
+    const { valid } = validateManifest(withDomains(["localhost"]));
+    expect(valid).toBe(false);
+  });
+
+  it("rejects wildcard entries", () => {
+    expect(validateManifest(withDomains(["*"])).valid).toBe(false);
+    expect(validateManifest(withDomains(["*.office.com"])).valid).toBe(false);
+  });
+
+  it("rejects URL-pasted-as-host", () => {
+    expect(validateManifest(withDomains(["https://outlook.office.com/"])).valid).toBe(
+      false,
+    );
+    expect(validateManifest(withDomains(["outlook.office.com/path"])).valid).toBe(
+      false,
+    );
+  });
+
+  it("rejects uppercase letters (hostnames are case-insensitive but the schema enforces lowercase to keep the SoT canonical)", () => {
+    expect(validateManifest(withDomains(["Outlook.Office.com"])).valid).toBe(false);
+  });
+
+  it("rejects entries with a port suffix", () => {
+    expect(validateManifest(withDomains(["outlook.office.com:443"])).valid).toBe(false);
+  });
+
+  it("rejects non-string array elements", () => {
+    expect(validateManifest(withDomains([42])).valid).toBe(false);
+    expect(validateManifest(withDomains([null])).valid).toBe(false);
+  });
+
+  it("does not require partitionDomains on auth — plugins that never open a viewer can omit it", () => {
+    const { valid, errors } = validateManifest({
+      id: "com.example.no-viewer",
+      name: "No Viewer",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: ["status_tool", "login_tool"],
+      description: "Auth contract without partitionDomains.",
+      uiCallable: ["status_tool", "login_tool"],
+      auth: { statusTool: "status_tool", loginTool: "login_tool" },
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  // Mirror of host `FORBIDDEN_TOP_LEVELS` — accepting these here would mean
+  // a manifest passes publish-time AJV but fails plugin-load on first run.
+  // Keeping the SDK list in sync with the host list is enforced by the
+  // host-allow-list test on the host side.
+  it.each([
+    "com", "net", "org", "kr", "co.kr", "or.kr", "go.kr",
+    "io", "ai", "dev", "app",
+  ])("rejects bare public-suffix entry %s", (suffix) => {
+    expect(validateManifest(withDomains([suffix])).valid).toBe(false);
+  });
+
+  // IDN/punycode — a `xn--*` label encodes Unicode and can be a homoglyph
+  // for a legitimate brand. Rejected at the SDK schema so plugin authors
+  // never declare them; host-allow-list has the matching runtime guard.
+  it.each([
+    "xn--80ak6aa92e.com",
+    "outlook.xn--p1ai",
+    "outlook.office.xn--abc.com",
+  ])("rejects IDN/punycode entry %s", (host) => {
+    expect(validateManifest(withDomains([host])).valid).toBe(false);
+  });
+
+  it.each([
+    "outlook..office.com",
+    "-foo.example.com",
+    "foo-.example.com",
+    ".outlook.office.com",
+    "outlook.office.com.",
+  ])("rejects malformed hostname %s", (host) => {
+    expect(validateManifest(withDomains([host])).valid).toBe(false);
+  });
+
+  it("rejects labels longer than 63 chars (RFC 1035)", () => {
+    const label = "a".repeat(64);
+    expect(validateManifest(withDomains([`${label}.example.com`])).valid).toBe(
+      false,
+    );
+  });
+
+  it.each([
+    ["zero-width", "outlook​.office.com"],
+    ["RTL override", "outlook‮.office.com"],
+    ["NUL byte", "outlook .office.com"],
+    ["tab", "outlook\t.office.com"],
+    ["leading space", " outlook.office.com"],
+    ["trailing space", "outlook.office.com "],
+  ])("rejects whitespace or invisible char (%s)", (_label, host) => {
+    // Outer regex `^[a-z0-9](...)+$` rejects any non-`[a-z0-9-.]` char,
+    // covering control chars (U+0000), zero-width (U+200B), RTL override
+    // (U+202E), tab, and leading/trailing ASCII whitespace alike.
+    expect(validateManifest(withDomains([host])).valid).toBe(false);
   });
 });
 
