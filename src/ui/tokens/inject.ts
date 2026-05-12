@@ -1,21 +1,9 @@
 import { LVIS_TOKEN_NAMES, LVIS_THEME_BUNDLE_IDS, type LvisHostThemeEvent } from "./index.js";
-import { _FALLBACK_CSS } from "./_generated-fallback-css.js";
 
 const _ALLOWED_KEYS = new Set<string>(LVIS_TOKEN_NAMES);
 // Block CSS exfil / injection patterns. Use /<[a-zA-Z]/ for HTML tags
 // rather than bare `<` to avoid false-positives on CSS math expressions.
 const _UNSAFE_VALUE = /url\s*\(|expression\s*\(|<[a-zA-Z]/i;
-
-// `_FALLBACK_CSS` (the `:root` block applied before the host's first
-// `host.theme.changed` broadcast) is generated from
-// `src/ui/tokens/fallback-dark.json` by `scripts/generate-fallback-artifacts.mjs`.
-// The same JSON regenerates `lvis-tokens.css :root`, and the host's
-// `lvis-app/src/ui/renderer/theme/plugin-token-map.ts` `_DARK_BASE`
-// re-imports the JSON directly — so all three artifacts move in lockstep
-// from a single SoT. Run `bun run generate:fallback` after editing the JSON
-// and `bun run check:fallback-drift` enforces it in CI.
-
-const _fallbackEnsured = new WeakSet<Document>();
 
 // Cross-realm safe element / document detection.
 // `target instanceof HTMLElement` fails when `target` comes from a different
@@ -60,27 +48,9 @@ function resolveElement(target?: Document | HTMLElement | null): HTMLElement | n
   return null;
 }
 
-export function ensureFallback(targetDoc?: Document | null): void {
-  const doc = targetDoc ?? (typeof document === "undefined" ? null : document);
-  if (!doc) return;
-  if (_fallbackEnsured.has(doc)) return;
-  // Flip the gate BEFORE the DOM mutation: fallback inject is best-effort.
-  // If `appendChild` throws (e.g. CSP `style-src` violation, frozen <head>),
-  // re-trying every subsequent injectTokenCss call would just rethrow the
-  // same error indefinitely — the host's primary `host.theme.changed`
-  // broadcast still wins via inline `style.setProperty` regardless.
-  _fallbackEnsured.add(doc);
-  if (doc.getElementById("lvis-tokens-fallback")) return;
-  const el = doc.createElement("style");
-  el.id = "lvis-tokens-fallback";
-  el.textContent = _FALLBACK_CSS;
-  doc.head.appendChild(el);
-}
-
 export function injectTokenCss(id: string, css: string, targetDoc?: Document | null): void {
   const doc = targetDoc ?? (typeof document === "undefined" ? null : document);
   if (!doc) return;
-  ensureFallback(doc);
   // Check DOM directly (not a Set) so HMR re-renders pick up CSS changes.
   const existing = doc.getElementById(id);
   if (existing) {

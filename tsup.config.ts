@@ -27,7 +27,6 @@ export default defineConfig({
     "ui/hooks/useTheme": "src/ui/hooks/useTheme.ts",
     "ui/hooks/primeTheme": "src/ui/hooks/primeTheme.ts",
     "ui/hooks/useFocusTrap": "src/ui/hooks/useFocusTrap.ts",
-    "ui/tokens/fallback": "src/ui/tokens/fallback.ts",
     "ui/tokens/inject": "src/ui/tokens/inject.ts",
   },
   format: ["esm"],
@@ -39,7 +38,7 @@ export default defineConfig({
   clean: true,
   // Disable code splitting so each per-component subpath produces a
   // single self-contained dist file. Trade-off: slightly more inlined
-  // shared code (injectTokenCss / fallback) per component bundle vs.
+  // shared code (injectTokenCss) per component bundle vs.
   // shared `chunk-XXXX.js` files whose content-addressed hashes would
   // otherwise churn between releases — that churn breaks long-term
   // caching at consumer bundlers exactly when the point of this layout
