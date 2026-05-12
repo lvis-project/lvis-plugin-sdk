@@ -1,6 +1,6 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "5.2.0",
+  "version": "5.3.0",
   "private": false,
   "description": "SDK for authoring LVIS plugins. Type contracts (PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin) re-exported from the host as a single source of truth, plus thin runtime utilities (UI primitives, build helpers, host-context shims for safeStorage / shell.openExternal) shared across plugin repos.",
   "type": "module",
@@ -33,6 +33,10 @@
     "./ui/hooks/useTheme": {
       "types": "./src/ui/hooks/useTheme.ts",
       "import": "./dist/ui/hooks/useTheme.js"
+    },
+    "./ui/hooks/primeTheme": {
+      "types": "./src/ui/hooks/primeTheme.ts",
+      "import": "./dist/ui/hooks/primeTheme.js"
     },
     "./ui/hooks/useFocusTrap": {
       "types": "./src/ui/hooks/useFocusTrap.ts",
@@ -87,6 +91,7 @@
       "import": "./dist/ui/components/Toggle.js"
     },
     "./ui/lvis-tokens.css": "./src/ui/tokens/lvis-tokens.css",
+    "./ui/tokens/fallback-dark.json": "./src/ui/tokens/fallback-dark.json",
     "./build": {
       "types": "./src/build/tsup.ts",
       "import": "./dist/build/tsup.js"
@@ -113,6 +118,9 @@
     "**/lvis-tokens.css"
   ],
   "scripts": {
+    "generate:fallback": "node scripts/generate-fallback-artifacts.mjs",
+    "check:fallback-drift": "node scripts/generate-fallback-artifacts.mjs --check",
+    "prebuild": "node scripts/generate-fallback-artifacts.mjs",
     "build": "tsup && tsc -p tsconfig.build.json",
     "prepublishOnly": "bun run build",
     "dev:storybook": "storybook dev -p 6006",
