@@ -893,25 +893,28 @@ function annotateToolSchemaInner(text) {
 
   let out = text;
 
+  // Tolerate CRLF — Windows checkouts of the host source carry \r\n line
+  // endings; without `\r?\n` these regexes silently no-op on Windows and CI
+  // (Linux, LF) regenerates a different file → spurious drift on every PR.
   out = out.replace(
-    /(toolSchemas\?: Record<\s*\n\s*string,\s*\n\s*\{\s*\n)([ \t]+description: string;)/m,
+    /(toolSchemas\?: Record<\s*\r?\n\s*string,\s*\r?\n\s*\{\s*\r?\n)([ \t]+description: string;)/m,
     (_match, head, line) => {
       if (head.includes(innerDescDoc.trim())) return _match;
       return `${head}${innerDescDoc}\n${line}`;
     },
   );
   out = out.replace(
-    /(\n)([ \t]+version\?: string;\n)/,
+    /(\r?\n)([ \t]+version\?: string;\r?\n)/,
     (_match, lead, line) =>
       out.includes(innerVersionDoc.trim()) ? _match : `${lead}${innerVersionDoc}\n${line}`,
   );
   out = out.replace(
-    /(\n)([ \t]+deprecatedSince\?: string;\n)/,
+    /(\r?\n)([ \t]+deprecatedSince\?: string;\r?\n)/,
     (_match, lead, line) =>
       out.includes(innerDeprecatedDoc.trim()) ? _match : `${lead}${innerDeprecatedDoc}\n${line}`,
   );
   out = out.replace(
-    /(\n)([ \t]+replacedBy\?: string;\n)/,
+    /(\r?\n)([ \t]+replacedBy\?: string;\r?\n)/,
     (_match, lead, line) =>
       out.includes(innerReplacedByDoc.trim()) ? _match : `${lead}${innerReplacedByDoc}\n${line}`,
   );
