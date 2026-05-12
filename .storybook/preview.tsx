@@ -1,9 +1,17 @@
 import React, { useEffect } from "react";
 import type { Preview } from "@storybook/react";
-import "../src/ui/tokens/lvis-tokens.css";
 import { applyThemeTokens } from "../src/ui/tokens/inject.js";
 import { resolveStoryTokens } from "./story-token-map.js";
 import type { LvisThemePayload } from "../src/ui/tokens/index.js";
+
+// Story-local default paint: under Storybook (no host priming) we paint the
+// initial `--lvis-*` values synchronously at module load so the wrapper
+// `background: var(--lvis-bg)` resolves on first frame. The decorator's
+// useEffect overrides per-story globals afterwards. Equivalent purpose to
+// the host's `additionalArguments`-primed tokens in production.
+if (typeof document !== "undefined") {
+  applyThemeTokens(resolveStoryTokens("dark", "lg"));
+}
 
 const VALID_THEMES = new Set<string>(["light", "dark", "high-contrast"]);
 const VALID_CHAT_THEMES = new Set<string>(["default", "lg", "purple", "orange", "blue"]);
