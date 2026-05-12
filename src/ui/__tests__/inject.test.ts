@@ -6,8 +6,9 @@ let mod: InjectModule;
 beforeEach(async () => {
   document.documentElement.style.cssText = "";
   document.head.querySelectorAll("style[id]").forEach((el) => el.remove());
-  // `_fallbackEnsured` is module-level state — reset between tests so each
-  // case starts with a fresh ensure-on-first-call gate.
+  // Reset the module cache so each case re-imports `tokens/inject.js`
+  // cleanly. The "no longer exports `ensureFallback`" assertion below
+  // needs the fresh module export shape.
   vi.resetModules();
   mod = await import("../tokens/inject.js");
 });
