@@ -7,6 +7,45 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.4.0] - 2026-05-13
+
+### Removed — fallback artefact teardown (`lvis-app#667`)
+
+`initialThemeArgs` (host `lvis-app/src/main.ts` commit `1696f92`) ships a primed
+`--lvis-*` token payload to every `BrowserWindow` via
+`webPreferences.additionalArguments`, so plugins paint with the correct theme
+from frame 0. The pre-broadcast SDK fallback stylesheet that compensated for
+the now-closed race window is fully removed.
+
+- Deleted source: `src/ui/tokens/fallback-dark.json`,
+  `src/ui/tokens/_generated-fallback-css.ts`, `src/ui/tokens/fallback.ts`,
+  `src/ui/tokens/lvis-tokens.css`, `scripts/generate-fallback-artifacts.mjs`,
+  and the `src/ui/__tests__/fallback-sot.test.ts` lockstep guard.
+- `injectTokenCss` no longer ensures a `<style id="lvis-tokens-fallback">`;
+  the module-level `_fallbackEnsured` WeakSet and `ensureFallback()` export
+  are gone. `injectTokenCss` now writes only the caller-supplied CSS.
+- `src/ui/index.ts` no longer side-effect-imports `./tokens/fallback.js`.
+- Removed package subpath exports: `./ui/tokens/fallback`,
+  `./ui/tokens/fallback-dark.json`, `./ui/lvis-tokens.css`.
+- Removed package scripts: `generate:fallback`, `check:fallback-drift`,
+  `prebuild`.
+- New regression tests in `src/ui/__tests__/inject.test.ts` lock the
+  "no auto-fallback" contract: `injectTokenCss` writes only the caller's
+  CSS, leaves any host-managed `#lvis-tokens-fallback` element untouched,
+  and `ensureFallback` is no longer a consumer API.
+
+### Migration notes
+
+Plugins that previously relied on the SDK's offline fallback `<style>`
+(rendered before the host's first `host.theme.changed`) now depend on the
+host shipping primed tokens via `additionalArguments`. This is the case for
+all `lvis-app` versions on/after the matching host bump PR (Track B Step 2).
+Downstream plugin authors who consumed the JSON or CSS subpath exports
+directly should switch to the live `host.theme.changed` payload (via
+`primeTheme`) — there is no compile-time replacement, by design.
+
+---
+
 ## [5.3.0] - 2026-05-12
 
 ### Added
