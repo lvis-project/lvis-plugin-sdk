@@ -977,6 +977,25 @@ describe("PluginManifest — auth.partitionDomains schema", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
+  // Pins the inner-group `?` of the label regex — a future tightening to
+  // `[a-z0-9][a-z0-9-]{0,61}[a-z0-9]` (no optional) would silently regress
+  // single-char labels (`a.example.com`) without this fixture.
+  it("accepts single-char labels (`a.example.com`)", () => {
+    const { valid, errors } = validateManifest(withDomains(["a.example.com"]));
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  // Pins the punycode reject pattern as boundary-only — a label that
+  // *contains* `xn--` mid-token is not real IDN encoding and must pass.
+  // If a future patch tightens the regex to bare `/xn--/`, this fixture
+  // catches the false-positive.
+  it("accepts mid-label `xn--` (not actual IDN encoding)", () => {
+    const { valid, errors } = validateManifest(
+      withDomains(["foo-xn--bar.example.com"]),
+    );
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
   it("rejects an empty array", () => {
     const { valid } = validateManifest(withDomains([]));
     expect(valid).toBe(false);
@@ -1087,7 +1106,10 @@ describe("PluginManifest — auth.partitionDomains schema", () => {
     ["tab", "outlook\t.office.com"],
     ["leading space", " outlook.office.com"],
     ["trailing space", "outlook.office.com "],
-  ])("rejects control / invisible char (%s)", (_label, host) => {
+  ])("rejects whitespace or invisible char (%s)", (_label, host) => {
+    // Outer regex `^[a-z0-9](...)+$` rejects any non-`[a-z0-9-.]` char,
+    // covering control chars (U+0000), zero-width (U+200B), RTL override
+    // (U+202E), tab, and leading/trailing ASCII whitespace alike.
     expect(validateManifest(withDomains([host])).valid).toBe(false);
   });
 });
