@@ -188,6 +188,13 @@ export interface PluginManifest {
     }>;
     configSchema?: PluginConfigSchema;
     icon?: string;
+    /**
+     * Short text (1-4 chars) rendered in place of a Lucide icon in the plugin
+     * grid — e.g. `"EP"` for an enterprise-portal plugin, `"MTG"` for a
+     * meeting plugin. Takes precedence over `icon` when both are declared.
+     * Use when no Lucide glyph matches the plugin's domain identity.
+     */
+    iconText?: string;
     python?: {
         managedBy?: "lvis-app" | "self";
         requirementsLock?: string;
