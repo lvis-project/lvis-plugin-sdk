@@ -232,6 +232,8 @@ export interface PluginManifest {
   configSchema?: PluginConfigSchema;
 
   icon?: string;
+
+  iconText?: string;
   python?: {
     managedBy?: "lvis-app" | "self";
     requirementsLock?: string;

@@ -8,7 +8,14 @@ var BUNDLE_IDS = [
   "forest",
   "violet-light",
   "violet-dark",
-  "high-contrast"
+  "high-contrast",
+  "catppuccin-mocha",
+  "catppuccin-latte",
+  "nord",
+  "gruvbox-dark-hard",
+  "solarized-light",
+  "rose-pine",
+  "cherry-blossom"
 ];
 
 // src/ui/tokens/index.ts
