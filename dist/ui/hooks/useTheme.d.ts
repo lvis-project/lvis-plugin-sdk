@@ -1,19 +1,40 @@
-type PluginBridge = {
-    onEvent: (type: string, handler: (data: unknown) => void) => () => void;
-};
+import { type PluginBridgeForTheme, type PrimeThemeOptions } from "./primeTheme.js";
 /**
- * Subscribe to host theme changes via the plugin bridge.
+ * Plugin bridge surface required by `useTheme`.
  *
- * When `host.theme.changed` fires, applies the v2 event fields:
- * - `data-theme-bundle` attribute set to `bundleId` for devtools inspection.
- * - `data-shell` attribute set to `shell` mode.
- * - `--lvis-*` CSS custom properties applied via `style.setProperty`.
- *
- * Only tokens present in `LVIS_TOKEN_NAMES` are accepted; all others are
- * silently dropped (security: no CSS exfil / injection surface).
- *
- * Call once at the plugin's root component.
+ * Same shape as {@link PluginBridgeForTheme} — `onEvent` is required,
+ * `getTheme` is optional (when present, enables flicker-free cold-boot
+ * paint via a sync pull).
  */
-export declare function useTheme(bridge: PluginBridge): void;
-export {};
+export type PluginBridge = PluginBridgeForTheme;
+/**
+ * React wrapper around {@link primeTheme}. Subscribes to
+ * `host.theme.changed` and primes the initial state on mount.
+ *
+ * Tokens are applied with the same closed allowlist + unsafe-value guard
+ * (`LVIS_TOKEN_NAMES`, regex on `url(` / `expression(` / HTML tag prefix)
+ * via `applyThemeFromHostEvent` — no plugin can inject arbitrary CSS.
+ *
+ * Call once at the plugin's root component. Pass `opts.target` to scope
+ * tokens to a sub-tree (detached BrowserWindow document, scoped sidebar
+ * root). Pass `opts.onPayload` to receive every validated payload for
+ * custom token derivations (avoids the previous anti-pattern of
+ * subscribing to `host.theme.changed` a second time alongside `useTheme`).
+ *
+ * Bridge identity is the meaningful effect dep — `opts` is intentionally
+ * not in the dep array; passing a literal `{ target, onPayload }` object
+ * every render does not re-fire the effect.
+ *
+ * @example
+ * ```tsx
+ * function App({ bridge, rootEl }: Props) {
+ *   useTheme(bridge, {
+ *     target: rootEl,                        // optional: scoped root
+ *     onPayload: (e) => mapSidebarTokens(e), // optional: custom mapping
+ *   });
+ *   // …
+ * }
+ * ```
+ */
+export declare function useTheme(bridge: PluginBridge, opts?: PrimeThemeOptions): void;
 //# sourceMappingURL=useTheme.d.ts.map

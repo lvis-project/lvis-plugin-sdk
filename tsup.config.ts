@@ -25,6 +25,7 @@ export default defineConfig({
     "ui/components/Text": "src/ui/components/Text.tsx",
     "ui/components/Toggle": "src/ui/components/Toggle.tsx",
     "ui/hooks/useTheme": "src/ui/hooks/useTheme.ts",
+    "ui/hooks/primeTheme": "src/ui/hooks/primeTheme.ts",
     "ui/hooks/useFocusTrap": "src/ui/hooks/useFocusTrap.ts",
     "ui/tokens/fallback": "src/ui/tokens/fallback.ts",
     "ui/tokens/inject": "src/ui/tokens/inject.ts",
