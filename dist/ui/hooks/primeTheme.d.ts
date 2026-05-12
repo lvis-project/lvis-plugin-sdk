@@ -17,13 +17,18 @@ export interface PrimeThemeOptions {
     /**
      * Document or element to apply tokens to.
      *
-     * - `undefined` → `document.documentElement` (default)
+     * - `undefined` / `null` → `document.documentElement` (default)
      * - `Document` → `target.documentElement` (use this for detached
      *   `BrowserWindow` documents that aren't the global `document`)
      * - `HTMLElement` → that element directly (use this for scoped
      *   sub-tree mounts that don't own documentElement)
+     *
+     * Cross-realm safe: a `Document` / `HTMLElement` from a different realm
+     * (e.g. detached BrowserWindow) is detected by `nodeType`, not
+     * `instanceof`, so the resolver picks the correct branch even when the
+     * caller's `HTMLElement` constructor identity differs from `target`'s.
      */
-    target?: Document | HTMLElement;
+    target?: Document | HTMLElement | null;
     /**
      * Called every time a validated `host.theme.changed` payload arrives,
      * AFTER the SDK has applied its own attributes/tokens. Use for custom

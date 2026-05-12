@@ -44,11 +44,14 @@ export type PluginBridge = PluginBridgeForTheme;
  * ```
  */
 export function useTheme(bridge: PluginBridge, opts?: PrimeThemeOptions): void {
+  // Deps: bridge identity + opts.target identity only. opts.onPayload is
+  // intentionally excluded — callers commonly pass literal objects per render,
+  // and a closure that re-captures fresh state via React's setState/useRef is
+  // the recommended pattern. opts.target IS included because a portal-driven
+  // remount can swap the host element under the same React tree.
   useEffect(() => {
     const handle = primeTheme(bridge, opts);
     return () => handle.dispose();
-    // Intentionally exclude opts: callers commonly pass literal objects;
-    // bridge identity is the meaningful effect dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bridge]);
+  }, [bridge, opts?.target]);
 }

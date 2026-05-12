@@ -111,12 +111,21 @@ var _FALLBACK_CSS = `:root {
 var _ALLOWED_KEYS = new Set(LVIS_TOKEN_NAMES);
 var _UNSAFE_VALUE = /url\s*\(|expression\s*\(|<[a-zA-Z]/i;
 var _fallbackEnsured = /* @__PURE__ */ new WeakSet();
+var _DOC_NODE = 9;
+var _ELEMENT_NODE = 1;
+function isDocument(value) {
+  return typeof value === "object" && value !== null && value.nodeType === _DOC_NODE;
+}
+function isHtmlElement(value) {
+  return typeof value === "object" && value !== null && value.nodeType === _ELEMENT_NODE && typeof value.ownerDocument !== "undefined";
+}
 function resolveElement(target) {
-  if (target === void 0) {
+  if (target == null) {
     return typeof document === "undefined" ? null : document.documentElement;
   }
-  if (target instanceof HTMLElement) return target;
-  return target.documentElement;
+  if (isHtmlElement(target)) return target;
+  if (isDocument(target)) return target.documentElement;
+  return null;
 }
 function ensureFallback(targetDoc) {
   const doc = targetDoc ?? (typeof document === "undefined" ? null : document);
@@ -1068,11 +1077,15 @@ function primeTheme(bridge, opts = {}) {
     applyPayload(data, opts);
   });
   if (typeof bridge.getTheme === "function") {
-    Promise.resolve(bridge.getTheme()).then((payload) => {
-      if (payload) applyPayload(payload, opts);
-    }).catch((err) => {
-      console.warn("[lvis:primeTheme] getTheme() pull failed", err);
-    });
+    try {
+      Promise.resolve(bridge.getTheme()).then((payload) => {
+        if (payload) applyPayload(payload, opts);
+      }).catch((err) => {
+        console.warn("[lvis:primeTheme] getTheme() pull failed", err);
+      });
+    } catch (err) {
+      console.warn("[lvis:primeTheme] getTheme() threw synchronously", err);
+    }
   }
   return { dispose: unsub };
 }
@@ -1082,7 +1095,7 @@ function useTheme(bridge, opts) {
   useEffect3(() => {
     const handle = primeTheme(bridge, opts);
     return () => handle.dispose();
-  }, [bridge]);
+  }, [bridge, opts?.target]);
 }
 export {
   Badge,

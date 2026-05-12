@@ -20,13 +20,18 @@ export interface PrimeThemeOptions {
   /**
    * Document or element to apply tokens to.
    *
-   * - `undefined` → `document.documentElement` (default)
+   * - `undefined` / `null` → `document.documentElement` (default)
    * - `Document` → `target.documentElement` (use this for detached
    *   `BrowserWindow` documents that aren't the global `document`)
    * - `HTMLElement` → that element directly (use this for scoped
    *   sub-tree mounts that don't own documentElement)
+   *
+   * Cross-realm safe: a `Document` / `HTMLElement` from a different realm
+   * (e.g. detached BrowserWindow) is detected by `nodeType`, not
+   * `instanceof`, so the resolver picks the correct branch even when the
+   * caller's `HTMLElement` constructor identity differs from `target`'s.
    */
-  target?: Document | HTMLElement;
+  target?: Document | HTMLElement | null;
   /**
    * Called every time a validated `host.theme.changed` payload arrives,
    * AFTER the SDK has applied its own attributes/tokens. Use for custom
@@ -102,14 +107,25 @@ export function primeTheme(
   // Then explicitly pull to cover cold-boot windows where no broadcast
   // has fired yet and the sticky cache is empty. The IPC is request/
   // response — race-free against any subsequent broadcast.
+  //
+  // The outer try/catch handles SYNCHRONOUS throws from `bridge.getTheme()`
+  // — `Promise.resolve(throwingFn())` evaluates the inner call before
+  // wrapping, so a sync throw bypasses `.catch` and would kill the mount
+  // path (the subscribe above already succeeded, so leaking the listener
+  // is the worst case). Both sync and async failures end up as a single
+  // log line plus continued subscription.
   if (typeof bridge.getTheme === "function") {
-    Promise.resolve(bridge.getTheme())
-      .then((payload) => {
-        if (payload) applyPayload(payload, opts);
-      })
-      .catch((err) => {
-        console.warn("[lvis:primeTheme] getTheme() pull failed", err);
-      });
+    try {
+      Promise.resolve(bridge.getTheme())
+        .then((payload) => {
+          if (payload) applyPayload(payload, opts);
+        })
+        .catch((err) => {
+          console.warn("[lvis:primeTheme] getTheme() pull failed", err);
+        });
+    } catch (err) {
+      console.warn("[lvis:primeTheme] getTheme() threw synchronously", err);
+    }
   }
 
   return { dispose: unsub };

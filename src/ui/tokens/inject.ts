@@ -17,21 +17,50 @@ const _UNSAFE_VALUE = /url\s*\(|expression\s*\(|<[a-zA-Z]/i;
 
 const _fallbackEnsured = new WeakSet<Document>();
 
-function resolveDoc(target?: Document | HTMLElement): Document | null {
-  if (target === undefined) return typeof document === "undefined" ? null : document;
-  if ("ownerDocument" in target) return target.ownerDocument;
-  return target;
+// Cross-realm safe element / document detection.
+// `target instanceof HTMLElement` fails when `target` comes from a different
+// realm (e.g. detached BrowserWindow's document — its HTMLElement constructor
+// is a different identity than the calling renderer's). Falling back on
+// `nodeType` + presence of `ownerDocument` is realm-agnostic and matches the
+// minimal DOM contract these helpers actually use (`style.setProperty`,
+// `setAttribute`, `appendChild`, `createElement`, `getElementById`).
+const _DOC_NODE = 9;
+const _ELEMENT_NODE = 1;
+
+function isDocument(value: unknown): value is Document {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { nodeType?: number }).nodeType === _DOC_NODE
+  );
 }
 
-function resolveElement(target?: Document | HTMLElement): HTMLElement | null {
-  if (target === undefined) {
+function isHtmlElement(value: unknown): value is HTMLElement {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as { nodeType?: number }).nodeType === _ELEMENT_NODE &&
+    typeof (value as { ownerDocument?: Document | null }).ownerDocument !== "undefined"
+  );
+}
+
+function resolveDoc(target?: Document | HTMLElement | null): Document | null {
+  if (target == null) return typeof document === "undefined" ? null : document;
+  if (isDocument(target)) return target;
+  if (isHtmlElement(target)) return target.ownerDocument;
+  return null;
+}
+
+function resolveElement(target?: Document | HTMLElement | null): HTMLElement | null {
+  if (target == null) {
     return typeof document === "undefined" ? null : document.documentElement;
   }
-  if (target instanceof HTMLElement) return target;
-  return target.documentElement;
+  if (isHtmlElement(target)) return target;
+  if (isDocument(target)) return target.documentElement;
+  return null;
 }
 
-export function ensureFallback(targetDoc?: Document): void {
+export function ensureFallback(targetDoc?: Document | null): void {
   const doc = targetDoc ?? (typeof document === "undefined" ? null : document);
   if (!doc) return;
   if (_fallbackEnsured.has(doc)) return;
@@ -48,7 +77,7 @@ export function ensureFallback(targetDoc?: Document): void {
   doc.head.appendChild(el);
 }
 
-export function injectTokenCss(id: string, css: string, targetDoc?: Document): void {
+export function injectTokenCss(id: string, css: string, targetDoc?: Document | null): void {
   const doc = targetDoc ?? (typeof document === "undefined" ? null : document);
   if (!doc) return;
   ensureFallback(doc);
@@ -78,7 +107,7 @@ export function injectTokenCss(id: string, css: string, targetDoc?: Document): v
  */
 export function applyThemeTokens(
   tokens: Record<string, string>,
-  target?: Document | HTMLElement,
+  target?: Document | HTMLElement | null,
 ): void {
   const root = resolveElement(target);
   if (!root) return;
@@ -113,7 +142,7 @@ export function applyThemeTokens(
  */
 export function applyThemeFromHostEvent(
   event: LvisHostThemeEvent | null,
-  target?: Document | HTMLElement,
+  target?: Document | HTMLElement | null,
 ): void {
   const root = resolveElement(target);
   if (!root) return;
@@ -140,6 +169,3 @@ export function applyThemeFromHostEvent(
   }
 }
 
-// Internal re-export for hooks (primeTheme) — keeps the doc-resolve logic
-// in one module rather than duplicating it in the React hook.
-export { resolveDoc as _resolveDoc };

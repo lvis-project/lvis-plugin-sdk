@@ -1,7 +1,6 @@
 import { type LvisHostThemeEvent } from "./index.js";
-declare function resolveDoc(target?: Document | HTMLElement): Document | null;
-export declare function ensureFallback(targetDoc?: Document): void;
-export declare function injectTokenCss(id: string, css: string, targetDoc?: Document): void;
+export declare function ensureFallback(targetDoc?: Document | null): void;
+export declare function injectTokenCss(id: string, css: string, targetDoc?: Document | null): void;
 /**
  * Apply token CSS custom properties to `target`.
  *
@@ -14,7 +13,7 @@ export declare function injectTokenCss(id: string, css: string, targetDoc?: Docu
  * - Values matching the unsafe-CSS regex (`url(`, `expression(`, HTML tag
  *   prefix) are silently dropped.
  */
-export declare function applyThemeTokens(tokens: Record<string, string>, target?: Document | HTMLElement): void;
+export declare function applyThemeTokens(tokens: Record<string, string>, target?: Document | HTMLElement | null): void;
 /**
  * Apply a `LvisHostThemeEvent` (or `null`) to `target`.
  *
@@ -37,6 +36,5 @@ export declare function applyThemeTokens(tokens: Record<string, string>, target?
  * @param event - Parsed `LvisHostThemeEvent`, or `null` to clear theme attrs.
  * @param target - Optional target. Defaults to `document.documentElement`.
  */
-export declare function applyThemeFromHostEvent(event: LvisHostThemeEvent | null, target?: Document | HTMLElement): void;
-export { resolveDoc as _resolveDoc };
+export declare function applyThemeFromHostEvent(event: LvisHostThemeEvent | null, target?: Document | HTMLElement | null): void;
 //# sourceMappingURL=inject.d.ts.map
