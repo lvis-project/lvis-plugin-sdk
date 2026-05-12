@@ -333,7 +333,7 @@
                 }
               },
               {
-                "not": { "pattern": "(^|\\.)xn--" }
+                "not": { "type": "string", "pattern": "(^|\\.)xn--" }
               }
             ]
           }
@@ -479,6 +479,12 @@
       "minLength": 1,
       "maxLength": 64,
       "description": "Optional Lucide icon name (PascalCase, e.g. 'Mic', 'FileText'). Host dynamically looks up the named export from lucide-react and renders it as a monochrome stroke icon in the plugin grid popover. Unknown names fall back to the 'Plug' icon. Full list: https://lucide.dev/icons/"
+    },
+    "iconText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4,
+      "description": "Optional short text (1-4 chars) rendered inside the plugin grid avatar — e.g. 'EP', 'MTG'. Takes precedence over `icon` when both are declared. Use when no Lucide glyph matches the plugin's domain identity."
     },
     "python": {
       "type": "object",
