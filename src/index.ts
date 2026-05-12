@@ -211,10 +211,13 @@ export interface PluginManifest {
 
       pathFields?: string[];
 
+      /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
       version?: string;
 
+      /** Stable SemVer marking the manifest version that deprecated this tool. Triggers a runtime warn on call. @optional */
       deprecatedSince?: string;
 
+      /** Tool name that supersedes this deprecated tool — host transparently redirects calls. @optional */
       replacedBy?: string;
       inputSchema: {
         $schema?: string;
