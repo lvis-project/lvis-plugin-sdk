@@ -83,27 +83,6 @@ export interface PluginAuthSpec {
   /** Optional uiCallable tool the host invokes when the user clicks "로그아웃". Omit when the plugin has no programmatic sign-out path. @optional */
   logoutTool?: string;
 
-  /**
-   * Hostnames the plugin is allowed to open inside its
-   * `persist:plugin-auth:<pluginId>` partition via
-   * {@link PluginHostApi.openAuthPartitionViewer}. Treated as a
-   * dot-boundary suffix-match allow-list:
-   *
-   *   - `outlook.office.com` matches `outlook.office.com` and
-   *     `mail.outlook.office.com`
-   *   - `outlook.office.com.attacker.com` does NOT match.
-   *
-   * Wildcards (`*`), single-label hosts (`localhost`), bare public
-   * suffixes (`com`, `co.kr`), and URLs (`https://...`) are rejected at
-   * load time and at every viewer-open call. Max 16 entries.
-   *
-   * Required for the host to authorize `openAuthPartitionViewer` —
-   * plugins without a `partitionDomains` entry cannot open a partition
-   * viewer even when the `external-auth-consumer` capability is
-   * declared.
-   *
-   * @optional
-   */
   partitionDomains?: string[];
 }
 
@@ -668,45 +647,10 @@ export interface PluginHostApi {
   openAuthWindow(options: OpenAuthWindowWithFinalUrlOptions): Promise<OpenAuthWindowFinalUrlResult>;
   openAuthWindow(options: OpenAuthWindowCookieOptions): Promise<AuthWindowCookie[]>;
 
-  /**
-   * Open `url` in a hardened BrowserWindow bound to this plugin's
-   * `persist:plugin-auth:<pluginId>` partition, so the page can reuse
-   * AAD/OIDC cookies already deposited by the plugin's `openAuthWindow`
-   * call (silent-SSO, no re-login).
-   *
-   * Designed for the cross-plugin flow where an auth-owning plugin
-   * exposes a tool that returns a viewer (e.g. `_open_outlook_calendar`)
-   * and a consumer plugin invokes it via {@link callTool}. The host
-   * binds the partition to the caller of `openAuthPartitionViewer` —
-   * one plugin cannot open into another's partition.
-   *
-   * **Authorization**
-   *   - The plugin manifest MUST declare the `external-auth-consumer`
-   *     capability.
-   *   - The plugin manifest MUST declare `auth.partitionDomains` with
-   *     a non-empty list of hostnames; `url` is rejected unless its
-   *     host matches the list via dot-boundary suffix-match.
-   *
-   * **Hardening**
-   *   - `will-navigate` / `will-redirect` cancel navigation outside the
-   *     allow-list; `setWindowOpenHandler` always denies child windows.
-   *   - All downloads from the session are canceled — the partition
-   *     holds real auth cookies, so an attacker page cannot exfil via a
-   *     cookie-attached file or trick the user into running a dropped
-   *     binary.
-   *   - The window runs with `sandbox=true`, `contextIsolation=true`,
-   *     `nodeIntegration=false`, `webSecurity=true`, no preload.
-   *
-   * Throws when the capability is missing, the partitionDomains list
-   * is missing/empty/invalid, or the URL host does not match. Every
-   * open and every denied event is audit-logged by the host.
-   *
-   * @param opts.url URL to open. Host scheme is restricted to `https:` /
-   *   `http:`; other schemes (javascript:, file:, etc.) are rejected.
-   * @param opts.windowTitle Optional window title; host falls back to
-   *   plugin label when omitted.
-   */
-  openAuthPartitionViewer(opts: { url: string; windowTitle?: string }): Promise<void>;
+  openAuthPartitionViewer(opts: {
+    url: string;
+    windowTitle?: string;
+  }): Promise<void>;
 
   /**
    * Open an external URL through the host's preferred-flow policy (in-app
