@@ -1040,6 +1040,56 @@ describe("PluginManifest — auth.partitionDomains schema", () => {
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
+
+  // Mirror of host `FORBIDDEN_TOP_LEVELS` — accepting these here would mean
+  // a manifest passes publish-time AJV but fails plugin-load on first run.
+  // Keeping the SDK list in sync with the host list is enforced by the
+  // host-allow-list test on the host side.
+  it.each([
+    "com", "net", "org", "kr", "co.kr", "or.kr", "go.kr",
+    "io", "ai", "dev", "app",
+  ])("rejects bare public-suffix entry %s", (suffix) => {
+    expect(validateManifest(withDomains([suffix])).valid).toBe(false);
+  });
+
+  // IDN/punycode — a `xn--*` label encodes Unicode and can be a homoglyph
+  // for a legitimate brand. Rejected at the SDK schema so plugin authors
+  // never declare them; host-allow-list has the matching runtime guard.
+  it.each([
+    "xn--80ak6aa92e.com",
+    "outlook.xn--p1ai",
+    "outlook.office.xn--abc.com",
+  ])("rejects IDN/punycode entry %s", (host) => {
+    expect(validateManifest(withDomains([host])).valid).toBe(false);
+  });
+
+  it.each([
+    "outlook..office.com",
+    "-foo.example.com",
+    "foo-.example.com",
+    ".outlook.office.com",
+    "outlook.office.com.",
+  ])("rejects malformed hostname %s", (host) => {
+    expect(validateManifest(withDomains([host])).valid).toBe(false);
+  });
+
+  it("rejects labels longer than 63 chars (RFC 1035)", () => {
+    const label = "a".repeat(64);
+    expect(validateManifest(withDomains([`${label}.example.com`])).valid).toBe(
+      false,
+    );
+  });
+
+  it.each([
+    ["zero-width", "outlook​.office.com"],
+    ["RTL override", "outlook‮.office.com"],
+    ["NUL byte", "outlook .office.com"],
+    ["tab", "outlook\t.office.com"],
+    ["leading space", " outlook.office.com"],
+    ["trailing space", "outlook.office.com "],
+  ])("rejects control / invisible char (%s)", (_label, host) => {
+    expect(validateManifest(withDomains([host])).valid).toBe(false);
+  });
 });
 
 // ─── python field (H3) ─────────────────────────────────────────────────────

@@ -83,6 +83,7 @@ export interface PluginAuthSpec {
   /** Optional uiCallable tool the host invokes when the user clicks "로그아웃". Omit when the plugin has no programmatic sign-out path. @optional */
   logoutTool?: string;
 
+  /** Hostnames the plugin may open in its `persist:plugin-auth:<pluginId>` partition via {@link PluginHostApi.openAuthPartitionViewer}. Dot-boundary suffix-match — `outlook.office.com` matches `mail.outlook.office.com` but not `outlook.office.com.attacker.com`. Wildcards, single-label hosts, public suffixes (`com`, `co.kr`), URL-paste, and IDN-punycode are rejected at load time. Max 16 entries. @optional */
   partitionDomains?: string[];
 }
 
@@ -647,6 +648,31 @@ export interface PluginHostApi {
   openAuthWindow(options: OpenAuthWindowWithFinalUrlOptions): Promise<OpenAuthWindowFinalUrlResult>;
   openAuthWindow(options: OpenAuthWindowCookieOptions): Promise<AuthWindowCookie[]>;
 
+  /**
+   * Open `url` in a hardened BrowserWindow bound to this plugin's
+   * `persist:plugin-auth:<pluginId>` partition, so the page reuses
+   * AAD/OIDC cookies already deposited by the plugin's `openAuthWindow`
+   * call (silent-SSO, no re-login). Designed for the cross-plugin flow
+   * where a consumer plugin invokes the auth-owning plugin's tool via
+   * `callTool` and that tool opens the viewer.
+   *
+   * Preconditions:
+   *   - Plugin manifest MUST declare capability `external-auth-consumer`.
+   *   - Plugin manifest MUST declare a non-empty `auth.partitionDomains`
+   *     allow-list. `url` is rejected unless its host matches the list
+   *     via dot-boundary suffix-match.
+   *
+   * Hardening:
+   *   - `will-navigate` / `will-redirect` cancel navigation outside the
+   *     allow-list; `setWindowOpenHandler` always denies.
+   *   - All downloads from the session are canceled.
+   *   - Window runs sandbox=true, contextIsolation=true,
+   *     nodeIntegration=false, webSecurity=true, no preload.
+   *
+   * Throws when capability is missing, `partitionDomains` is empty/
+   * malformed, or the URL host is not in the allow-list. All open /
+   * deny / invalid events are audit-logged by the host.
+   */
   openAuthPartitionViewer(opts: {
     url: string;
     windowTitle?: string;

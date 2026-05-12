@@ -312,14 +312,30 @@
         },
         "partitionDomains": {
           "type": "array",
-          "description": "Hostnames the plugin may open inside its `persist:plugin-auth:<pluginId>` partition via `hostApi.openAuthPartitionViewer`. Treated as a dot-boundary suffix-match allow-list (e.g. `outlook.office.com` matches `mail.outlook.office.com` but not `outlook.office.com.attacker.com`). Schema-level rules: lowercase hostnames only, each entry MUST contain at least one dot (single-label hosts like `localhost` are rejected to avoid blanket subdomain matching), wildcards / URLs / port suffixes are rejected. Length cap 16 prevents an over-broad consent surface. The host further rejects bare public suffixes (`com`, `co.kr`) at load time and re-validates this list at every viewer-open call.",
+          "description": "Hostnames the plugin may open inside its `persist:plugin-auth:<pluginId>` partition via `hostApi.openAuthPartitionViewer`. Treated as a dot-boundary suffix-match allow-list (e.g. `outlook.office.com` matches `mail.outlook.office.com` but not `outlook.office.com.attacker.com`). Schema rules: lowercase ASCII hostnames only, each entry MUST contain ≥1 dot (single-label hosts like `localhost` are rejected to avoid blanket subdomain matching), per RFC 1035 each label is bounded to 63 chars and the whole hostname to 253. Wildcards / URLs / port suffixes / whitespace / NUL / IDN-punycode labels (`xn--*`) are rejected. The host's load-time validator additionally rejects bare public suffixes (`com`, `co.kr`, `or.kr`, `go.kr`, `kr`, `net`, `org`, `io`, `ai`, `dev`, `app`); those rejections are mirrored here so manifest-publish surfaces them before runtime. Length cap 16 prevents an over-broad consent surface. The host re-validates this list at every viewer-open call.",
           "minItems": 1,
           "maxItems": 16,
           "uniqueItems": true,
           "items": {
-            "type": "string",
-            "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
-            "maxLength": 253
+            "allOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$",
+                "minLength": 3,
+                "maxLength": 253
+              },
+              {
+                "not": {
+                  "enum": [
+                    "com", "net", "org", "kr", "co.kr", "or.kr", "go.kr",
+                    "io", "ai", "dev", "app"
+                  ]
+                }
+              },
+              {
+                "not": { "pattern": "(^|\\.)xn--" }
+              }
+            ]
           }
         }
       }
