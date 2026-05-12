@@ -259,7 +259,7 @@ The SDK's own `bun run test` self-checks every component CSS string against
 the allowlist (`src/ui/__tests__/sdk-self-token-allowlist.test.ts`); a typo
 or a stale token entry fails CI immediately.
 
-## UI imports — canonical pattern (3.10.0+)
+## UI imports — canonical pattern (5.4.0+)
 
 **Per-component subpath is the canonical import path** for new plugin
 code. The `./ui` barrel still works (no breaking change for existing
@@ -278,20 +278,23 @@ import { Card } from "@lvis/plugin-sdk/ui/components/Card";
 import { Stack, Toggle, Card } from "@lvis/plugin-sdk/ui";
 ```
 
-The fallback `:root { --lvis-*: ... }` block auto-injects via a side-effect
-import in each component file, so per-component imports still get the
-fallback tokens. `injectTokenCss` is keyed by stable id (e.g.
-`lvis-tokens-fallback`) so importing it from multiple component bundles
-in the same plugin is safe — the `<style>` element is upserted once,
-never duplicated.
+Plugins paint with the host-primed `--lvis-*` tokens shipped on every
+BrowserWindow via `webPreferences.additionalArguments`, so components
+render with the correct theme from frame 0 without any SDK-side fallback
+stylesheet. Subscribe to live theme changes with `primeTheme` (or
+`useTheme` under React). `injectTokenCss` is keyed by stable id so
+importing it from multiple component bundles in the same plugin is
+safe — the `<style>` element is upserted once, never duplicated.
 
-Available subpaths (3.10.0):
+Available subpaths (5.4.0):
 
 - `@lvis/plugin-sdk/ui/components/<Name>` — Badge / Button / Card /
   Checkbox / Input / Select / Spinner / Stack / Text / Toggle
-- `@lvis/plugin-sdk/ui/hooks/useTheme` — theme-broadcast subscription hook
-- `@lvis/plugin-sdk/ui/tokens/inject` — `injectTokenCss` / `applyThemeTokens`
-- `@lvis/plugin-sdk/ui/tokens/fallback` — `:root` token side-effect injector
+- `@lvis/plugin-sdk/ui/hooks/useTheme` — React hook wrapping `primeTheme`
+- `@lvis/plugin-sdk/ui/hooks/primeTheme` — vanilla theme subscriber
+  (pull + subscribe + paint, multi-document aware)
+- `@lvis/plugin-sdk/ui/tokens/inject` — `injectTokenCss` / `applyThemeTokens` /
+  `applyThemeFromHostEvent`
 
 ## Trust model
 
