@@ -29,7 +29,7 @@ export type OpenAuthWindowBaseOptions = {
      * warmup forever invisible to the user.
      *
      * @default true
-     * @since SDK 5.5.0
+     * @since SDK 5.6.0
      */
     show?: boolean;
 };
@@ -617,14 +617,19 @@ export interface PluginHostApi {
      * Capability-gated by `external-auth-consumer` (same gate as
      * `openAuthWindow`); missing capability throws.
      *
-     * Optional — declared as `?` so older host builds expose `undefined`
-     * for the property; plugins MUST guard with
-     * `typeof api.clearAuthPartition === "function"`.
+     * **Required** in SDK 5.6.0 — host and SDK ship lockstep, so plugins
+     * pinning `@lvis/plugin-sdk@5.6.0` are guaranteed to be running on a
+     * host build that exposes this method. Plugins targeting older host
+     * builds should remain on SDK 5.5.x where the method does not exist.
      *
-     * @optional
-     * @since SDK 5.5.0
+     * The caller MUST close any auth windows (opened via
+     * `openAuthWindow` / `openAuthPartitionViewer`) bound to the same
+     * partition before invoking — a live WebContents in the partition
+     * may re-deposit cookies via in-flight XHR after the wipe resolves.
+     *
+     * @since SDK 5.6.0
      */
-    clearAuthPartition?(partition: string): Promise<void>;
+    clearAuthPartition(partition: string): Promise<void>;
     /**
      * Open an external URL through the host's preferred-flow policy (in-app
      * webview vs system browser). Plugin remains policy-agnostic — host decides
