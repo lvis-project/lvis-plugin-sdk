@@ -24,21 +24,7 @@ export type OpenAuthWindowBaseOptions = {
   timeoutMs?: number;
   windowTitle?: string;
   persistPartition?: string;
-  /**
-   * Whether the auth window is rendered visibly. Default `true` for
-   * interactive logins (the user must see + interact with the IdP page).
-   * Set to `false` for silent-SSO warmups where the page is expected to
-   * complete via residual IdP cookies in `persistPartition` and never
-   * requires user input — the BrowserWindow still runs (loads URL,
-   * harvests cookies, emits navigation events) but is never shown.
-   *
-   * When `false`, callers MUST also supply a `timeoutMs` so a non-silent
-   * SSO surface (challenge page, captcha, MFA prompt) cannot hang the
-   * warmup forever invisible to the user.
-   *
-   * @default true
-   * @since SDK 5.6.0
-   */
+
   show?: boolean;
 };
 
@@ -704,36 +690,6 @@ export interface PluginHostApi {
     windowTitle?: string;
   }): Promise<void>;
 
-  /**
-   * Wipe all cookies, storage, cache, and credential state from one of
-   * the plugin's `persist:plugin-auth:<pluginId>[:<sub>]` partitions.
-   * Use after a user-triggered sign-out so that subsequent
-   * `openAuthWindow` calls against the same partition cannot silently
-   * SSO via residual `.example.com` IdP cookies in the Chromium
-   * partition — without this, "Sign out" only clears the plugin's
-   * in-memory + on-disk state while the host browser retains the
-   * federated SSO session.
-   *
-   * The `partition` argument is validated against the same allow-list
-   * pattern used by `openAuthWindow.persistPartition` — the host
-   * rejects anything that does not match `persist:plugin-auth:<pluginId>`
-   * or `persist:plugin-auth:<pluginId>:<sub>` for the calling plugin.
-   *
-   * Capability-gated by `external-auth-consumer` (same gate as
-   * `openAuthWindow`); missing capability throws.
-   *
-   * **Required** in SDK 5.6.0 — host and SDK ship lockstep, so plugins
-   * pinning `@lvis/plugin-sdk@5.6.0` are guaranteed to be running on a
-   * host build that exposes this method. Plugins targeting older host
-   * builds should remain on SDK 5.5.x where the method does not exist.
-   *
-   * The caller MUST close any auth windows (opened via
-   * `openAuthWindow` / `openAuthPartitionViewer`) bound to the same
-   * partition before invoking — a live WebContents in the partition
-   * may re-deposit cookies via in-flight XHR after the wipe resolves.
-   *
-   * @since SDK 5.6.0
-   */
   clearAuthPartition(partition: string): Promise<void>;
 
   /**
