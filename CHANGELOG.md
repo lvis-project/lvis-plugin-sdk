@@ -7,6 +7,38 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.6.0] - 2026-05-14
+
+### Added — auth-window visibility + partition wipe
+
+플러그인이 silent-SSO warmup 과 user-triggered sign-out 를 제대로 표현할 수
+있도록 `openAuthWindow` 옵션 + `PluginHostApi` 메서드를 확장. 둘 다 additive,
+breaking change 없음.
+
+- **`OpenAuthWindowBaseOptions.show?: boolean`** — `false` 일 때 호스트가
+  Electron `BrowserWindow` 를 `show: false` 로 생성, 페이지는 navigate 하지만
+  사용자에게는 절대 노출하지 않음. silent-SSO warmup (LGenie / 근태 / 주차
+  등) 이 IdP cookies 만 minted 하고 사라지는 케이스에 사용. `timeoutMs` 을
+  함께 명시하지 않으면 hidden challenge page 가 영원히 hang 될 수 있어
+  호스트가 권장.
+- **`PluginHostApi.clearAuthPartition?(partition: string)`** —
+  `persist:plugin-auth:<pluginId>[:<sub>]` 의 모든 cookie / storage / cache /
+  credential 을 wipe. `lge_signout` 같은 user-triggered sign-out 후 다음
+  `openAuthWindow` 호출이 IdP residual cookies 로 silent SSO 되는 것을 차단.
+  Partition 이름은 `openAuthWindow.persistPartition` 과 동일한 allow-list
+  검증. `external-auth-consumer` capability 게이트 필수. Optional —
+  `typeof api.clearAuthPartition === "function"` 으로 guard.
+
+### Migration notes
+
+플러그인은 모든 silent warmup 호출에 `show: false` 를 추가하면 popup flash
+가 사라짐. `lge_signout` / `auth-reset` 류 핸들러는 in-memory + on-disk
+정리 직후 `await hostApi.clearAuthPartition?.(YOUR_PARTITION)` 을 호출해야
+재로그인 시 사용자 자격증명 입력이 다시 요구됨. 두 surface 모두 optional
+이라 hostApi 5.4.0 미만 호스트에서도 동작 (silent fallback).
+
+---
+
 ## [5.4.0] - 2026-05-13
 
 ### Removed — fallback artefact teardown (`lvis-app#667`)
