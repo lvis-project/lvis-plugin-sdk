@@ -54,17 +54,11 @@ var LVIS_TOKEN_NAMES = [
   "--lvis-motion-fast",
   "--lvis-motion-normal"
 ];
-var LVIS_CSS_ONLY_TOKEN_NAMES = [
-  "--lvis-shadow-sm",
-  "--lvis-shadow-md",
-  "--lvis-easing"
-];
 var LVIS_THEME_BUNDLE_IDS = Object.freeze([...BUNDLE_IDS]);
 function isLvisThemeBundleId(id) {
   return typeof id === "string" && LVIS_THEME_BUNDLE_IDS.includes(id);
 }
 export {
-  LVIS_CSS_ONLY_TOKEN_NAMES,
   LVIS_THEME_BUNDLE_IDS,
   LVIS_TOKEN_NAMES,
   isLvisThemeBundleId

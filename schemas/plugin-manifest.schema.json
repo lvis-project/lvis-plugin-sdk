@@ -67,6 +67,38 @@
           "kind",
           "title"
         ],
+        "allOf": [
+          {
+            "$comment": "kind=\"action\" requires a tool field and forbids entry/exportName/page/window.",
+            "if": {
+              "properties": { "kind": { "const": "action" } },
+              "required": ["kind"]
+            },
+            "then": {
+              "required": ["tool"],
+              "not": {
+                "anyOf": [
+                  { "required": ["entry"] },
+                  { "required": ["exportName"] },
+                  { "required": ["page"] },
+                  { "required": ["window"] }
+                ]
+              }
+            }
+          },
+          {
+            "$comment": "tool field is only allowed when kind=\"action\".",
+            "if": {
+              "not": {
+                "properties": { "kind": { "const": "action" } },
+                "required": ["kind"]
+              }
+            },
+            "then": {
+              "not": { "required": ["tool"] }
+            }
+          }
+        ],
         "properties": {
           "id": {
             "type": "string"
@@ -80,7 +112,8 @@
             "enum": [
               "embedded-module",
               "embedded-page",
-              "info-card"
+              "info-card",
+              "action"
             ]
           },
           "displayName": {
@@ -104,9 +137,15 @@
           "page": {
             "type": "string"
           },
+          "tool": {
+            "type": "string",
+            "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+            "maxLength": 64,
+            "description": "kind=\"action\" 전용. 사이드바 아이콘 클릭 시 host 가 직접 디스패치하는 plugin tool 이름. 해당 tool 은 manifest.uiCallable[] 에 등록되어야 한다 — host 의 uiCallable 게이트가 그대로 enforce 됨. action 은 panel webview 를 *생성하지 않는다*."
+          },
           "window": {
             "type": "object",
-            "description": "Optional detachable-window defaults for this UI extension. When present the host creates a detached BrowserWindow for this view using these dimensions / snap hints.",
+            "description": "Optional detachable-window defaults for this UI extension. When present the host creates a detached BrowserWindow for this view using these dimensions / snap hints. Not applicable to kind=\"action\" (no window/panel is created).",
             "additionalProperties": false,
             "properties": {
               "width": {
@@ -147,7 +186,7 @@
           }
         }
       },
-      "description": "UI extensions. Kind-specific required fields (embedded-module: entry+exportName; embedded-page: page) are enforced at runtime with soft-fallback — invalid entries are dropped with a console warning, the plugin continues to load."
+      "description": "UI extensions. Kind-specific required fields (embedded-module: entry+exportName; embedded-page: page; action: tool) are enforced at runtime with hard-fail — invalid entries fail manifest load, the plugin does NOT register. kind=\"action\" entries never create a panel/window; the host directly dispatches the declared tool via api.callPluginMethod when the sidebar icon is clicked. The tool must be in manifest.uiCallable[]; runtime/index.ts:callFromUi enforces this gate. Cross-field validation (action ⇒ tool required + entry/exportName/page prohibited; non-action ⇒ tool prohibited) is encoded in the allOf block on each ui[] item."
     },
     "keywords": {
       "type": "array",
