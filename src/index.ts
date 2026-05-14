@@ -24,6 +24,8 @@ export type OpenAuthWindowBaseOptions = {
   timeoutMs?: number;
   windowTitle?: string;
   persistPartition?: string;
+
+  show?: boolean;
 };
 
 export type OpenAuthWindowWithFinalUrlOptions = OpenAuthWindowBaseOptions & {
@@ -687,6 +689,8 @@ export interface PluginHostApi {
     url: string;
     windowTitle?: string;
   }): Promise<void>;
+
+  clearAuthPartition(partition: string): Promise<void>;
 
   /**
    * Open an external URL through the host's preferred-flow policy (in-app
