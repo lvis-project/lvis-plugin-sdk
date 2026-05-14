@@ -171,8 +171,6 @@ export interface PluginManifest {
 
   /** Free-form capability tags declared by the plugin (for example `"calendar"`, `"email"`). Hosts may gate features on these. @optional */
   capabilities?: string[];
-  /** Tools that should be invoked once during plugin startup, before the first user interaction. @optional */
-  startupTools?: string[];
 
   /** Event type names this plugin subscribes to. The host delivers matching events via `PluginHostApi.onEvent`. @optional */
   eventSubscriptions?: string[] | EventSubscription[];
@@ -468,7 +466,6 @@ export interface PluginMarketplaceItem {
   ui?: PluginUiExtension[];
   capabilities?: string[];
   keywords?: Array<{ keyword: string; skillId: string }>;
-  startupTools?: string[];
   uiCallable?: string[];
   auth?: PluginAuthSpec;
   emittedEvents?: string[];
