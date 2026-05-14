@@ -792,6 +792,7 @@ describe("PluginHostApi — interface contract (structural)", () => {
           ? { cookies: [], finalUrl: "" }
           : []) as PluginHostApi["openAuthWindow"],
       openAuthPartitionViewer: async (_opts: { url: string; windowTitle?: string }) => {},
+      clearAuthPartition: async (_partition: string) => {},
       triggerConversation: async (_spec) => ({ accepted: true, source: _spec.source }),
       agentApproval: {
         request: async (_input: { toolName: string; args: unknown; reason: string; scope: string }) =>
