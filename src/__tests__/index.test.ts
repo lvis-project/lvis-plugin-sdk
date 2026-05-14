@@ -72,7 +72,6 @@ describe("PluginManifest — schema validation", () => {
       description: "A comprehensive plugin",
       config: { apiEndpoint: "https://example.com" },
       capabilities: ["calendar-source", "mail-source"],
-      startupTools: ["my_plugin_init"],
       eventSubscriptions: ["meeting:started", "meeting:ended"],
       emittedEvents: ["plugin:event:fired"],
       uiCallable: ["my_plugin_ping"],
