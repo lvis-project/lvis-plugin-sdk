@@ -230,12 +230,6 @@
         ]
       }
     },
-    "startupTools": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
     "eventSubscriptions": {
       "type": "array",
       "items": {

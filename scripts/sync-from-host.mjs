@@ -285,7 +285,6 @@ const JSDOC_CATALOG = {
       ui: `/** Sidebar / panel UI extensions contributed by this plugin. @optional */`,
       keywords: `/** Skill keywords registered with the host keyword engine. Each entry binds a surface keyword to a \`skillId\` the plugin handles. @optional */`,
       capabilities: `/** Free-form capability tags declared by the plugin (for example \`"calendar"\`, \`"email"\`). Hosts may gate features on these. @optional */`,
-      startupTools: `/** Tools that should be invoked once during plugin startup, before the first user interaction. @optional */`,
       eventSubscriptions: `/** Event type names this plugin subscribes to. The host delivers matching events via \`PluginHostApi.onEvent\`. @optional */`,
       emittedEvents: `/** Event type names this plugin may emit on the host event bus. Used by the host for validation and ownership checks. @optional */`,
       uiCallable: `/** Tools that the UI is permitted to invoke directly (bypassing the LLM). Use sparingly — prefer LLM-mediated calls. @optional */`,
