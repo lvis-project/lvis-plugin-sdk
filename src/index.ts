@@ -323,7 +323,7 @@ export interface PluginUiExtension {
    * - `"embedded-page"` — full-page HTML loaded in an isolated frame.
    * - `"info-card"` — lightweight read-only card rendered from `defaults`.
    */
-  kind: "embedded-module" | "embedded-page" | "info-card";
+  kind: "embedded-module" | "embedded-page" | "info-card" | "action";
   /** Name shown in navigation. Falls back to `title` when omitted. @optional */
   displayName?: string;
   /** Title shown at the top of the extension surface. */
@@ -338,6 +338,8 @@ export interface PluginUiExtension {
   exportName?: string;
   /** Path (relative to the plugin root) of the HTML page to load for `embedded-page`. @optional */
   page?: string;
+
+  tool?: string;
 
   window?: {
     width?: number;
