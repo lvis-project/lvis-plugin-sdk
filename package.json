@@ -1,6 +1,6 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "5.7.0",
+  "version": "5.8.0",
   "private": false,
   "description": "SDK for authoring LVIS plugins. Type contracts (PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin) re-exported from the host as a single source of truth, plus thin runtime utilities (UI primitives, build helpers, host-context shims for safeStorage / shell.openExternal) shared across plugin repos.",
   "type": "module",
@@ -93,6 +93,10 @@
     "./runtime/electron": {
       "types": "./src/runtime/electron.ts",
       "import": "./dist/runtime/electron.js"
+    },
+    "./runtime/network": {
+      "types": "./src/runtime/network.ts",
+      "import": "./dist/runtime/network.js"
     },
     "./schemas/plugin-manifest.schema.json": "./schemas/plugin-manifest.schema.json",
     "./schemas/*": "./schemas/*"
