@@ -400,7 +400,7 @@ export interface PluginMarketplaceItem {
     publisher?: string;
     toolSchemas?: PluginManifest["toolSchemas"];
     requires?: RequiresSpec;
-    pluginType?: "plugin" | "mcp";
+    pluginType?: "plugin" | "mcp" | "agent" | "skill";
     mcpRuntime?: McpRuntimeSpec;
 }
 export type StorageEncoding = "utf-8" | "utf8" | "ascii" | "base64" | "base64url" | "hex" | "latin1" | "binary";
