@@ -25,14 +25,11 @@ async function detectViaPrivateDnsProbe(host, opts = {}) {
   if (existing) return existing;
   let timer;
   const lookupPromise = Promise.resolve().then(() => lookup(host)).then(() => true).catch(() => false);
-  void lookupPromise.finally(() => {
-    inFlightByHost.delete(host);
-  });
   const probe = (async () => {
     try {
       const timeoutPromise = new Promise((resolve) => {
         timer = setTimeout(() => resolve(false), timeoutMs);
-        timer.unref?.();
+        timer.unref();
       });
       return await Promise.race([lookupPromise, timeoutPromise]);
     } finally {
@@ -40,6 +37,9 @@ async function detectViaPrivateDnsProbe(host, opts = {}) {
     }
   })();
   inFlightByHost.set(host, probe);
+  void lookupPromise.finally(() => {
+    inFlightByHost.delete(host);
+  });
   return probe;
 }
 function __resetPrivateDnsProbeInFlightForTests() {

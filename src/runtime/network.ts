@@ -90,19 +90,12 @@ export async function detectViaPrivateDnsProbe(
     .then(() => true)
     .catch(() => false);
 
-  // Tie the dedup slot's lifetime to the underlying lookup — survives
-  // timeout-wins, so retry callers after a timeout still hit the same
-  // pending probe rather than spawning a parallel one.
-  void lookupPromise.finally(() => {
-    inFlightByHost.delete(host);
-  });
-
   const probe = (async () => {
     try {
       const timeoutPromise = new Promise<boolean>((resolve) => {
         timer = setTimeout(() => resolve(false), timeoutMs);
         // unref — timer must not keep the event loop alive past app exit.
-        timer.unref?.();
+        timer.unref();
       });
       return await Promise.race([lookupPromise, timeoutPromise]);
     } finally {
@@ -110,7 +103,17 @@ export async function detectViaPrivateDnsProbe(
     }
   })();
 
+  // ORDER MATTERS: register the dedup entry BEFORE attaching the lifetime
+  // cleanup. If `lookupPromise` is synchronously settled (test mock that
+  // resolves before next microtask), the `.finally` callback queues right
+  // after this stmt — it runs after `set`, so the slot doesn't get cleared
+  // before it's installed. Reversed order would rely on microtask drain
+  // semantics for correctness instead of explicit sequencing.
   inFlightByHost.set(host, probe);
+  void lookupPromise.finally(() => {
+    inFlightByHost.delete(host);
+  });
+
   return probe;
 }
 

@@ -6,7 +6,11 @@ export default defineConfig({
     "ui/tokens/index": "src/ui/tokens/index.ts",
     "ui/tokens/validate": "src/ui/tokens/validate.ts",
     "build/tsup": "src/build/tsup.ts",
-    "runtime/_test-env": "src/runtime/_test-env.ts",
+    // `runtime/_test-env` is intentionally NOT a tsup entry — it's an
+    // internal helper imported by `runtime/electron` + `runtime/network`,
+    // and the splitting:false config inlines it into each consumer's
+    // bundle. Keeping it off the entry list also avoids shipping a
+    // separately-importable `@lvis/plugin-sdk/runtime/_test-env` artifact.
     "runtime/electron": "src/runtime/electron.ts",
     "runtime/network": "src/runtime/network.ts",
     // Per-component subpath entries — let consumers tree-shake by

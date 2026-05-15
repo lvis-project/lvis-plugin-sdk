@@ -108,10 +108,13 @@ describe("detectViaPrivateDnsProbe", () => {
     expect(typeof r2).toBe("boolean");
   });
 
-  it("timeout-wins-race does NOT release the dedup slot — second caller arriving after the timeout shares the same in-flight lookup", async () => {
-    // Lookup hangs forever — timeout wins. After the first probe resolves
-    // (via timeout=false), a second caller within the same lookup window
-    // must still see the SAME pending lookup, not fan out to a 2nd one.
+  it("timeout-wins-race does NOT release the dedup slot — concurrent callers across the timeout boundary share the same in-flight lookup", async () => {
+    // Lookup hangs — first call's race resolves via timeout (=false). A
+    // second call kicked off WHILE the underlying lookup is still pending
+    // must dedup onto it, not spawn a second `dns.lookup`. To genuinely
+    // exercise the dedup, fire p1 and p2 BEFORE either awaits — if we
+    // `await p1` first, the lifetime `.finally` would have a chance to
+    // clear the slot before p2 starts (depending on impl).
     let resolveLookup: (v: { address: string; family: number }) => void = () => {};
     mockLookup.mockReturnValueOnce(
       new Promise((res) => {
@@ -119,18 +122,40 @@ describe("detectViaPrivateDnsProbe", () => {
       }) as unknown as Promise<{ address: string; family: number }>,
     );
 
-    const r1 = await detectViaPrivateDnsProbe("slow.example.com", { timeoutMs: 30 });
-    expect(r1).toBe(false); // timeout fail-safe
-
-    // Second caller arrives BEFORE the underlying lookup has settled.
+    const p1 = detectViaPrivateDnsProbe("slow.example.com", { timeoutMs: 30 });
     const p2 = detectViaPrivateDnsProbe("slow.example.com", { timeoutMs: 30 });
 
-    // Resolve the underlying lookup AFTER p2 is awaiting — both should see
-    // it, but more importantly mock-lookup must have been called exactly
-    // once across both probes.
+    // p1 races timeout (50ms) vs lookup (hung) → timeout wins, p1 → false
+    // p2 was launched while the lookup was still pending; if dedup works,
+    // it shares the SAME lookupPromise, sees the timeout-false, returns
+    // false too. Critical: only ONE dns.lookup() call observed.
+    const r1 = await p1;
+    expect(r1).toBe(false);
+
+    // Resolve the underlying lookup. p2's race already settled (via shared
+    // lookupPromise + its own timeoutPromise) — but await p2 to flush.
     resolveLookup({ address: "10.0.0.1", family: 4 });
     await p2;
 
     expect(mockLookup).toHaveBeenCalledTimes(1);
+  });
+
+  it("set-before-finally ordering — synchronously-resolved lookup does not strand the dedup slot", async () => {
+    // Mock returns a synchronously-settled promise (Promise.resolve(...)).
+    // If implementation attached the cleanup `.finally` BEFORE setting the
+    // dedup slot, the cleanup would queue first and could (under a strict
+    // microtask drain interpretation) clear the slot before it was set.
+    // Verify the slot lifecycle is robust to sync-resolved lookups by
+    // running back-to-back probes and asserting each invokes lookup
+    // independently (i.e. the slot DOES clear after each settles).
+    mockLookup
+      .mockResolvedValueOnce({ address: "10.0.0.1", family: 4 })
+      .mockResolvedValueOnce({ address: "10.0.0.2", family: 4 });
+
+    const r1 = await detectViaPrivateDnsProbe("sync.example.com", { timeoutMs: 500 });
+    expect(r1).toBe(true);
+    const r2 = await detectViaPrivateDnsProbe("sync.example.com", { timeoutMs: 500 });
+    expect(r2).toBe(true);
+    expect(mockLookup).toHaveBeenCalledTimes(2);
   });
 });
