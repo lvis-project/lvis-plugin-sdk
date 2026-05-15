@@ -31,6 +31,7 @@
  */
 
 import { createRequire } from "node:module";
+import { assertTestEnvironment } from "./_test-env.js";
 
 export interface SafeStorage {
   isEncryptionAvailable: () => boolean;
@@ -52,38 +53,9 @@ let _testSafeStorageOverride: SafeStorage | null | undefined = undefined;
 let _testShellOverride: ShellApi | null | undefined = undefined;
 
 // Runtime guard so a misbehaving plugin can't call the test seam in
-// a packaged build to hijack token storage. The `__set*ForTests`
-// exports are reachable via the public subpath
-// (`@lvis/plugin-sdk/runtime/electron`) — `@internal` JSDoc + `__`
-// prefix are convention-only, this guard is the actual enforcement.
-//
-// Allow-listed envs: vitest sets `VITEST=true`; tests that exercise
-// this module from outside vitest can opt in via `LVIS_TEST=1`. The
-// host's production builds set `NODE_ENV=production`; in that case
-// any seam call throws.
-//
-// Threat-model note: a determined compromised plugin running in the
-// same process can mutate `process.env.LVIS_TEST = "1"` before calling
-// the seam to bypass this guard. That's accepted — at the point a
-// plugin has code execution to mutate process env, it also has
-// `createRequire("electron")` directly + `require.cache` poisoning +
-// every other in-process attack primitive available. This guard
-// targets accidental misuse (a plugin author copy-pastes a test
-// helper into production code), not a determined attacker.
-function assertTestEnvironment(name: string): void {
-  if (
-    typeof process !== "undefined" &&
-    process.env &&
-    process.env.NODE_ENV === "production" &&
-    !process.env.VITEST &&
-    !process.env.LVIS_TEST
-  ) {
-    throw new Error(
-      `${name}: test seam called in production. ` +
-      `Use vitest, set LVIS_TEST=1, or remove the call.`,
-    );
-  }
-}
+// a packaged build to hijack token storage. Shared with other
+// `runtime/*` modules — see `./_test-env.ts` for rationale + threat
+// model.
 
 /** @internal Test seam — production code MUST NOT call this. */
 export function __setSafeStorageForTests(
