@@ -483,7 +483,7 @@ export interface PluginMarketplaceItem {
 
   requires?: RequiresSpec;
 
-  pluginType?: "plugin" | "mcp";
+  pluginType?: "plugin" | "mcp" | "agent" | "skill";
 
   mcpRuntime?: McpRuntimeSpec;
 }
