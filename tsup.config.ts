@@ -6,6 +6,7 @@ export default defineConfig({
     "ui/tokens/index": "src/ui/tokens/index.ts",
     "ui/tokens/validate": "src/ui/tokens/validate.ts",
     "build/tsup": "src/build/tsup.ts",
+    "runtime/_test-env": "src/runtime/_test-env.ts",
     "runtime/electron": "src/runtime/electron.ts",
     "runtime/network": "src/runtime/network.ts",
     // Per-component subpath entries — let consumers tree-shake by

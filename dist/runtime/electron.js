@@ -1,9 +1,7 @@
 // src/runtime/electron.ts
 import { createRequire } from "module";
-var nodeRequire = createRequire(import.meta.url);
-var electronModuleName = ["electron"].join("");
-var _testSafeStorageOverride = void 0;
-var _testShellOverride = void 0;
+
+// src/runtime/_test-env.ts
 function assertTestEnvironment(name) {
   if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "production" && !process.env.VITEST && !process.env.LVIS_TEST) {
     throw new Error(
@@ -11,6 +9,12 @@ function assertTestEnvironment(name) {
     );
   }
 }
+
+// src/runtime/electron.ts
+var nodeRequire = createRequire(import.meta.url);
+var electronModuleName = ["electron"].join("");
+var _testSafeStorageOverride = void 0;
+var _testShellOverride = void 0;
 function __setSafeStorageForTests(impl) {
   assertTestEnvironment("__setSafeStorageForTests");
   _testSafeStorageOverride = impl;

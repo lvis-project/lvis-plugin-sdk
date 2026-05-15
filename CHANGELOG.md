@@ -7,6 +7,48 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.8.0] - 2026-05-16
+
+### Added — `runtime/network` shared DNS-probe primitive
+
+ms-graph (advisory MSAL tenant routing) 와 lge-api (hard SSO pre-gate) 가
+같은 사내망 감지 휴리스틱 (private-host DNS lookup) 을 각자 자기 패키지
+안에 사본으로 들고 있었음. 세 번째 LGE-internal 플러그인이 같은 트릭을
+재구현하기 전에 SDK 로 승격.
+
+- **`detectViaPrivateDnsProbe(host, { timeoutMs? })`** —
+  `node:dns/promises.lookup` 을 1.5s race 로 호출. private network = resolve,
+  외부망 = ENOTFOUND. timeout fail-safe = `false`.
+- **Dedup**: same-host concurrent caller 는 하나의 in-flight probe 를
+  공유. dedup slot 의 lifetime 은 underlying lookup 이 settle 할 때까지
+  유지 (timeout race 종료 시점이 아님) — slow DNS 에서 retry-loop 가
+  fan-out 하는 문제 방어.
+- **No cache**: 양방향 transition 을 자연스럽게 잡기 위해 매 호출이
+  fresh probe. OS resolver 캐시가 perf 책임.
+- **Open-source-clean**: SDK 는 mechanism 만, 사내 호스트명은 각 소비자
+  plugin 의 상수 + 자체 도메인-특화 에러 클래스가 보유.
+- **Subpath**: `@lvis/plugin-sdk/runtime/network` — `runtime/electron`
+  패턴과 동일한 `runtime/*` 컨벤션.
+- **Test seam**: `__resetPrivateDnsProbeInFlightForTests()` —
+  `assertTestEnvironment` 가드 (NODE_ENV=production + !VITEST + !LVIS_TEST
+  에서 throw). 공유 `_test-env.ts` 헬퍼로 추출하여 `runtime/electron`
+  의 inline 사본 제거.
+
+### Internal — runtime test-env helper extracted
+
+- `runtime/electron.ts` 의 `assertTestEnvironment` 를 `runtime/_test-env.ts`
+  로 추출. behavior unchanged — 다른 `runtime/*` 모듈에서도 동일 가드
+  재사용.
+
+### Notes
+
+- 5.7.0 (PR #139, startupTools 제거) 의 CHANGELOG 누락은 본 PR scope 외 —
+  추후 보정 PR.
+- 에러 클래스 SDK 승격은 의도적으로 보류 — 두 소비자 중 하나만 throw
+  하고 메시지/code 가 회사-특화라 generic 화 시 wrapping 필요.
+
+---
+
 ## [5.6.0] - 2026-05-14
 
 ### Added — auth-window visibility + partition wipe
