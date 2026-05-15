@@ -7,6 +7,7 @@ export default defineConfig({
     "ui/tokens/validate": "src/ui/tokens/validate.ts",
     "build/tsup": "src/build/tsup.ts",
     "runtime/electron": "src/runtime/electron.ts",
+    "runtime/network": "src/runtime/network.ts",
     // Per-component subpath entries — let consumers tree-shake by
     // importing `@lvis/plugin-sdk/ui/components/<Name>` directly. The
     // `./ui/index` barrel still works for backward compat but pulls in
