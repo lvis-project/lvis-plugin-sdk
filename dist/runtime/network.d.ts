@@ -22,6 +22,11 @@
  *     otherwise a timeout-winning race releases the dedup slot while
  *     libuv's getaddrinfo is still running, and retry-loop callers fan
  *     out to multiple concurrent lookups against slow DNS.
+ *     **Observable consequence**: while a lookup is in flight (slow DNS,
+ *     dropped packet, etc.) subsequent callers receive the SAME race
+ *     outcome — typically `false` on a timeout-winning first call. New
+ *     fresh probes can only start after the underlying lookup finally
+ *     settles. This matches the "fail-safe under slow DNS" intent.
  *   - Fail-safe to `false` on timeout. Slow corp DNS = false-negative is
  *     preferred over a slow user gate.
  *   - Per-tsup-bundle module state: each plugin embeds its own copy of
