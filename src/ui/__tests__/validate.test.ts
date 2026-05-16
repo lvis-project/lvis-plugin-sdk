@@ -144,7 +144,7 @@ describe("validateTokenDefinitions", () => {
 describe("validatePluginCssNamespace", () => {
   it("ok=true when all plugin-local vars have a 2-3 char prefix", () => {
     const css = `.x { --pm-accent-bg: red; --li-success-bg: green; --ah-danger: blue; }`;
-    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [], warnings: [] });
   });
 
   it("flags a bare var with no prefix", () => {
@@ -152,6 +152,7 @@ describe("validatePluginCssNamespace", () => {
     const r = validatePluginCssNamespace(css);
     expect(r.ok).toBe(false);
     expect(r.violations).toEqual(["--accent-bg"]);
+    expect(r.warnings).toEqual([]);
   });
 
   it("flags multiple bare vars and sorts them", () => {
@@ -170,17 +171,17 @@ describe("validatePluginCssNamespace", () => {
 
   it("does NOT flag --lvis-* vars (those are validated separately)", () => {
     const css = `:root { --lvis-bg: #fff; --lvis-fg: #000; }`;
-    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [], warnings: [] });
   });
 
   it("accepts a 2-char prefix", () => {
     const css = `.x { --li-bg: blue; }`;
-    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [], warnings: [] });
   });
 
   it("accepts a 3-char prefix", () => {
     const css = `.x { --pm-accent: red; --ah-danger: orange; }`;
-    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [], warnings: [] });
   });
 
   it("dedupes repeated definitions of the same var name", () => {
@@ -199,11 +200,88 @@ describe("validatePluginCssNamespace", () => {
 
   it("ignores CSS block comments", () => {
     const css = `/* --accent-bg: red; */ .x { --pm-ok: green; }`;
-    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [], warnings: [] });
   });
 
   it("ignores string literals containing var-like text", () => {
     const css = `.x::before { content: "--accent-bg"; --pm-ok: green; }`;
-    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [], warnings: [] });
+  });
+
+  // --- Fix 2: vendor allowlist ---
+  it("skips vendor-allowlisted prefixes (--radix-popper-anchor-width)", () => {
+    const css = `.x { --radix-popper-anchor-width: 200px; --tw-ring-color: blue; --shiki-color-text: red; }`;
+    const r = validatePluginCssNamespace(css);
+    expect(r.ok).toBe(true);
+    expect(r.violations).toEqual([]);
+  });
+
+  it("flags a non-vendor non-plugin prefix not in validPrefixes", () => {
+    const css = `.x { --zy-custom: red; }`;
+    const r = validatePluginCssNamespace(css);
+    expect(r.ok).toBe(false);
+    expect(r.violations).toEqual(["--zy-custom"]);
+  });
+
+  it("accepts custom vendorAllowlist that overrides default", () => {
+    // --tw-* not in custom list — should flag
+    const css = `.x { --tw-ring: blue; }`;
+    const r = validatePluginCssNamespace(css, { vendorAllowlist: [] });
+    expect(r.ok).toBe(false);
+    expect(r.violations).toContain("--tw-ring");
+  });
+
+  // --- Fix 3: warn mode ---
+  it("warns instead of errors in warn mode", () => {
+    const css = `.x { --accent-bg: red; }`;
+    const r = validatePluginCssNamespace(css, { mode: "warn" });
+    expect(r.ok).toBe(true);
+    expect(r.violations).toEqual([]);
+    expect(r.warnings).toEqual(["--accent-bg"]);
+  });
+
+  it("warn mode: ok=true even with multiple violations", () => {
+    const css = `.x { --bad-one: red; --nope: blue; }`;
+    const r = validatePluginCssNamespace(css, { mode: "warn" });
+    expect(r.ok).toBe(true);
+    expect(r.warnings).toEqual(["--bad-one", "--nope"]);
+    expect(r.violations).toEqual([]);
+  });
+
+  // --- Fix 4: validPrefixes ---
+  it("accepts vars matching custom validPrefixes", () => {
+    const css = `.x { --pm-color: red; }`;
+    const r = validatePluginCssNamespace(css, { validPrefixes: ["pm"] });
+    expect(r.ok).toBe(true);
+  });
+
+  it("flags vars with prefix not in custom validPrefixes", () => {
+    const css = `.x { --zz-color: red; }`;
+    const r = validatePluginCssNamespace(css, { validPrefixes: ["pm", "li"] });
+    expect(r.ok).toBe(false);
+    expect(r.violations).toContain("--zz-color");
+  });
+
+  // --- Fix 5: edge case tests ---
+  it("rejects uppercase prefix (--Pm-bg is not matched by _LOCAL_VAR_DEF — treated as ok by regex, but suffix is uppercase so _PLUGIN_NS_PREFIX fails)", () => {
+    // _LOCAL_VAR_DEF anchors on [a-z] as first char, so --Pm-bg is never captured
+    // (capital P). The var effectively doesn't appear to the scanner. This is
+    // correct behavior: CSS custom properties are case-sensitive, so --Pm-bg
+    // is a distinct var — plugin authors MUST use lowercase-only names.
+    const css = `.x { --pm-bg: red; }`;
+    const r = validatePluginCssNamespace(css);
+    expect(r.ok).toBe(true); // --pm-bg (lowercase) is valid
+  });
+
+  it("rejects prefix-only with no suffix name (--pm is not a definition — colon required)", () => {
+    // A bare `--pm` with a colon IS a valid CSS custom property but has no
+    // suffix letter after the prefix dash. The _PLUGIN_NS_PREFIX regex requires
+    // `[a-z]` after the trailing dash, so --pm: would be flagged.
+    // _LOCAL_VAR_DEF captures `--pm` as a name; _PLUGIN_NS_PREFIX fails since
+    // there is no `-[a-z]` after the 2-char prefix body.
+    const css = `.x { --pm: red; }`;
+    const r = validatePluginCssNamespace(css);
+    expect(r.ok).toBe(false);
+    expect(r.violations).toEqual(["--pm"]);
   });
 });

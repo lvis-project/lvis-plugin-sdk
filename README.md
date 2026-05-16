@@ -223,6 +223,79 @@ authoring-time SDK validation and runtime host validation. Earlier SDK
 versions used `draft/2020-12`; v2.2.0 unified on draft-07 to close audit
 item HIGH #1 (schema-dialect drift).
 
+## Plugin CSS namespace validator
+
+Every plugin-local CSS custom property (anything that is NOT `--lvis-*`) must
+carry a 2-3 lowercase-letter namespace prefix to avoid collisions across
+co-loaded plugins (e.g. `--pm-accent-bg` for the meeting plugin).
+
+### Quick start — CI enforcement
+
+Add to your plugin repo's `package.json`:
+
+```json
+{
+  "scripts": {
+    "check:plugin-css": "node node_modules/@lvis/plugin-sdk/scripts/check-plugin-css.mjs"
+  }
+}
+```
+
+Then call it from GitHub Actions:
+
+```yaml
+- name: Check CSS namespace
+  run: bun run check:plugin-css
+```
+
+The script scans `dist/` and `src/` by default. It exits with code 1 when
+violations are found, so CI fails automatically.
+
+### Programmatic API
+
+```ts
+import { validatePluginCssNamespace } from "@lvis/plugin-sdk/ui/tokens/validate";
+
+const result = validatePluginCssNamespace(css, {
+  // Vendor library prefixes exempt from enforcement (default: tw/radix/shiki/reach/vis/react)
+  vendorAllowlist: ["tw", "radix", "shiki"],
+  // Restrict to this plugin's known prefix(es); any other 2-3-char prefix is also flagged
+  validPrefixes: ["pm"],
+  // "error" (default): findings → violations[], ok=false
+  // "warn":            findings → warnings[], ok=true  (soft mode for gradual rollout)
+  mode: "warn",
+});
+
+if (!result.ok) {
+  console.error("Violations:", result.violations);
+}
+if (result.warnings.length > 0) {
+  console.warn("Warnings:", result.warnings);
+}
+```
+
+### Environment variables (CI script)
+
+| Variable | Default | Description |
+|---|---|---|
+| `LVIS_CSS_MODE` | `error` | Set to `warn` for soft mode — findings go to `warnings[]`, exit 0 |
+| `LVIS_CSS_FAIL_ON_WARN` | — | Set to `1` to exit 1 even in warn mode |
+| `LVIS_CSS_ROOTS` | `dist,src` | Comma-separated directories to scan |
+| `LVIS_CSS_VENDOR` | (default list) | Override vendor allowlist (comma-separated prefixes) |
+| `LVIS_CSS_PREFIXES` | (default list) | Override valid plugin prefix list (comma-separated) |
+
+### What counts as a violation
+
+| Example | Result |
+|---|---|
+| `--pm-accent-bg` | OK — valid 2-char prefix |
+| `--ah-danger` | OK — valid 2-char prefix |
+| `--accent-bg` | Violation — no prefix |
+| `--x-color` | Violation — single-char prefix |
+| `--pm` | Violation — prefix-only, no suffix |
+| `--tw-ring-color` | OK — vendor-allowlisted (`tw`) |
+| `--radix-popper-anchor-width` | OK — vendor-allowlisted (`radix`) |
+
 ## UI token allowlist (build-time validator)
 
 Plugin UI must reference only the 17 `--lvis-*` design tokens enumerated in
