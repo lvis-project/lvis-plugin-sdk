@@ -7,9 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [5.9.0] - 2026-05-17
+## [5.9.2] - 2026-05-17
 
-### Added — `notificationEvents[*].bypassFocusGate` (optional boolean)
+> **Version slot note**: tags `v5.9.0` (df6bacc) and `v5.9.1` (0ccc887)
+> were cut on commits with stale `package.json` (still 5.8.0) before this
+> bump. Per the README "Tag policy" rule (immutable release points), we
+> skip those slots and ship as 5.9.2.
+
+### Added — `notificationEvents[*].bypassFocusGate` (optional boolean) [#151]
 
 플러그인 manifest 의 `notificationEvents[i]` 에 `bypassFocusGate?: boolean`
 필드 추가. host (lvis-app PR #875) 의 multi-window focus gate + cooldown
@@ -27,8 +32,16 @@ gate 를 우회하는 *critical alert* opt-in. 예: meeting plugin 의
   cooldown gate + (manifest 가 허용한 경우) urgent flag 까지 함께 적용.
   기본값 `false` 또는 omitted — 기존 동작 그대로.
 - **Cross-repo ordering**: host package.json 의 `@lvis/plugin-sdk` dep 이
-  ≥5.9.0 으로 bump 되어야 manifest validation 통과. host PR #875 와 함께
+  ≥5.9.2 으로 bump 되어야 manifest validation 통과. host PR #875 와 함께
   publish 필요.
+
+### Added — `toolSchemas[*].writesToOwnSandbox` (optional boolean) [#150]
+
+`toolSchemas[i]` 에 `writesToOwnSandbox?: boolean` 추가. plugin sandbox
+디렉토리 (`~/.lvis/plugins/<pluginId>/`) 내부 쓰기만 한다고 *self-attest*
+하면 host reviewer 가 LOW risk 로 routing — 매번 user prompt 안 띄움 (ms-graph
+MSAL token cache 등 OAuth flow). runtime 이 path containment 를 invocation
+시점에 verify — 실제 sandbox 밖이면 standard write rule 로 fallback.
 
 ---
 
