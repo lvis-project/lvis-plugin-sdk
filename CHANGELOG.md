@@ -7,6 +7,31 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.9.0] - 2026-05-17
+
+### Added — `notificationEvents[*].bypassFocusGate` (optional boolean)
+
+플러그인 manifest 의 `notificationEvents[i]` 에 `bypassFocusGate?: boolean`
+필드 추가. host (lvis-app PR #875) 의 multi-window focus gate + cooldown
+gate 를 우회하는 *critical alert* opt-in. 예: meeting plugin 의
+`meeting.starting-soon` — 사용자 attention 이 다른 window 에 있어도
+정상 표시되어야 하는 알림.
+
+- **Schema**: `schemas/plugin-manifest.schema.json` 의
+  `notificationEvents.items.properties` 에 `bypassFocusGate: { type: "boolean" }`
+  추가. AJV strict (`additionalProperties: false`) 와 호환.
+- **Types**: `src/index.ts` 의 `PluginManifest.notificationEvents[i]` +
+  `PluginMarketplaceItem.notificationEvents[i]` 양쪽 모두 동일한 optional
+  field 노출 (marketplace 카드 표시 일관성).
+- **Host contract**: host 가 `bypassFocusGate=true` 이면 focus gate +
+  cooldown gate + (manifest 가 허용한 경우) urgent flag 까지 함께 적용.
+  기본값 `false` 또는 omitted — 기존 동작 그대로.
+- **Cross-repo ordering**: host package.json 의 `@lvis/plugin-sdk` dep 이
+  ≥5.9.0 으로 bump 되어야 manifest validation 통과. host PR #875 와 함께
+  publish 필요.
+
+---
+
 ## [5.8.0] - 2026-05-16
 
 ### Added — `runtime/network` shared DNS-probe primitive
