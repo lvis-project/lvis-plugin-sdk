@@ -577,6 +577,10 @@
             },
             "uniqueItems": true
           },
+          "writesToOwnSandbox": {
+            "type": "boolean",
+            "description": "Issue #664 P1 (lvis-app PR #860) — sandbox-write auto-LOW self-attestation. When true, every value resolved through pathFields must stay inside ~/.lvis/plugins/<pluginId>/. The host reviewer treats sandbox-local writes as LOW risk. The runtime canonicalizes and verifies the containment claim at invocation time — a tool that emits a path outside its own sandbox falls back to the standard write rules. Use for plugins that persist sandbox-local caches (e.g. MSAL token cache) without round-tripping the user."
+          },
           "inputSchema": {
             "type": "object",
             "required": [
