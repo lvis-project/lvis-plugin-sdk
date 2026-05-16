@@ -176,7 +176,8 @@ describe("PluginManifest — schema validation", () => {
       };
       const { valid, errors } = validateManifest(m);
       expect(valid).toBe(false);
-      expect(errors.join("|")).toMatch(/writesToOwnSandbox/);
+      expect(errors.some((e) => e.includes("/writesToOwnSandbox"))).toBe(true);
+      expect(errors.some((e) => /must be boolean/.test(e))).toBe(true);
     });
 
     it("accepts manifest without writesToOwnSandbox (optional field)", () => {
