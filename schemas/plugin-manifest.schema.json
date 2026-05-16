@@ -391,6 +391,10 @@
           },
           "bodyField": {
             "type": "string"
+          },
+          "bypassFocusGate": {
+            "type": "boolean",
+            "description": "When true, this event bypasses the host focus-gate AND cooldown-gate suppression and always fires an OS-level notification regardless of LVIS window focus state or recent prior emits from the same plugin. The host additionally promotes urgent=true for bypass events (sound + critical urgency) unless the caller explicitly opts out. Use for critical flows (meeting capture, security alerts) where the user must be notified out-of-band. Refs lvis-project/lvis-app#843."
           }
         }
       }
