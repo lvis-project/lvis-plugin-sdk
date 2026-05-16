@@ -4,6 +4,7 @@ import {
   findLvisTokenDefinitions,
   validateTokenUsage,
   validateTokenDefinitions,
+  validatePluginCssNamespace,
 } from "../tokens/validate.js";
 
 describe("findLvisTokenReferences", () => {
@@ -137,5 +138,72 @@ describe("validateTokenDefinitions", () => {
     const r = validateTokenDefinitions(css, { allowDefinitions: true });
     expect(r.ok).toBe(true);
     expect([...findLvisTokenDefinitions(css)]).toEqual(["--lvis-bg"]);
+  });
+});
+
+describe("validatePluginCssNamespace", () => {
+  it("ok=true when all plugin-local vars have a 2-3 char prefix", () => {
+    const css = `.x { --pm-accent-bg: red; --li-success-bg: green; --ah-danger: blue; }`;
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
+  });
+
+  it("flags a bare var with no prefix", () => {
+    const css = `.x { --accent-bg: red; }`;
+    const r = validatePluginCssNamespace(css);
+    expect(r.ok).toBe(false);
+    expect(r.violations).toEqual(["--accent-bg"]);
+  });
+
+  it("flags multiple bare vars and sorts them", () => {
+    const css = `.x { --success-bg: green; --danger-bg: red; --warning-bg: orange; }`;
+    const r = validatePluginCssNamespace(css);
+    expect(r.ok).toBe(false);
+    expect(r.violations).toEqual(["--danger-bg", "--success-bg", "--warning-bg"]);
+  });
+
+  it("flags a single-char prefix (too short)", () => {
+    const css = `.x { --x-color: red; }`;
+    const r = validatePluginCssNamespace(css);
+    expect(r.ok).toBe(false);
+    expect(r.violations).toEqual(["--x-color"]);
+  });
+
+  it("does NOT flag --lvis-* vars (those are validated separately)", () => {
+    const css = `:root { --lvis-bg: #fff; --lvis-fg: #000; }`;
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
+  });
+
+  it("accepts a 2-char prefix", () => {
+    const css = `.x { --li-bg: blue; }`;
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
+  });
+
+  it("accepts a 3-char prefix", () => {
+    const css = `.x { --pm-accent: red; --ah-danger: orange; }`;
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
+  });
+
+  it("dedupes repeated definitions of the same var name", () => {
+    const css = `.a { --accent-bg: red; } .b { --accent-bg: blue; }`;
+    const r = validatePluginCssNamespace(css);
+    expect(r.violations).toEqual(["--accent-bg"]);
+  });
+
+  it("ignores vars listed in ignoreVars set", () => {
+    const css = `.x { --accent-bg: red; --bg-base: blue; }`;
+    const r = validatePluginCssNamespace(css, {
+      ignoreVars: new Set(["--accent-bg", "--bg-base"]),
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it("ignores CSS block comments", () => {
+    const css = `/* --accent-bg: red; */ .x { --pm-ok: green; }`;
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
+  });
+
+  it("ignores string literals containing var-like text", () => {
+    const css = `.x::before { content: "--accent-bg"; --pm-ok: green; }`;
+    expect(validatePluginCssNamespace(css)).toEqual({ ok: true, violations: [] });
   });
 });
