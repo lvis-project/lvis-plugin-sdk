@@ -71,6 +71,64 @@ export function validateTokenUsage(
   return { ok: unknown.length === 0, unknown: unknown.sort() };
 }
 
+// ---------------------------------------------------------------------------
+// Plugin-local CSS namespace validator
+// ---------------------------------------------------------------------------
+
+/**
+ * Pattern for a correctly-namespaced plugin-local CSS custom property:
+ * `--<2-3 lowercase letters>-<rest>` where the prefix is NOT `lvis`
+ * (those belong to the host allowlist and are validated separately).
+ *
+ * Valid:   `--pm-accent-bg`, `--li-success-bg`, `--ah-danger`
+ * Invalid: `--accent-bg` (no prefix), `--my_var` (underscore not `-`),
+ *          `--x-color` (single-char prefix too short)
+ */
+const _PLUGIN_NS_PREFIX = /^--([a-z]{2,3})-/;
+
+/**
+ * Matches any CSS custom property definition that does NOT start with `--lvis-`.
+ * We anchor on declaration-start context identical to `_LVIS_DEF` above.
+ */
+const _LOCAL_VAR_DEF = /(?:^|[{};])\s*(--(?!lvis-)[a-z][a-z0-9-]*)\s*:/gi;
+
+export type PluginNamespaceReport = {
+  ok: boolean;
+  /**
+   * Plugin-local CSS vars whose names lack a valid 2-3 character prefix.
+   * e.g. `--accent-bg` has no prefix; `--x-color` uses a 1-char prefix.
+   */
+  violations: string[];
+};
+
+/**
+ * Validate that every plugin-local CSS var definition (anything that is NOT
+ * `--lvis-*`) carries a 2-3 lowercase-letter namespace prefix followed by `-`.
+ *
+ * Pass `ignoreVars` to suppress known-good exceptions (e.g. layout tokens
+ * that intentionally omit a plugin prefix).
+ *
+ * The validator does NOT flag vars that start with `--lvis-` — those are
+ * covered by `validateTokenDefinitions`.
+ */
+export function validatePluginCssNamespace(
+  css: string,
+  options: { ignoreVars?: ReadonlySet<string> } = {},
+): PluginNamespaceReport {
+  const { ignoreVars } = options;
+  const stripped = stripCommentsAndStrings(css);
+  const seen = new Set<string>();
+  const violations: string[] = [];
+  for (const m of stripped.matchAll(_LOCAL_VAR_DEF)) {
+    const name = m[1];
+    if (seen.has(name)) continue;
+    seen.add(name);
+    if (ignoreVars?.has(name)) continue;
+    if (!_PLUGIN_NS_PREFIX.test(name)) violations.push(name);
+  }
+  return { ok: violations.length === 0, violations: violations.sort() };
+}
+
 export type TokenDefinitionReport = {
   ok: boolean;
   /** `--lvis-*` definitions whose name is not in the allowlist. */
