@@ -189,6 +189,14 @@ export interface PluginManifest {
     event: string;
     titleField?: string;
     bodyField?: string;
+    /**
+     * When `true`, this event bypasses the host focus-gate suppression and
+     * always fires an OS-level notification regardless of LVIS window focus.
+     * Use for critical flows (meeting capture, security alerts) where the
+     * user must be notified out-of-band. Refs lvis-project/lvis-app#843.
+     * @optional
+     */
+    bypassFocusGate?: boolean;
   }>;
   installPolicy?: InstallPolicy;
   dependencies?: Array<string | DependencySpec>;
@@ -473,6 +481,14 @@ export interface PluginMarketplaceItem {
     event: string;
     titleField?: string;
     bodyField?: string;
+    /**
+     * When `true`, this event bypasses the host focus-gate suppression and
+     * always fires an OS-level notification regardless of LVIS window focus.
+     * Use for critical flows (meeting capture, security alerts) where the
+     * user must be notified out-of-band. Refs lvis-project/lvis-app#843.
+     * @optional
+     */
+    bypassFocusGate?: boolean;
   }>;
   installPolicy?: InstallPolicy;
   dependencies?: Array<string | DependencySpec>;

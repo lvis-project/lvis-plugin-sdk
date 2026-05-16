@@ -391,6 +391,10 @@
           },
           "bodyField": {
             "type": "string"
+          },
+          "bypassFocusGate": {
+            "type": "boolean",
+            "description": "When true, this event bypasses the host focus-gate suppression and always fires an OS-level notification regardless of LVIS window focus state. Use for critical flows (meeting capture, security alerts) where the user must be notified out-of-band. Refs lvis-project/lvis-app#843."
           }
         }
       }
