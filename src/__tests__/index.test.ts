@@ -123,6 +123,69 @@ describe("PluginManifest — schema validation", () => {
     expect(validateManifest(hostOnlyMeta).valid).toBe(false);
   });
 
+  // Issue #664 P1 / PR #860 — sandbox-write self-attestation flag contract.
+  describe("toolSchemas[*].writesToOwnSandbox — type contract", () => {
+    const SANDBOX_BASE: PluginManifest = {
+      ...VALID_MINIMAL,
+      toolSchemas: {
+        my_plugin_ping: {
+          description: "Ping the plugin and return a status object.",
+          category: "write",
+          inputSchema: { type: "object", properties: {} },
+        },
+      },
+    };
+
+    it("accepts writesToOwnSandbox: true (sandbox-local cache opt-in)", () => {
+      const m = {
+        ...SANDBOX_BASE,
+        toolSchemas: {
+          my_plugin_ping: {
+            ...SANDBOX_BASE.toolSchemas!.my_plugin_ping,
+            writesToOwnSandbox: true,
+          },
+        },
+      };
+      const { valid, errors } = validateManifest(m);
+      expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    });
+
+    it("accepts writesToOwnSandbox: false (explicit opt-out)", () => {
+      const m = {
+        ...SANDBOX_BASE,
+        toolSchemas: {
+          my_plugin_ping: {
+            ...SANDBOX_BASE.toolSchemas!.my_plugin_ping,
+            writesToOwnSandbox: false,
+          },
+        },
+      };
+      const { valid, errors } = validateManifest(m);
+      expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    });
+
+    it("rejects writesToOwnSandbox: \"true\" (string — type contract)", () => {
+      const m = {
+        ...SANDBOX_BASE,
+        toolSchemas: {
+          my_plugin_ping: {
+            ...SANDBOX_BASE.toolSchemas!.my_plugin_ping,
+            writesToOwnSandbox: "true",
+          },
+        },
+      };
+      const { valid, errors } = validateManifest(m);
+      expect(valid).toBe(false);
+      expect(errors.some((e) => e.includes("/writesToOwnSandbox"))).toBe(true);
+      expect(errors.some((e) => /must be boolean/.test(e))).toBe(true);
+    });
+
+    it("accepts manifest without writesToOwnSandbox (optional field)", () => {
+      const { valid, errors } = validateManifest(SANDBOX_BASE);
+      expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    });
+  });
+
   it("rejects manifest missing required field: id", () => {
     const { id: _, ...noId } = VALID_MINIMAL;
     const { valid } = validateManifest(noId);
