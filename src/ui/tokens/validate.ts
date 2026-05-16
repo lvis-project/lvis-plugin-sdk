@@ -71,6 +71,150 @@ export function validateTokenUsage(
   return { ok: unknown.length === 0, unknown: unknown.sort() };
 }
 
+// ---------------------------------------------------------------------------
+// Plugin-local CSS namespace validator
+// ---------------------------------------------------------------------------
+
+/**
+ * Pattern for a correctly-namespaced plugin-local CSS custom property:
+ * `--<2-3 lowercase letters>-<rest>` where the prefix is NOT `lvis`
+ * (those belong to the host allowlist and are validated separately).
+ *
+ * Valid:   `--pm-accent-bg`, `--li-success-bg`, `--ah-danger`
+ * Invalid: `--accent-bg` (no prefix), `--my_var` (underscore not `-`),
+ *          `--x-color` (single-char prefix too short), `--Pm-bg` (uppercase)
+ */
+const _PLUGIN_NS_PREFIX = /^--([a-z]{2,3})-[a-z]/;
+
+/**
+ * Matches any CSS custom property definition that does NOT start with `--lvis-`.
+ * We anchor on declaration-start context identical to `_LVIS_DEF` above.
+ */
+const _LOCAL_VAR_DEF = /(?:^|[{};])\s*(--(?!lvis-)[a-z][a-z0-9-]*)\s*:/gi;
+
+/**
+ * Vendor-prefixed CSS custom properties from popular libraries that plugins
+ * commonly pull in via Tailwind, Radix UI, Shiki, Reach UI, etc.
+ * These are exempt from plugin namespace enforcement.
+ */
+const DEFAULT_VENDOR_ALLOWLIST: readonly string[] = [
+  "tw",
+  "radix",
+  "shiki",
+  "reach",
+  "vis",
+  "react",
+];
+
+/**
+ * Known plugin namespace prefixes. Callers may extend this list via `validPrefixes`.
+ * When `validPrefixes` is provided the var must use one of those prefixes;
+ * when omitted, any valid 2-3 lowercase-letter prefix is accepted.
+ */
+const DEFAULT_VALID_PREFIXES: readonly string[] = [
+  "pm", "li", "ah", "wa", "wp", "mg", "ai",
+];
+
+export type PluginNamespaceReport = {
+  ok: boolean;
+  /**
+   * Plugin-local CSS vars whose names lack a valid 2-3 character prefix
+   * (hard failures — present when `mode` is `"error"` or `"warn"`).
+   */
+  violations: string[];
+  /**
+   * Same as `violations` but surfaced as soft warnings when `mode` is `"warn"`.
+   * In `"error"` mode this array is always empty (everything goes to `violations`).
+   */
+  warnings: string[];
+};
+
+export interface PluginNamespaceOptions {
+  /**
+   * Vars to skip entirely (known-good exceptions, e.g. intentional layout tokens
+   * without a plugin prefix).
+   */
+  ignoreVars?: ReadonlySet<string>;
+  /**
+   * Vendor library prefixes whose vars are exempt from namespace enforcement.
+   * Defaults to `["tw", "radix", "shiki", "reach", "vis", "react"]`.
+   * Pass an explicit array to replace (not extend) the default list.
+   */
+  vendorAllowlist?: readonly string[];
+  /**
+   * When set, vars must use one of the listed prefixes (e.g. `["pm", "li"]`).
+   * When omitted, any valid 2-3 lowercase-letter prefix is accepted.
+   * Defaults to `["pm", "li", "ah", "wa", "wp", "mg", "ai"]`.
+   */
+  validPrefixes?: readonly string[];
+  /**
+   * `"error"` (default) — violations go to `violations[]` and `ok` is false.
+   * `"warn"`  — violations go to `warnings[]` instead; `ok` remains true so
+   *              CI scripts can choose whether to fail-on-warn via env var.
+   */
+  mode?: "error" | "warn";
+}
+
+/**
+ * Validate that every plugin-local CSS var definition (anything that is NOT
+ * `--lvis-*` and NOT a vendor-library var) carries a 2-3 lowercase-letter
+ * namespace prefix followed by a lowercase letter.
+ *
+ * Options:
+ * - `ignoreVars`      — skip specific var names
+ * - `vendorAllowlist` — skip vars with any of these prefixes (default: tw/radix/shiki/reach/vis/react)
+ * - `validPrefixes`   — restrict to an explicit prefix set (default: pm/li/ah/wa/wp/mg/ai)
+ * - `mode`            — `"error"` (default) puts findings in `violations`; `"warn"` puts them in `warnings`
+ */
+export function validatePluginCssNamespace(
+  css: string,
+  options: PluginNamespaceOptions = {},
+): PluginNamespaceReport {
+  const {
+    ignoreVars,
+    vendorAllowlist = DEFAULT_VENDOR_ALLOWLIST,
+    validPrefixes = DEFAULT_VALID_PREFIXES,
+    mode = "error",
+  } = options;
+
+  const stripped = stripCommentsAndStrings(css);
+  const seen = new Set<string>();
+  const findings: string[] = [];
+
+  for (const m of stripped.matchAll(_LOCAL_VAR_DEF)) {
+    const name = m[1];
+    if (seen.has(name)) continue;
+    seen.add(name);
+    if (ignoreVars?.has(name)) continue;
+
+    // Extract the prefix segment (first hyphen-delimited token after `--`).
+    // _LOCAL_VAR_DEF already ensures the first char after `--` is [a-z],
+    // so we only need to find the next `-`.
+    const prefixMatch = name.match(/^--([a-z][a-z0-9]*)-/);
+    const prefix = prefixMatch?.[1] ?? "";
+
+    // Skip vendor-library vars (e.g. --tw-*, --radix-*, --shiki-*).
+    if (vendorAllowlist.includes(prefix)) continue;
+
+    // Must pass the structural namespace pattern (2-3 lower chars + `-` + lower char).
+    if (!_PLUGIN_NS_PREFIX.test(name)) {
+      findings.push(name);
+      continue;
+    }
+
+    // When a validPrefixes list is provided, the prefix must be in it.
+    if (validPrefixes.length > 0 && !validPrefixes.includes(prefix)) {
+      findings.push(name);
+    }
+  }
+
+  findings.sort();
+  if (mode === "warn") {
+    return { ok: true, violations: [], warnings: findings };
+  }
+  return { ok: findings.length === 0, violations: findings, warnings: [] };
+}
+
 export type TokenDefinitionReport = {
   ok: boolean;
   /** `--lvis-*` definitions whose name is not in the allowlist. */
