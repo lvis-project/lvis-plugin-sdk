@@ -81,6 +81,57 @@ function validateTokenUsage(css, allowlist = _ALLOWED_TOKENS) {
   for (const r of refs) if (!allowlist.has(r)) unknown.push(r);
   return { ok: unknown.length === 0, unknown: unknown.sort() };
 }
+var _PLUGIN_NS_PREFIX = /^--([a-z]{2,3})-[a-z]/;
+var _LOCAL_VAR_DEF = /(?:^|[{};])\s*(--(?!lvis-)[a-z][a-z0-9-]*)\s*:/gi;
+var DEFAULT_VENDOR_ALLOWLIST = [
+  "tw",
+  "radix",
+  "shiki",
+  "reach",
+  "vis",
+  "react"
+];
+var DEFAULT_VALID_PREFIXES = [
+  "pm",
+  "li",
+  "ah",
+  "wa",
+  "wp",
+  "mg",
+  "ai"
+];
+function validatePluginCssNamespace(css, options = {}) {
+  const {
+    ignoreVars,
+    vendorAllowlist = DEFAULT_VENDOR_ALLOWLIST,
+    validPrefixes = DEFAULT_VALID_PREFIXES,
+    mode = "error"
+  } = options;
+  const stripped = stripCommentsAndStrings(css);
+  const seen = /* @__PURE__ */ new Set();
+  const findings = [];
+  for (const m of stripped.matchAll(_LOCAL_VAR_DEF)) {
+    const name = m[1];
+    if (seen.has(name)) continue;
+    seen.add(name);
+    if (ignoreVars?.has(name)) continue;
+    const prefixMatch = name.match(/^--([a-z][a-z0-9]*)-/);
+    const prefix = prefixMatch?.[1] ?? "";
+    if (vendorAllowlist.includes(prefix)) continue;
+    if (!_PLUGIN_NS_PREFIX.test(name)) {
+      findings.push(name);
+      continue;
+    }
+    if (validPrefixes.length > 0 && !validPrefixes.includes(prefix)) {
+      findings.push(name);
+    }
+  }
+  findings.sort();
+  if (mode === "warn") {
+    return { ok: true, violations: [], warnings: findings };
+  }
+  return { ok: findings.length === 0, violations: findings, warnings: [] };
+}
 function validateTokenDefinitions(css, options = {}) {
   const { allowDefinitions = false, allowlist = _ALLOWED_TOKENS } = options;
   const defs = findLvisTokenDefinitions(css);
@@ -99,6 +150,7 @@ function validateTokenDefinitions(css, options = {}) {
 export {
   findLvisTokenDefinitions,
   findLvisTokenReferences,
+  validatePluginCssNamespace,
   validateTokenDefinitions,
   validateTokenUsage
 };
