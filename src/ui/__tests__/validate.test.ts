@@ -268,9 +268,10 @@ describe("validatePluginCssNamespace", () => {
     // (capital P). The var effectively doesn't appear to the scanner. This is
     // correct behavior: CSS custom properties are case-sensitive, so --Pm-bg
     // is a distinct var — plugin authors MUST use lowercase-only names.
-    const css = `.x { --pm-bg: red; }`;
+    const css = `.x { --Pm-bg: red; }`;
     const r = validatePluginCssNamespace(css);
-    expect(r.ok).toBe(true); // --pm-bg (lowercase) is valid
+    expect(r.ok).toBe(false);
+    expect(r.violations).toContain("--Pm-bg");
   });
 
   it("rejects prefix-only with no suffix name (--pm is not a definition — colon required)", () => {
