@@ -813,15 +813,38 @@ export interface PluginHostApi {
    *
    * ```ts
    * if (typeof hostApi.resolveApiKey === "function") {
-   *   const out = await hostApi.resolveApiKey({ purpose: "llm", vendor: "openai" });
+   *   // Omit `vendor` to let the host pick the active provider (recommended
+   *   // for vendor-agnostic plugins — host may failover or alias e.g.
+   *   // anthropic→claude).
+   *   const ac = new AbortController();
+   *   const out = await hostApi.resolveApiKey({ purpose: "llm", signal: ac.signal });
    *   if (out.ok) {
-   *     try { useKey(out.bearer()); } finally { out.release(); }
+   *     try {
+   *       // Pass the SAME signal to downstream fetch() — `signal` only aborts
+   *       // the resolution promise here, not in-flight requests the plugin
+   *       // makes with the bearer.
+   *       const res = await fetch(out.baseUrl ?? defaultUrl, {
+   *         headers: { authorization: `Bearer ${out.bearer()}` },
+   *         signal: ac.signal,
+   *       });
+   *       // After release(), `out.bearer()` MUST throw Error("released").
+   *     } finally {
+   *       // `release()` may be sync or async — await for async-safe hosts.
+   *       await out.release?.();
+   *     }
    *   } else {
    *     // out.reason is a discriminated string — plugin decides whether to
    *     // fall back to its own key, mock, or surface a user error.
    *   }
    * }
    * ```
+   *
+   * @param opts.signal - Aborts ONLY the resolution promise (rejects with the
+   * "aborted" reason on the discriminated failure branch). Plugins MUST pass
+   * the same signal to their own downstream `fetch()` calls to abort
+   * in-flight requests. Aborting after a successful resolution also triggers
+   * automatic `release()` on the success result so callers cannot leak keys
+   * via dropped promises.
    *
    * @optional
    */
@@ -846,10 +869,38 @@ export interface PluginHostApi {
 export type ResolveApiKeyResult =
   | {
       ok: true;
+      /**
+       * The vendor actually resolved by the host. May DIFFER from the
+       * `opts.vendor` the plugin requested — hosts are permitted to fail over
+       * to an alternate provider (e.g. when the primary is unhealthy) and to
+       * normalize aliases (e.g. `anthropic→claude`). Plugins that branch on
+       * vendor-specific behavior MUST inspect this field rather than reusing
+       * the request value.
+       */
       vendor: string;
+      /**
+       * Returns the bearer token at the moment of call. Implemented as a thunk
+       * (rather than a plain string field) so the secret is harder to leak via
+       * serialization, structured-clone, or accidental logging.
+       *
+       * @throws {Error} `Error("released")` — after `release()` has been
+       *   invoked (or the request's `AbortSignal` has fired), further
+       *   `bearer()` calls MUST throw. This is a runtime contract; TypeScript
+       *   cannot enforce it at compile time.
+       */
       bearer: () => string;
       baseUrl?: string;
-      release(): void;
+      /**
+       * Disposer that signals the plugin no longer needs the key. The host is
+       * then free to rotate it, zero out buffers, decrement the active-lease
+       * count, etc. MUST be called — plugin authors using the `try/finally`
+       * pattern should `await out.release?.()` so async-safe hosts that need
+       * to flush state (e.g. write an audit row) complete deterministically.
+       *
+       * Return type is intentionally `void | Promise<void>` so hosts may
+       * implement either signature without breaking SDK consumers.
+       */
+      release(): void | Promise<void>;
     }
   | {
       ok: false;
