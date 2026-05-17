@@ -138,7 +138,7 @@ export interface EventSubscription {
  *
  * @example
  * const manifest: PluginManifest = {
- *   id: "com.example.my-plugin",
+ *   id: "my-plugin",
  *   name: "My Plugin",
  *   version: "1.0.0",
  *   entry: "dist/index.js",
@@ -148,7 +148,7 @@ export interface EventSubscription {
  */
 export interface PluginManifest {
 
-  /** Globally unique identifier. Reverse-DNS style recommended (for example `com.example.my-plugin`). Must be stable across versions. */
+  /** Globally unique identifier. Kebab-case (lowercase letters, digits, hyphens; min 3 chars — 2-char names reserved for future system namespaces). Example: `"my-plugin"`. Must be stable across versions. */
   id: string;
   /** Human-readable display name shown in the host UI and plugin pickers. */
   name: string;
