@@ -502,6 +502,28 @@
       },
       "additionalProperties": false
     },
+    "hostSecrets": {
+      "type": "object",
+      "description": "Host-managed secret allowlist. Plugins declare which host-namespaced secrets they need to read via PluginHostApi.resolveApiKey(). Only the marketplace whitelist gates the actual fulfilment — schema acceptance is necessary but not sufficient.",
+      "additionalProperties": false,
+      "properties": {
+        "read": {
+          "type": "array",
+          "description": "Host-namespaced secret keys this plugin requests read access to. Pattern enforces the `llm.apiKey.<vendor>` shape so a typo can't silently widen scope.",
+          "items": {
+            "type": "string",
+            "pattern": "^llm\\.apiKey\\.[a-z][a-z0-9-]*$"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "llmKeySource": {
+      "type": "string",
+      "enum": ["host", "plugin", "none"],
+      "default": "none",
+      "description": "Whether this plugin uses host-managed LLM keys (host), its own keys (plugin), or no LLM at all (none). The 'host' source requires marketplace whitelist authorization at runtime."
+    },
     "publisher": {
       "type": "string",
       "minLength": 1
