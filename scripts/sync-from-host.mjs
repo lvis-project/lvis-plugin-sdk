@@ -9,8 +9,14 @@
  * Host source resolution (in order):
  *   1. LVIS_HOST_REPO_ROOT env var pointing to a local lvis-app checkout.
  *   2. LVIS_HOST_TYPES_PATH env var pointing to a local src/plugins/types.ts file.
- *   3. ../lvis-app sibling checkout.
- *   4. Git clone via LVIS_HOST_REPO_URL + HOST_REF (default branch: main).
+ *   3. Git clone via LVIS_HOST_REPO_URL + HOST_REF (default branch: main).
+ *   4. ../lvis-app sibling checkout (implicit dev convenience fallback).
+ *
+ * Precedence: explicit env-configured URL clone (3) wins over implicit
+ * sibling-checkout discovery (4). Issue #106 — CI / hermetic builds pin
+ * via the URL+REF env vars; if a dev machine also has a sibling
+ * `lvis-app/` checkout, the implicit fallback must not silently shadow
+ * the explicit pin.
  * If none is available, the script errors out.
  */
 
@@ -18,13 +24,57 @@ import ts from "typescript";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
 let CLONE_TMP_DIR = null;
+
+const SAFE_REPO_HOST_ALLOWLIST = new Set([
+  "github.com",
+  "codeload.github.com",
+]);
+
+function assertSafeRepoUrl(rawUrl) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error(
+      `LVIS_HOST_REPO_URL is not a valid URL: ${rawUrl}`,
+    );
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error(
+      `LVIS_HOST_REPO_URL must use https:// (got ${parsed.protocol}). Refusing to clone.`,
+    );
+  }
+  if (!SAFE_REPO_HOST_ALLOWLIST.has(parsed.hostname)) {
+    throw new Error(
+      `LVIS_HOST_REPO_URL host ${parsed.hostname} is not allowlisted. Allowed: ${[...SAFE_REPO_HOST_ALLOWLIST].join(", ")}.`,
+    );
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error(
+      `LVIS_HOST_REPO_URL must not carry userinfo (user:pass@host). Strip credentials and use git's credential helper instead.`,
+    );
+  }
+  if (parsed.port) {
+    throw new Error(
+      `LVIS_HOST_REPO_URL must not carry an explicit port (got :${parsed.port}).`,
+    );
+  }
+}
+
+function assertSafeGitRef(ref) {
+  if (!/^[A-Za-z0-9._\/-]+$/.test(ref) || ref.startsWith("-")) {
+    throw new Error(
+      `HOST_REF contains characters outside the safe set or starts with '-': ${ref}`,
+    );
+  }
+}
 
 function buildHostSources(hostRoot, source) {
   const typesPath = path.join(hostRoot, "src/plugins/types.ts");
@@ -65,30 +115,43 @@ function resolveHostSources() {
     };
   }
 
+  // Precedence: explicit env-configured URL clone wins over implicit
+  // sibling-checkout discovery (issue #106). Reasoning: CI / hermetic
+  // build environments set LVIS_HOST_REPO_URL + HOST_REF on purpose to
+  // pin the contract source. If a dev machine *also* happens to have a
+  // sibling `lvis-app/` checkout (common during cross-repo work), the
+  // implicit sibling should NOT silently shadow the explicit pin —
+  // otherwise CI and local sync diverge. Sibling-checkout is the fallback
+  // when no explicit env is set.
+  const url = process.env.LVIS_HOST_REPO_URL;
+  if (url) {
+    assertSafeRepoUrl(url);
+    const ref = process.env.HOST_REF || "main";
+    assertSafeGitRef(ref);
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "host-types-"));
+    CLONE_TMP_DIR = tmp;
+    try {
+      execFileSync(
+        "git",
+        ["clone", "--depth", "1", "--branch", ref, url, tmp],
+        { stdio: "inherit" },
+      );
+    } catch (e) {
+      console.error(`Failed to clone ${url}.`);
+      throw e;
+    }
+    return buildHostSources(tmp, `clone@${ref}`);
+  }
+
   const siblingRoot = path.resolve(ROOT, "..", "lvis-app");
   if (fs.existsSync(siblingRoot)) {
     return buildHostSources(siblingRoot, `sibling:${siblingRoot}`);
   }
 
-  const url = process.env.LVIS_HOST_REPO_URL;
-  if (!url) {
-    console.error(
-      "ERROR: host contract source not configured. Set LVIS_HOST_REPO_ROOT, set LVIS_HOST_TYPES_PATH (and optionally LVIS_HOST_TOKEN_CONTRACT_PATH), place lvis-app next to this repository, or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository."
-    );
-    process.exit(1);
-  }
-  const ref = process.env.HOST_REF || "main";
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "host-types-"));
-  CLONE_TMP_DIR = tmp;
-  try {
-    execSync(`git clone --depth 1 --branch ${ref} ${url} ${tmp}`, {
-      stdio: "inherit",
-    });
-  } catch (e) {
-    console.error(`Failed to clone ${url}.`);
-    throw e;
-  }
-  return buildHostSources(tmp, `clone@${ref}`);
+  console.error(
+    "ERROR: host contract source not configured. Set LVIS_HOST_REPO_ROOT, set LVIS_HOST_TYPES_PATH (and optionally LVIS_HOST_TOKEN_CONTRACT_PATH), place lvis-app next to this repository, or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository."
+  );
+  process.exit(1);
 }
 
 function hasExportModifier(stmt) {

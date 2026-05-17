@@ -156,13 +156,6 @@ export interface PluginManifest {
         event: string;
         titleField?: string;
         bodyField?: string;
-        /**
-         * When `true`, this event bypasses the host focus-gate suppression and
-         * always fires an OS-level notification regardless of LVIS window focus.
-         * Use for critical flows (meeting capture, security alerts) where the
-         * user must be notified out-of-band. Refs lvis-project/lvis-app#843.
-         * @optional
-         */
         bypassFocusGate?: boolean;
     }>;
     installPolicy?: InstallPolicy;
@@ -179,29 +172,6 @@ export interface PluginManifest {
         description: string;
         category: PluginToolCategory;
         pathFields?: string[];
-        /**
-         * Issue #664 P1 (lvis-app PR #860) — sandbox-write auto-LOW self-attestation.
-         *
-         * When `true`, this tool promises that every value resolved through
-         * `pathFields` will stay inside the owning plugin's sandbox root
-         * (`~/.lvis/plugins/<pluginId>/`). The host reviewer (Layer 5) treats
-         * a sandbox-local write as LOW risk and skips the reviewer-lane
-         * round-trip that would otherwise queue the call in the deferred
-         * queue under headless flow.
-         *
-         * Sound-by-construction: the runtime canonicalizes (`..`, NFD, mixed
-         * case, trailing slash) and verifies the path-containment claim at
-         * invocation time. A tool that declares `true` but emits a path
-         * outside its own sandbox falls back to the standard write rules.
-         *
-         * Use case: plugins like `lvis-plugin-ms-graph` that persist an MSAL
-         * token cache to their own sandbox. Without this flag the host's
-         * `allowedDirectories` does not include plugin sandboxes by design
-         * (§5 file-based memory isolation), so the write would otherwise hit
-         * the "write outside allowed dirs" HIGH rule.
-         *
-         * @optional
-         */
         writesToOwnSandbox?: boolean;
         /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
         version?: string;
@@ -380,12 +350,26 @@ export type McpRuntimeSpec = {
     args?: string[];
     env?: Record<string, string>;
     auth?: "none" | "api-key" | "sso";
+    apiKeyEnv?: string;
 } | {
     transport: "http";
     url: string;
-    auth?: "none" | "api-key" | "sso";
+    auth?: "none" | "api-key" | "sso" | "oauth";
+    apiKeyHeader?: string;
     allowPrivateNetworks?: boolean;
+    oauth?: McpOAuthMetadata;
 };
+export interface McpOAuthMetadata {
+    resource?: string;
+    resourceMetadataUrl?: string;
+    authorizationServers?: string[];
+    scopes?: string[];
+    clientRegistration?: "client-id-metadata-document" | "dynamic" | "preregistration" | "manual";
+}
+export interface McpAuthMetadata extends McpOAuthMetadata {
+    mode: "none" | "api-key" | "sso" | "oauth";
+    transport?: "stdio" | "http";
+}
 /**
  * Catalog entry describing a plugin available for installation through the
  * host marketplace. This is the user-facing summary of a plugin before it is
@@ -424,13 +408,6 @@ export interface PluginMarketplaceItem {
         event: string;
         titleField?: string;
         bodyField?: string;
-        /**
-         * When `true`, this event bypasses the host focus-gate suppression and
-         * always fires an OS-level notification regardless of LVIS window focus.
-         * Use for critical flows (meeting capture, security alerts) where the
-         * user must be notified out-of-band. Refs lvis-project/lvis-app#843.
-         * @optional
-         */
         bypassFocusGate?: boolean;
     }>;
     installPolicy?: InstallPolicy;
@@ -442,6 +419,7 @@ export interface PluginMarketplaceItem {
     requires?: RequiresSpec;
     pluginType?: "plugin" | "mcp" | "agent" | "skill";
     mcpRuntime?: McpRuntimeSpec;
+    mcpAuth?: McpAuthMetadata;
 }
 export type StorageEncoding = "utf-8" | "utf8" | "ascii" | "base64" | "base64url" | "hex" | "latin1" | "binary";
 export interface PluginStorage {
