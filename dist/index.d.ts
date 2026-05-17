@@ -111,7 +111,7 @@ export interface EventSubscription {
  *
  * @example
  * const manifest: PluginManifest = {
- *   id: "com.example.my-plugin",
+ *   id: "my-plugin",
  *   name: "My Plugin",
  *   version: "1.0.0",
  *   entry: "dist/index.js",
@@ -120,7 +120,7 @@ export interface EventSubscription {
  * };
  */
 export interface PluginManifest {
-    /** Globally unique identifier. Reverse-DNS style recommended (for example `com.example.my-plugin`). Must be stable across versions. */
+    /** Globally unique identifier. Kebab-case (lowercase letters, digits, hyphens; min 3 chars — 2-char names reserved for future system namespaces). Example: `"my-plugin"`. Must be stable across versions. */
     id: string;
     /** Human-readable display name shown in the host UI and plugin pickers. */
     name: string;
@@ -151,6 +151,24 @@ export interface PluginManifest {
     auth?: PluginAuthSpec;
     /** Event type names this plugin may emit on the host event bus. Used by the host for validation and ownership checks. @optional */
     emittedEvents?: string[];
+    /**
+     * Host secret access declaration — explicit allowlist for which host-managed
+     * secrets this plugin can read via `hostApi.getSecret`. Default deny: if
+     * unset, plugins can only read their own `plugin.${id}.*` namespaced secrets.
+     *
+     * Currently allowed key prefix: `llm.apiKey.*` only (LLM provider keys).
+     * Other prefixes (web.apiKey, marketplace.apiKey, etc.) are REJECTED by
+     * the manifest validator.
+     *
+     * Audited: every read attempt is logged to host audit; allowed reads
+     * additionally increment a telemetry counter.
+     *
+     * Example:
+     *   "hostSecrets": { "read": ["llm.apiKey.openai"] }
+     */
+    hostSecrets?: {
+        read?: string[];
+    };
     /** Events that should be surfaced as host notifications. Each entry names the event and maps fields of its payload to notification title and body. @optional */
     notificationEvents?: Array<{
         event: string;
@@ -771,4 +789,11 @@ export interface RuntimePlugin {
  * export default factory;
  */
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
+import type { ValidateFunction } from "ajv";
+/**
+ * Compile the bundled plugin manifest JSON schema into an AJV validator.
+ * Host applications should import this instead of re-compiling locally — keeps
+ * SDK schema as the single source of truth.
+ */
+export declare function compileManifestValidator(): ValidateFunction;
 //# sourceMappingURL=index.d.ts.map
