@@ -184,6 +184,25 @@ export interface PluginManifest {
   /** Event type names this plugin may emit on the host event bus. Used by the host for validation and ownership checks. @optional */
   emittedEvents?: string[];
 
+  /**
+   * Host secret access declaration — explicit allowlist for which host-managed
+   * secrets this plugin can read via `hostApi.getSecret`. Default deny: if
+   * unset, plugins can only read their own `plugin.${id}.*` namespaced secrets.
+   *
+   * Currently allowed key prefix: `llm.apiKey.*` only (LLM provider keys).
+   * Other prefixes (web.apiKey, marketplace.apiKey, etc.) are REJECTED by
+   * the manifest validator.
+   *
+   * Audited: every read attempt is logged to host audit; allowed reads
+   * additionally increment a telemetry counter.
+   *
+   * Example:
+   *   "hostSecrets": { "read": ["llm.apiKey.openai"] }
+   */
+  hostSecrets?: {
+    read?: string[];
+  };
+
   /** Events that should be surfaced as host notifications. Each entry names the event and maps fields of its payload to notification title and body. @optional */
   notificationEvents?: Array<{
     event: string;

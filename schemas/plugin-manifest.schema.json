@@ -296,6 +296,23 @@
         "minLength": 1
       }
     },
+    "hostSecrets": {
+      "type": "object",
+      "description": "Explicit allowlist of host-managed secrets the plugin reads via hostApi.getSecret. Currently allowed: llm.apiKey.* only. Default deny when unset.",
+      "additionalProperties": false,
+      "properties": {
+        "read": {
+          "type": "array",
+          "description": "Secret keys this plugin is permitted to read. Each entry MUST match ^llm\\.apiKey\\.[a-z-]+$ — other prefixes rejected at validation time.",
+          "items": {
+            "type": "string",
+            "pattern": "^llm\\.apiKey\\.[a-z-]+$"
+          },
+          "uniqueItems": true,
+          "default": []
+        }
+      }
+    },
     "startupTimeoutMs": {
       "type": "integer",
       "minimum": 1,
