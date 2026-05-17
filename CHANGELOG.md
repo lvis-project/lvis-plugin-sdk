@@ -56,6 +56,17 @@ Host PR (lvis-app side) 에서 emit 책임을 가지며 SDK 는 type 만 노출.
 - `bun run check:drift` clean.
 - `bun run check:dist-drift` clean.
 
+### Security — host-sync script hardening (셀프리뷰 cycle-1 반영)
+
+`scripts/sync-from-host.mjs` + `scripts/sync-schema-from-host.mjs` 의
+`git clone` 호출이 shell-interpolated `execSync` 라 `HOST_REF` /
+`LVIS_HOST_REPO_URL` 에 incoming shell metacharacter 가 들어오면
+실행됐던 path 제거. argv-form `execFileSync` 로 전환 + URL
+allowlist (`github.com`, `codeload.github.com`, https only) + git
+ref 문자셋 검증 (`[A-Za-z0-9._\/-]+`, `-` 시작 금지) 추가. dev-only
+script 라 trust boundary 는 dev env 지만 hardened CI / repository_dispatch
+payload 경로 차단.
+
 ### Companion repos (bundle-id rename follow-up)
 
 host 의 `lge-*` → `violet-*` bundle-id rename 영향 받는 plugin repo (별도 PR):

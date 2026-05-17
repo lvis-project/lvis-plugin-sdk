@@ -24,13 +24,47 @@ import ts from "typescript";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
 let CLONE_TMP_DIR = null;
+
+const SAFE_REPO_HOST_ALLOWLIST = new Set([
+  "github.com",
+  "codeload.github.com",
+]);
+
+function assertSafeRepoUrl(rawUrl) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error(
+      `LVIS_HOST_REPO_URL is not a valid URL: ${rawUrl}`,
+    );
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error(
+      `LVIS_HOST_REPO_URL must use https:// (got ${parsed.protocol}). Refusing to clone.`,
+    );
+  }
+  if (!SAFE_REPO_HOST_ALLOWLIST.has(parsed.hostname)) {
+    throw new Error(
+      `LVIS_HOST_REPO_URL host ${parsed.hostname} is not allowlisted. Allowed: ${[...SAFE_REPO_HOST_ALLOWLIST].join(", ")}.`,
+    );
+  }
+}
+
+function assertSafeGitRef(ref) {
+  if (!/^[A-Za-z0-9._\/-]+$/.test(ref) || ref.startsWith("-")) {
+    throw new Error(
+      `HOST_REF contains characters outside the safe set or starts with '-': ${ref}`,
+    );
+  }
+}
 
 function buildHostSources(hostRoot, source) {
   const typesPath = path.join(hostRoot, "src/plugins/types.ts");
@@ -81,13 +115,17 @@ function resolveHostSources() {
   // when no explicit env is set.
   const url = process.env.LVIS_HOST_REPO_URL;
   if (url) {
+    assertSafeRepoUrl(url);
     const ref = process.env.HOST_REF || "main";
+    assertSafeGitRef(ref);
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "host-types-"));
     CLONE_TMP_DIR = tmp;
     try {
-      execSync(`git clone --depth 1 --branch ${ref} ${url} ${tmp}`, {
-        stdio: "inherit",
-      });
+      execFileSync(
+        "git",
+        ["clone", "--depth", "1", "--branch", ref, url, tmp],
+        { stdio: "inherit" },
+      );
     } catch (e) {
       console.error(`Failed to clone ${url}.`);
       throw e;

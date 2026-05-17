@@ -22,7 +22,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -31,6 +31,38 @@ const TARGET = path.join(ROOT, "schemas/plugin-manifest.schema.json");
 const HOST_SCHEMA_REL = "schemas/plugin.schema.json";
 
 let CLONE_TMP_DIR = null;
+
+const SAFE_REPO_HOST_ALLOWLIST = new Set([
+  "github.com",
+  "codeload.github.com",
+]);
+
+function assertSafeRepoUrl(rawUrl) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error(`LVIS_HOST_REPO_URL is not a valid URL: ${rawUrl}`);
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error(
+      `LVIS_HOST_REPO_URL must use https:// (got ${parsed.protocol}). Refusing to clone.`,
+    );
+  }
+  if (!SAFE_REPO_HOST_ALLOWLIST.has(parsed.hostname)) {
+    throw new Error(
+      `LVIS_HOST_REPO_URL host ${parsed.hostname} is not allowlisted. Allowed: ${[...SAFE_REPO_HOST_ALLOWLIST].join(", ")}.`,
+    );
+  }
+}
+
+function assertSafeGitRef(ref) {
+  if (!/^[A-Za-z0-9._\/-]+$/.test(ref) || ref.startsWith("-")) {
+    throw new Error(
+      `HOST_REF contains characters outside the safe set or starts with '-': ${ref}`,
+    );
+  }
+}
 
 function resolveHostSchemaPath() {
   const envRoot = process.env.LVIS_HOST_REPO_ROOT;
@@ -47,11 +79,17 @@ function resolveHostSchemaPath() {
   // (issue #106). See sync-from-host.mjs for the full rationale.
   const url = process.env.LVIS_HOST_REPO_URL;
   if (url) {
+    assertSafeRepoUrl(url);
     const ref = process.env.HOST_REF || "main";
+    assertSafeGitRef(ref);
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "host-schema-"));
     CLONE_TMP_DIR = tmp;
     try {
-      execSync(`git clone --depth 1 --branch ${ref} ${url} ${tmp}`, { stdio: "inherit" });
+      execFileSync(
+        "git",
+        ["clone", "--depth", "1", "--branch", ref, url, tmp],
+        { stdio: "inherit" },
+      );
     } catch (e) {
       console.error(`Failed to clone ${url}.`);
       throw e;
