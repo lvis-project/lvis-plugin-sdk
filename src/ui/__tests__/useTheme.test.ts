@@ -39,12 +39,12 @@ describe("useTheme v2", () => {
   it("sets data-shell on event", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
-    bridge.fire({ bundleId: "lge-light", shell: "light" });
+    bridge.fire({ bundleId: "violet-light", shell: "light" });
     expect(document.documentElement.getAttribute("data-shell")).toBe("light");
   });
 
   it("accepts all valid bundleIds", () => {
-    const validIds = ["tokyo-night", "midnight", "forest", "lge-light", "lge-dark", "high-contrast"];
+    const validIds = ["tokyo-night", "midnight", "forest", "violet-light", "violet-dark", "high-contrast"];
     for (const bundleId of validIds) {
       document.documentElement.removeAttribute("data-theme-bundle");
       const bridge = makeBridge();
@@ -83,10 +83,10 @@ describe("useTheme v2", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
     // First apply valid shell
-    bridge.fire({ bundleId: "lge-light", shell: "light" });
+    bridge.fire({ bundleId: "violet-light", shell: "light" });
     expect(document.documentElement.getAttribute("data-shell")).toBe("light");
     // Then fire with invalid shell — stale attr must be removed
-    bridge.fire({ bundleId: "lge-light", shell: "high-contrast" });
+    bridge.fire({ bundleId: "violet-light", shell: "high-contrast" });
     expect(document.documentElement.hasAttribute("data-shell")).toBe(false);
   });
 
@@ -139,21 +139,21 @@ describe("useTheme v2", () => {
   it("does not set legacy data-theme attribute (v1 field removed)", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
-    bridge.fire({ bundleId: "lge-dark", shell: "dark" });
+    bridge.fire({ bundleId: "violet-dark", shell: "dark" });
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
   });
 
   it("does not set legacy data-chat-theme attribute (v1 field removed)", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
-    bridge.fire({ bundleId: "lge-dark", shell: "dark" });
+    bridge.fire({ bundleId: "violet-dark", shell: "dark" });
     expect(document.documentElement.hasAttribute("data-chat-theme")).toBe(false);
   });
 
   it("does not set legacy data-code-theme attribute (v1 field removed)", () => {
     const bridge = makeBridge();
     renderHook(() => useTheme(bridge));
-    bridge.fire({ bundleId: "lge-dark", shell: "dark" });
+    bridge.fire({ bundleId: "violet-dark", shell: "dark" });
     expect(document.documentElement.hasAttribute("data-code-theme")).toBe(false);
   });
 });

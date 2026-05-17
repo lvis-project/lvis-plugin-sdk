@@ -11,8 +11,12 @@
  * Host source resolution mirrors `sync-from-host.mjs`:
  *   1. LVIS_HOST_REPO_ROOT env var pointing to a local lvis-app checkout.
  *   2. LVIS_HOST_SCHEMA_PATH env var (preferred for local dev / CI sparse checkout)
- *   3. ../lvis-app sibling checkout.
- *   4. LVIS_HOST_REPO_URL clone @ HOST_REF (default branch: main)
+ *   3. LVIS_HOST_REPO_URL clone @ HOST_REF (default branch: main)
+ *   4. ../lvis-app sibling checkout (implicit dev convenience fallback)
+ *
+ * Precedence: explicit env-configured URL clone (3) wins over implicit
+ * sibling discovery (4) — see sync-from-host.mjs header for rationale
+ * (issue #106).
  */
 
 import fs from "node:fs";
@@ -39,28 +43,31 @@ function resolveHostSchemaPath() {
     return { path: envPath, source: `env:${envPath}` };
   }
 
+  // Precedence: explicit URL clone wins over implicit sibling-checkout
+  // (issue #106). See sync-from-host.mjs for the full rationale.
+  const url = process.env.LVIS_HOST_REPO_URL;
+  if (url) {
+    const ref = process.env.HOST_REF || "main";
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "host-schema-"));
+    CLONE_TMP_DIR = tmp;
+    try {
+      execSync(`git clone --depth 1 --branch ${ref} ${url} ${tmp}`, { stdio: "inherit" });
+    } catch (e) {
+      console.error(`Failed to clone ${url}.`);
+      throw e;
+    }
+    return { path: path.join(tmp, HOST_SCHEMA_REL), source: `clone@${ref}` };
+  }
+
   const siblingRoot = path.resolve(ROOT, "..", "lvis-app");
   if (fs.existsSync(siblingRoot)) {
     return { path: path.join(siblingRoot, HOST_SCHEMA_REL), source: `sibling:${siblingRoot}` };
   }
 
-  const url = process.env.LVIS_HOST_REPO_URL;
-  if (!url) {
-    console.error(
-      "ERROR: host schema source not configured. Set LVIS_HOST_REPO_ROOT, set LVIS_HOST_SCHEMA_PATH, place lvis-app next to this repository, or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository.",
-    );
-    process.exit(1);
-  }
-  const ref = process.env.HOST_REF || "main";
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "host-schema-"));
-  CLONE_TMP_DIR = tmp;
-  try {
-    execSync(`git clone --depth 1 --branch ${ref} ${url} ${tmp}`, { stdio: "inherit" });
-  } catch (e) {
-    console.error(`Failed to clone ${url}.`);
-    throw e;
-  }
-  return { path: path.join(tmp, HOST_SCHEMA_REL), source: `clone@${ref}` };
+  console.error(
+    "ERROR: host schema source not configured. Set LVIS_HOST_REPO_ROOT, set LVIS_HOST_SCHEMA_PATH, place lvis-app next to this repository, or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository.",
+  );
+  process.exit(1);
 }
 
 /**
