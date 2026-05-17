@@ -7,6 +7,95 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.10.0] - 2026-05-17
+
+### Added — MCP auth metadata types (drift sync from host)
+
+host (lvis-app) 가 추가한 MCP 서버 인증 metadata 컨트랙트가 drift sync 로
+SDK 에 반영. 새 type surface — 외부 consumer 가 import 가능한 추가 contract
+라서 minor (5.9.x → 5.10.0).
+
+- **`McpRuntimeSpec.stdio` 변형 추가 필드**:
+  - `apiKeyEnv?: string` — host 가 plugin 환경변수에서 읽을 API key envvar
+    이름.
+- **`McpRuntimeSpec.http` 변형 추가 필드**:
+  - `apiKeyHeader?: string` — request header 이름.
+  - `allowPrivateNetworks?: boolean` — RFC1918 / loopback URL 접근 허용 opt-in.
+  - `oauth?: McpOAuthMetadata` — OAuth resource-server discovery handle.
+- **신규 `interface McpOAuthMetadata`** (MCP 2025-06-18 + RFC 8414/7591 매핑):
+  - `resource?: string`
+  - `resourceMetadataUrl?: string`
+  - `authorizationServers?: string[]`
+  - `scopes?: string[]`
+  - `clientRegistration?: "client-id-metadata-document" | "dynamic" |
+    "preregistration" | "manual"`
+- **신규 `interface McpAuthMetadata extends McpOAuthMetadata`**:
+  - `mode: "none" | "api-key" | "sso" | "oauth"` (discriminator)
+  - `transport?: "stdio" | "http"`
+- **`PluginMarketplaceItem.mcpAuth?: McpAuthMetadata`** — 마켓플레이스 카탈로그
+  entry 에 노출 (PluginManifest 아님).
+
+Host PR (lvis-app side) 에서 emit 책임을 가지며 SDK 는 type 만 노출. plugin
+런타임 로직 변경 없음.
+
+**Schema gap (known)**: `schemas/plugin-manifest.schema.json` 에는 `mcpAuth`/
+`mcpRuntime` 가 아직 없음. 본 PR 은 type 만 sync — host 가 `additionalProperties:
+false` 라서 plugin manifest 에 `mcpAuth` 적으면 host validate 실패. host 측
+schema PR 머지 후 `bun run sync:schema` 로 따라잡을 예정 (architecture.md §9.5
+mcpAuth 문서화와 같은 follow-up).
+
+### Chore — issue sweep: drift sync + script precedence + react-bundle 주석
+
+세 오픈 이슈 일괄 처리.
+
+- **#152** drift sync — host main 의 `PluginMarketplaceItem` + 위 MCP auth
+  surface + token 컨트랙트 업데이트 (사내 테마 bundle id `lge-light`/
+  `lge-dark` → `violet-light`/`violet-dark`) 를 `src/index.ts` +
+  `ui/tokens/index.ts` + `ui/tokens/theme-bundles.ts` 에 sync.
+  `useTheme.test.ts` + `inject.test.ts` + `README.md` 의 하드코딩 bundle
+  id 도 동시 갱신. (#146 superseded by #152 + closed.)
+- **#106** host-sync precedence — `scripts/sync-from-host.mjs` +
+  `scripts/sync-schema-from-host.mjs` 가 implicit `../lvis-app` sibling
+  체크아웃을 explicit `LVIS_HOST_REPO_URL` + `HOST_REF` env 위로
+  올렸던 순서를 반대로. CI / hermetic build 에서 명시 URL 핀이 dev 머신
+  의 우연한 sibling 으로 silent shadow 되던 문제 차단.
+- **#103** `defineLvisPluginConfig` React 주석 모순 정정 —
+  `HOST_BROWSER_EXTERNAL_MODULES` 주석이 "MUST come from host" 였지만 실제
+  로는 `noExternal: [BUNDLE_EVERYTHING_REGEX]` 가 override 해서 plugin 마다
+  React 번들. 주석을 사실 (per-plugin bundle, sandboxed renderer 라
+  separate React tree 정상) 에 맞춰 다시 작성 + 향후 host-injected React
+  가 도입되면 anchor 가 되는 자리로 유지. 코드 동작 변경 없음.
+
+### Tests
+- 431/431 (테스트 갱신만, 새 케이스 추가는 없음).
+- `bun run check:drift` clean.
+- `bun run check:dist-drift` clean.
+
+### Security — host-sync script hardening (셀프리뷰 cycle-1 반영)
+
+`scripts/sync-from-host.mjs` + `scripts/sync-schema-from-host.mjs` 의
+`git clone` 호출이 shell-interpolated `execSync` 라 `HOST_REF` /
+`LVIS_HOST_REPO_URL` 에 incoming shell metacharacter 가 들어오면
+실행됐던 path 제거. argv-form `execFileSync` 로 전환 + URL
+allowlist (`github.com`, `codeload.github.com`, https only) + git
+ref 문자셋 검증 (`[A-Za-z0-9._\/-]+`, `-` 시작 금지) 추가. dev-only
+script 라 trust boundary 는 dev env 지만 hardened CI / repository_dispatch
+payload 경로 차단.
+
+### Companion repos (bundle-id rename follow-up)
+
+host 의 `lge-*` → `violet-*` bundle-id rename 영향 받는 plugin repo (별도 PR):
+- `lvis-plugin-meeting` (`test/themePropagate.test.ts`)
+- `lvis-plugin-local-indexer` (`src/ui/indexer-control.styles.js`,
+  `scripts/inline-sdk-tokens.mjs`)
+
+### Notes
+- `bun run check:schema-drift` 는 host 가 `schemas/plugin.schema.json` 을
+  현재 expected path 에 두지 않아 별개 실패 — 본 PR scope 외 (host repo
+  side 조정 필요).
+
+---
+
 ## [5.9.2] - 2026-05-17
 
 > **Version slot note**: tags `v5.9.0` (df6bacc) and `v5.9.1` (0ccc887)

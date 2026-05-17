@@ -16,12 +16,28 @@ import type { Options } from "tsup";
 export const HOST_EXTERNAL_MODULES = ["electron"] as const;
 
 /**
- * Additional modules treated as external for browser-target plugin
- * bundles (UI panels rendered inside the host renderer process).
+ * Modules historically reserved as "host-shared" for browser-target
+ * plugin bundles. **In practice they are bundled, not shared** — the
+ * `noExternal: [BUNDLE_EVERYTHING_REGEX]` policy below overrides this
+ * list at tsup-level (tsup checks `noExternal` before `external`).
  *
- * `react` / `react-dom` MUST come from the host's React context — if a
- * plugin's UI bundle ships its own copy, you get two React instances and
- * the React context API silently fails (provider/consumer mismatch).
+ * Why bundling React per plugin is OK:
+ *   - Plugin webviews mount in a sandboxed renderer subtree (sidebar /
+ *     detached window) with their own React root. They do not share
+ *     a React provider/context tree with the host's main window — so
+ *     two React instances co-existing is the expected design, not a
+ *     bug.
+ *   - The historical "MUST come from host" prescription assumed an
+ *     in-process provider/consumer relationship that never materialized.
+ *
+ * Trade-off accepted: every plugin webview that imports React ships
+ * ~1MB. If/when a future React-context sharing mechanism arrives
+ * (host injects `window.React` via `plugin-ui-shell.html` + plugin
+ * tsup alias), this list flips back to load-bearing. Until then it is
+ * informational only — left in place so the eventual escape hatch
+ * has a named anchor.
+ *
+ * See issue #103 for the design discussion.
  */
 export const HOST_BROWSER_EXTERNAL_MODULES = ["react", "react-dom"] as const;
 
@@ -131,9 +147,12 @@ export const BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
  * ```
  *
  * Multi-target (host + browser UI). The browser entry must set
- * `platform: "browser"` explicitly so the helper auto-adds
- * `react` / `react-dom` to `external` (otherwise React would be bundled
- * twice, breaking the host's React context):
+ * `platform: "browser"` explicitly. The helper still adds
+ * `react` / `react-dom` to the `external` list for forward-compat
+ * (future host-injected React anchor), but `noExternal:
+ * [BUNDLE_EVERYTHING_REGEX]` actually wins — React is bundled
+ * per-plugin. See the JSDoc on `HOST_BROWSER_EXTERNAL_MODULES`
+ * for the design discussion and trade-offs.
  * ```ts
  * export default defineLvisPluginConfig([
  *   { entry: ["src/hostPlugin.ts"] },
