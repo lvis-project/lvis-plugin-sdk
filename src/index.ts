@@ -800,8 +800,20 @@ export interface PluginHostApi {
   };
 }
 
+/**
+ * §8 ApprovalChoice — mirrors the host `approval-gate.ts` union.
+ *
+ * Plugin contract (REQUIRED):
+ *   - "allow-once" / "allow-session" are HOST-OWNED LIFETIMES. Plugins MUST
+ *     re-request through the host approval gate for each tool invocation;
+ *     caching either value inside the plugin process is a contract violation.
+ *   - Only "allow-always" may be remembered, and only if the host's
+ *     `rememberPattern` indicates a persisted rule (verified by host audit).
+ *   - "deny-once" / "deny-always" terminate the current tool call only.
+ */
 export type ApprovalChoice =
   | "allow-once"
+  | "allow-session"
   | "allow-always"
   | "deny-once"
   | "deny-always";
