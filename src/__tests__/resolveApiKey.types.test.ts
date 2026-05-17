@@ -35,7 +35,7 @@ function validateManifest(obj: unknown): { valid: boolean; errors: string[] } {
 }
 
 const VALID_MINIMAL: PluginManifest = {
-  id: "com.example.host-key-plugin",
+  id: "example-host-key-plugin",
   name: "Host Key Plugin",
   version: "1.0.0",
   entry: "dist/index.js",
