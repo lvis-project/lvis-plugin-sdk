@@ -7,32 +7,61 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [5.9.3] - 2026-05-17
+## [5.10.0] - 2026-05-17
+
+### Added — MCP auth metadata types (drift sync from host)
+
+host (lvis-app) 가 추가한 MCP 서버 인증 metadata 컨트랙트가 drift sync 로
+SDK 에 반영. 새 type surface — 외부 consumer 가 import 가능한 추가 contract
+라서 minor (5.9.x → 5.10.0).
+
+- `McpRuntimeSpec.apiKeyEnv?: string` — host 가 plugin 환경변수에서 읽을 API
+  key 의 env 이름.
+- `McpRuntimeSpec.apiKeyHeader?: string` — request header 이름 (default
+  `Authorization`).
+- `McpRuntimeSpec.oauth?: McpOAuthMetadata` — OAuth client metadata 핸들.
+- 신규 `interface McpOAuthMetadata` — `clientId`, `scopes`, `authorizationUrl`,
+  `tokenUrl`.
+- 신규 `interface McpAuthMetadata extends McpOAuthMetadata` — 향후 OAuth 외
+  메커니즘 확장 anchor.
+- `PluginManifest.mcpAuth?: McpAuthMetadata` — manifest 최상위 노출.
+
+Host PR (lvis-app side) 에서 emit 책임을 가지며 SDK 는 type 만 노출. plugin
+런타임 로직 변경 없음.
 
 ### Chore — issue sweep: drift sync + script precedence + react-bundle 주석
 
-세 오픈 이슈 일괄 처리. 외부 API surface 무변경.
+세 오픈 이슈 일괄 처리.
 
-- **#152** drift sync — host main 의 `PluginMarketplaceItem` / token 컨트랙트
-  업데이트 (사내 테마 bundle id `lge-light`/`lge-dark` → `violet-light`/
-  `violet-dark` 포함) 를 `src/index.ts` + `ui/tokens/index.ts` +
-  `ui/tokens/theme-bundles.ts` 에 sync. `useTheme.test.ts` 의 하드코딩
-  bundle id 도 동시 갱신. (#146 superseded by #152 + closed.)
+- **#152** drift sync — host main 의 `PluginMarketplaceItem` + 위 MCP auth
+  surface + token 컨트랙트 업데이트 (사내 테마 bundle id `lge-light`/
+  `lge-dark` → `violet-light`/`violet-dark`) 를 `src/index.ts` +
+  `ui/tokens/index.ts` + `ui/tokens/theme-bundles.ts` 에 sync.
+  `useTheme.test.ts` + `inject.test.ts` + `README.md` 의 하드코딩 bundle
+  id 도 동시 갱신. (#146 superseded by #152 + closed.)
 - **#106** host-sync precedence — `scripts/sync-from-host.mjs` +
   `scripts/sync-schema-from-host.mjs` 가 implicit `../lvis-app` sibling
   체크아웃을 explicit `LVIS_HOST_REPO_URL` + `HOST_REF` env 위로
   올렸던 순서를 반대로. CI / hermetic build 에서 명시 URL 핀이 dev 머신
   의 우연한 sibling 으로 silent shadow 되던 문제 차단.
-- **#103** `defineLvisPluginConfig` React 주석 모순 정정 — `HOST_BROWSER_EXTERNAL_MODULES`
-  주석이 "MUST come from host" 였지만 실제로는 `noExternal: [BUNDLE_EVERYTHING_REGEX]`
-  가 override 해서 plugin 마다 React 번들. 주석을 사실 (per-plugin bundle,
-  sandboxed renderer 라 separate React tree 정상) 에 맞춰 다시 작성 +
-  향후 host-injected React 가 도입되면 anchor 가 되는 자리로 유지. 코드
-  동작 변경 없음.
+- **#103** `defineLvisPluginConfig` React 주석 모순 정정 —
+  `HOST_BROWSER_EXTERNAL_MODULES` 주석이 "MUST come from host" 였지만 실제
+  로는 `noExternal: [BUNDLE_EVERYTHING_REGEX]` 가 override 해서 plugin 마다
+  React 번들. 주석을 사실 (per-plugin bundle, sandboxed renderer 라
+  separate React tree 정상) 에 맞춰 다시 작성 + 향후 host-injected React
+  가 도입되면 anchor 가 되는 자리로 유지. 코드 동작 변경 없음.
 
 ### Tests
 - 431/431 (테스트 갱신만, 새 케이스 추가는 없음).
 - `bun run check:drift` clean.
+- `bun run check:dist-drift` clean.
+
+### Companion repos (bundle-id rename follow-up)
+
+host 의 `lge-*` → `violet-*` bundle-id rename 영향 받는 plugin repo (별도 PR):
+- `lvis-plugin-meeting` (`test/themePropagate.test.ts`)
+- `lvis-plugin-local-indexer` (`src/ui/indexer-control.styles.js`,
+  `scripts/inline-sdk-tokens.mjs`)
 
 ### Notes
 - `bun run check:schema-drift` 는 host 가 `schemas/plugin.schema.json` 을

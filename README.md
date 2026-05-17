@@ -52,7 +52,7 @@ No submodule is required.
 
 ```typescript
 interface LvisHostThemeEvent {
-  bundleId: "tokyo-night" | "midnight" | "forest" | "lge-light" | "lge-dark" | "high-contrast";
+  bundleId: "tokyo-night" | "midnight" | "forest" | "violet-light" | "violet-dark" | "high-contrast";
   shell: "light" | "dark";
   tokens: LvisTokenMap; // key 는 이미 "--lvis-bg" 형태 — prefix 추가 불필요
 }
@@ -109,8 +109,8 @@ bridge.onEvent("host.theme.changed", (data) => {
 | `"tokyo-night"` | `"dark"` | Tokyo Night 다크 테마 |
 | `"midnight"` | `"dark"` | Midnight 다크 테마 |
 | `"forest"` | `"dark"` | Forest 다크 테마 |
-| `"lge-light"` | `"light"` | LGE 공식 라이트 테마 |
-| `"lge-dark"` | `"dark"` | LGE 공식 다크 테마 |
+| `"violet-light"` | `"light"` | Violet 라이트 테마 |
+| `"violet-dark"` | `"dark"` | Violet 다크 테마 |
 | `"high-contrast"` | `"dark"` | 고대비 접근성 테마 |
 
 ### `$schema` URL migration (deprecation in progress)

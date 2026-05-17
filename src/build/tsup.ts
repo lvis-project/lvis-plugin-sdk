@@ -147,9 +147,12 @@ export const BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
  * ```
  *
  * Multi-target (host + browser UI). The browser entry must set
- * `platform: "browser"` explicitly so the helper auto-adds
- * `react` / `react-dom` to `external` (otherwise React would be bundled
- * twice, breaking the host's React context):
+ * `platform: "browser"` explicitly. The helper still adds
+ * `react` / `react-dom` to the `external` list for forward-compat
+ * (future host-injected React anchor), but `noExternal:
+ * [BUNDLE_EVERYTHING_REGEX]` actually wins — React is bundled
+ * per-plugin. See the JSDoc on `HOST_BROWSER_EXTERNAL_MODULES`
+ * for the design discussion and trade-offs.
  * ```ts
  * export default defineLvisPluginConfig([
  *   { entry: ["src/hostPlugin.ts"] },
