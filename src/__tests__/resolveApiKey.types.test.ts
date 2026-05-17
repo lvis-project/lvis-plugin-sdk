@@ -69,6 +69,55 @@ describe("ResolveApiKeyResult — discriminated union narrowing", () => {
     }
   });
 
+  it("release() accepts both void and Promise<void> (async-safe hosts)", async () => {
+    // Sync release — the original v5.5 shape.
+    const syncResult: ResolveApiKeyResult = {
+      ok: true,
+      vendor: "openai",
+      bearer: () => "sk-sync",
+      release: () => {
+        /* sync */
+      },
+    };
+
+    // Async release — wider host shape (e.g. hosts that flush an audit row
+    // before resolving). MUST type-check against the same union without
+    // requiring a cast.
+    const asyncResult: ResolveApiKeyResult = {
+      ok: true,
+      vendor: "openai",
+      bearer: () => "sk-async",
+      release: async () => {
+        await Promise.resolve();
+      },
+    };
+
+    if (syncResult.ok) {
+      // `await` on a `void | Promise<void>` returns `void` either way —
+      // exercising both paths proves the union widening is real.
+      await syncResult.release();
+    }
+    if (asyncResult.ok) {
+      await asyncResult.release();
+    }
+
+    expect(true).toBe(true);
+  });
+
+  it("post-release bearer() contract is documented (JSDoc @throws)", () => {
+    // The contract is "after release(), bearer() MUST throw Error('released')".
+    // It is a runtime contract — TypeScript cannot enforce it, so we assert
+    // the JSDoc annotation is present in the published source. This protects
+    // against accidental doc deletion in a future refactor.
+    const fs = require("node:fs") as typeof import("node:fs");
+    const path = require("node:path") as typeof import("node:path");
+    const source = fs.readFileSync(
+      path.join(__dirname, "../index.ts"),
+      "utf8",
+    );
+    expect(source).toMatch(/@throws \{Error\} `Error\("released"\)`/);
+  });
+
   it("ok: true branch accepts optional baseUrl", () => {
     const result: ResolveApiKeyResult = {
       ok: true,
