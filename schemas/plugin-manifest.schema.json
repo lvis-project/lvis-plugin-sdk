@@ -21,7 +21,7 @@
     },
     "id": {
       "type": "string",
-      "description": "Plugin unique identifier (dot-format recommended)",
+      "description": "Plugin unique identifier. Kebab-case (lowercase letters, digits, hyphens). Min 3 chars — 2-char names reserved for future system namespaces. Example: \"my-plugin\".",
       "pattern": "^[a-z][a-z0-9-]*$",
       "minLength": 3,
       "maxLength": 128
@@ -303,7 +303,7 @@
       "properties": {
         "read": {
           "type": "array",
-          "description": "Secret keys this plugin is permitted to read. Each entry MUST match ^llm\\.apiKey\\.[a-z-]+$ — other prefixes rejected at validation time.",
+          "description": "Secret keys this plugin is permitted to read. Each entry MUST match ^llm\\.apiKey\\.[a-z]+(-[a-z]+)*$ — leading/trailing/consecutive dashes and other prefixes are rejected at validation time.",
           "items": {
             "type": "string",
             "pattern": "^llm\\.apiKey\\.[a-z]+(-[a-z]+)*$"
