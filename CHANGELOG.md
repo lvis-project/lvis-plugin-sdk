@@ -7,6 +7,37 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [5.11.0] - 2026-05-17
+
+### BREAKING (soft) — plugin `id` pattern narrowed
+
+Plugin manifest `id` field pattern changed from `^[a-zA-Z][a-zA-Z0-9._-]*$` to
+`^[a-z][a-z0-9-]*$` (lowercase-only, hyphen-only separator, no dot, no
+underscore). Existing manifests whose `id` contains uppercase letters, dots, or
+underscores will fail AJV validation and fail-load in the host runtime. Migrate
+by converting to kebab-case (e.g. `com.example.my-plugin` → `my-plugin`).
+
+### Added — `compileManifestValidator()` export (B5)
+
+```ts
+import { compileManifestValidator } from "@lvis/plugin-sdk";
+const validate = compileManifestValidator();
+```
+
+Host applications and CI tooling can now import the pre-compiled AJV validator
+directly from the SDK instead of re-compiling locally, keeping the schema as
+the single source of truth. The returned `ValidateFunction` is cached after the
+first call.
+
+### Fixed — `hostSecrets.read` pattern rejects leading/trailing/consecutive dashes (T1-7)
+
+`hostSecrets.read` item pattern tightened from `^llm\.apiKey\.[a-z-]+$` to
+`^llm\.apiKey\.[a-z]+(-[a-z]+)*$`. Values like `llm.apiKey.azure-` (trailing
+dash), `llm.apiKey.-azure` (leading dash), and `llm.apiKey.azure--foundry`
+(consecutive dashes) are now rejected at validation time.
+
+---
+
 ## [5.10.0] - 2026-05-17
 
 ### Added — MCP auth metadata types (drift sync from host)

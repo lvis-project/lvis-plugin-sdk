@@ -138,7 +138,7 @@ export interface EventSubscription {
  *
  * @example
  * const manifest: PluginManifest = {
- *   id: "com.example.my-plugin",
+ *   id: "my-plugin",
  *   name: "My Plugin",
  *   version: "1.0.0",
  *   entry: "dist/index.js",
@@ -148,7 +148,7 @@ export interface EventSubscription {
  */
 export interface PluginManifest {
 
-  /** Globally unique identifier. Reverse-DNS style recommended (for example `com.example.my-plugin`). Must be stable across versions. */
+  /** Globally unique identifier. Kebab-case (lowercase letters, digits, hyphens; min 3 chars — 2-char names reserved for future system namespaces). Example: `"my-plugin"`. Must be stable across versions. */
   id: string;
   /** Human-readable display name shown in the host UI and plugin pickers. */
   name: string;
@@ -862,8 +862,20 @@ export type ResolveApiKeyResult =
         | "user-endpoint-with-host-key";
     };
 
+/**
+ * §8 ApprovalChoice — mirrors the host `approval-gate.ts` union.
+ *
+ * Plugin contract (REQUIRED):
+ *   - "allow-once" / "allow-session" are HOST-OWNED LIFETIMES. Plugins MUST
+ *     re-request through the host approval gate for each tool invocation;
+ *     caching either value inside the plugin process is a contract violation.
+ *   - Only "allow-always" may be remembered, and only if the host's
+ *     `rememberPattern` indicates a persisted rule (verified by host audit).
+ *   - "deny-once" / "deny-always" terminate the current tool call only.
+ */
 export type ApprovalChoice =
   | "allow-once"
+  | "allow-session"
   | "allow-always"
   | "deny-once"
   | "deny-always";
@@ -997,3 +1009,30 @@ export interface RuntimePlugin {
  * export default factory;
  */
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
+
+// ─── Manifest validator ────────────────────────────────────────────────────────
+
+import { createRequire } from "node:module";
+import type { ValidateFunction } from "ajv";
+
+const _require = createRequire(import.meta.url);
+
+let _cachedValidator: ValidateFunction | null = null;
+
+/**
+ * Compile the bundled plugin manifest JSON schema into an AJV validator.
+ * Host applications should import this instead of re-compiling locally — keeps
+ * SDK schema as the single source of truth.
+ */
+export function compileManifestValidator(): ValidateFunction {
+  if (_cachedValidator) return _cachedValidator;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { default: Ajv } = _require("ajv") as { default: typeof import("ajv").default };
+  const schema = _require("../schemas/plugin-manifest.schema.json") as Record<string, unknown>;
+  const ajv = new Ajv({ strict: true, strictRequired: false, allErrors: true, useDefaults: false });
+  // The schema uses format:"uri" on the $schema advisory field; register a
+  // pass-through so strict mode does not throw on the unknown format keyword.
+  ajv.addFormat("uri", { validate: () => true });
+  _cachedValidator = ajv.compile(schema);
+  return _cachedValidator;
+}

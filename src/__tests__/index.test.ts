@@ -48,12 +48,12 @@ import type {
   PluginLifecycleEvent,
 } from "../index.js";
 
-import { MissingDependenciesError } from "../index.js";
+import { MissingDependenciesError, compileManifestValidator } from "../index.js";
 
 // ─── PluginManifest schema validation ─────────────────────────────────────────
 describe("PluginManifest — schema validation", () => {
   const VALID_MINIMAL: PluginManifest = {
-    id: "com.example.my-plugin",
+    id: "my-plugin",
     name: "My Plugin",
     version: "1.0.0",
     entry: "dist/index.js",
@@ -79,7 +79,7 @@ describe("PluginManifest — schema validation", () => {
       publisher: "Example Corp",
       startupTimeoutMs: 5000,
       installPolicy: "admin",
-      dependencies: ["com.example.dep-plugin"],
+      dependencies: ["dep-plugin"],
       requires: { capabilities: ["calendar"] },
     };
     const { valid, errors } = validateManifest(full);
@@ -340,7 +340,7 @@ describe("PluginManifest — schema validation", () => {
 // ─── window.defaultMode: "detached" (post-2c10491) ─────────────────────────
 describe("PluginManifest — window.defaultMode:detached (2c10491)", () => {
   const BASE: PluginManifest = {
-    id: "com.example.detach-plugin",
+    id: "detach-plugin",
     name: "Detach Plugin",
     version: "1.0.0",
     entry: "dist/index.js",
@@ -418,7 +418,7 @@ describe("PluginManifest — configSchema field (post-#76)", () => {
       required: ["apiKey"],
     };
     const manifest: PluginManifest = {
-      id: "com.example.config-plugin",
+      id: "config-plugin",
       name: "Config Plugin",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -562,7 +562,7 @@ describe("EventSubscription — structural validation", () => {
 
   it("PluginManifest.eventSubscriptions accepts string[] form", () => {
     const manifest: PluginManifest = {
-      id: "com.example.ev",
+      id: "ev-plugin",
       name: "EV",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -579,7 +579,7 @@ describe("EventSubscription — structural validation", () => {
       { type: "meeting:started", hint: { category: "meeting", priority: "high", title: "Meeting" } },
     ];
     const manifest: PluginManifest = {
-      id: "com.example.ev2",
+      id: "ev-plugin2",
       name: "EV2",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -595,7 +595,7 @@ describe("EventSubscription — structural validation", () => {
 describe("PluginManifest — capability / event declarations", () => {
   it("capabilities field accepts canonical capability tags", () => {
     const manifest: PluginManifest = {
-      id: "com.example.cap",
+      id: "cap-plugin",
       name: "Cap",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -609,7 +609,7 @@ describe("PluginManifest — capability / event declarations", () => {
 
   it("schema accepts lifecycle-observer capability (issue #57)", () => {
     const { valid, errors } = validateManifest({
-      id: "com.example.lifecycle",
+      id: "lifecycle-plugin",
       name: "Lifecycle Observer",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -622,7 +622,7 @@ describe("PluginManifest — capability / event declarations", () => {
 
   it("schema rejects unknown capability value", () => {
     const { valid } = validateManifest({
-      id: "com.example.bad-cap",
+      id: "bad-cap-plugin",
       name: "Bad Cap",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -635,7 +635,7 @@ describe("PluginManifest — capability / event declarations", () => {
 
   it("emittedEvents is accepted (v3 canonical field)", () => {
     const manifest: PluginManifest = {
-      id: "com.example.evt",
+      id: "ev-plugint",
       name: "Evt",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -648,7 +648,7 @@ describe("PluginManifest — capability / event declarations", () => {
 
   it("notificationEvents accepted with optional titleField/bodyField", () => {
     const manifest: PluginManifest = {
-      id: "com.example.notif",
+      id: "notif-plugin",
       name: "Notif",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -665,7 +665,7 @@ describe("PluginManifest — capability / event declarations", () => {
 
   it("requires.capabilities gates plugin on host-provided capabilities", () => {
     const manifest: PluginManifest = {
-      id: "com.example.req",
+      id: "req-plugin",
       name: "Req",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -680,13 +680,13 @@ describe("PluginManifest — capability / event declarations", () => {
 // ─── MissingDependenciesError runtime class ───────────────────────────────
 describe("MissingDependenciesError", () => {
   it("is constructable with a list of missing deps", () => {
-    const err = new MissingDependenciesError(["com.example.dep-a", "com.example.dep-b"]);
+    const err = new MissingDependenciesError(["dep-a", "dep-b"]);
     expect(err).toBeInstanceOf(Error);
     expect(err).toBeInstanceOf(MissingDependenciesError);
   });
 
   it("exposes missing array verbatim", () => {
-    const missing = ["com.example.dep-a", "com.example.dep-b"];
+    const missing = ["dep-a", "dep-b"];
     const err = new MissingDependenciesError(missing);
     expect(err.missing).toEqual(missing);
   });
@@ -798,7 +798,7 @@ describe("RuntimePlugin + RuntimePluginFactory", () => {
     });
     // Provide a minimal stub context
     const ctx = {
-      pluginId: "com.example.test",
+      pluginId: "test-plugin",
       pluginRoot: "/tmp/plugin",
       hostRoot: "/tmp/host",
       pluginDataDir: "/tmp/plugin-data",
@@ -954,7 +954,7 @@ describe("PluginManifest — auth ⇒ uiCallable invariant (H6)", () => {
   // the host's manifest-validation.ts.
   it("rejects manifest with auth but no uiCallable", () => {
     const { valid } = validateManifest({
-      id: "com.example.auth-no-ui",
+      id: "auth-no-ui",
       name: "Auth no UI",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -967,7 +967,7 @@ describe("PluginManifest — auth ⇒ uiCallable invariant (H6)", () => {
 
   it("rejects manifest with auth and empty uiCallable[]", () => {
     const { valid } = validateManifest({
-      id: "com.example.auth-empty-ui",
+      id: "auth-empty-ui",
       name: "Auth empty UI",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -981,7 +981,7 @@ describe("PluginManifest — auth ⇒ uiCallable invariant (H6)", () => {
 
   it("accepts manifest with auth and a non-empty uiCallable allowlist", () => {
     const { valid, errors } = validateManifest({
-      id: "com.example.auth-ok",
+      id: "auth-ok",
       name: "Auth OK",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -995,7 +995,7 @@ describe("PluginManifest — auth ⇒ uiCallable invariant (H6)", () => {
 
   it("accepts manifest without auth regardless of uiCallable", () => {
     const { valid, errors } = validateManifest({
-      id: "com.example.no-auth",
+      id: "no-auth",
       name: "No Auth",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -1013,7 +1013,7 @@ describe("PluginManifest — auth.partitionDomains schema", () => {
   // field under test.
   function withDomains(partitionDomains: unknown) {
     return {
-      id: "com.example.partition-test",
+      id: "partition-test",
       name: "Partition Test",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -1111,7 +1111,7 @@ describe("PluginManifest — auth.partitionDomains schema", () => {
 
   it("does not require partitionDomains on auth — plugins that never open a viewer can omit it", () => {
     const { valid, errors } = validateManifest({
-      id: "com.example.no-viewer",
+      id: "no-viewer",
       name: "No Viewer",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -1181,7 +1181,7 @@ describe("PluginManifest — auth.partitionDomains schema", () => {
 describe("PluginManifest — python co-deployment field (H3)", () => {
   it("accepts manifest with python.managedBy='lvis-app' + requirementsLock", () => {
     const manifest: PluginManifest = {
-      id: "com.lge.pageindex",
+      id: "pageindex",
       name: "PageIndex",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -1200,7 +1200,7 @@ describe("PluginManifest — python co-deployment field (H3)", () => {
 
   it("accepts python.managedBy='self'", () => {
     const manifest: PluginManifest = {
-      id: "com.example.self-py",
+      id: "self-py",
       name: "Self Py",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -1213,7 +1213,7 @@ describe("PluginManifest — python co-deployment field (H3)", () => {
 
   it("rejects unknown python.managedBy value", () => {
     const { valid } = validateManifest({
-      id: "com.example.bad-py",
+      id: "bad-py",
       name: "Bad Py",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -1229,7 +1229,7 @@ describe("PluginManifest — python co-deployment field (H3)", () => {
 describe("PluginManifest — packageName field (M9)", () => {
   it("accepts manifest with packageName", () => {
     const manifest: PluginManifest = {
-      id: "com.lge.meeting",
+      id: "lge-meeting",
       name: "Meeting",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -1446,11 +1446,119 @@ describe("scripts/sync-from-host.mjs — idempotency (M14)", () => {
   });
 });
 
+// ─── hostSecrets field (#893) ──────────────────────────────────────────────
+describe("PluginManifest — hostSecrets field (#893)", () => {
+  it("accepts manifest with hostSecrets.read containing a valid llm.apiKey.* entry", () => {
+    const manifest: PluginManifest = {
+      id: "secrets-plugin",
+      name: "Secrets Plugin",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: ["secrets_ping"],
+      description: "Plugin that reads LLM provider keys.",
+      hostSecrets: { read: ["llm.apiKey.openai"] },
+    };
+    const { valid, errors } = validateManifest(manifest);
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    expect(manifest.hostSecrets?.read).toContain("llm.apiKey.openai");
+  });
+
+  it("accepts manifest with multiple llm.apiKey.* entries", () => {
+    const { valid, errors } = validateManifest({
+      id: "multi-key",
+      name: "Multi Key",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin that reads multiple LLM keys.",
+      hostSecrets: { read: ["llm.apiKey.openai", "llm.apiKey.anthropic"] },
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts manifest without hostSecrets (optional field, default deny)", () => {
+    const { valid, errors } = validateManifest({
+      id: "no-secrets",
+      name: "No Secrets",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin that does not declare any host secrets.",
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts hostSecrets with empty read array", () => {
+    const { valid, errors } = validateManifest({
+      id: "empty-secrets",
+      name: "Empty Secrets",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin with empty hostSecrets.read.",
+      hostSecrets: { read: [] },
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("rejects hostSecrets.read entry with disallowed prefix (web.apiKey.*)", () => {
+    const { valid } = validateManifest({
+      id: "bad-prefix",
+      name: "Bad Prefix",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin with disallowed secret prefix.",
+      hostSecrets: { read: ["web.apiKey.google"] },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects hostSecrets.read entry with bare llm.apiKey (missing provider segment)", () => {
+    const { valid } = validateManifest({
+      id: "bare-key",
+      name: "Bare Key",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin with bare llm.apiKey secret.",
+      hostSecrets: { read: ["llm.apiKey"] },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects duplicate entries in hostSecrets.read (uniqueItems)", () => {
+    const { valid } = validateManifest({
+      id: "dup-secrets",
+      name: "Dup Secrets",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin with duplicate secret entries.",
+      hostSecrets: { read: ["llm.apiKey.openai", "llm.apiKey.openai"] },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects additional properties inside hostSecrets (additionalProperties: false)", () => {
+    const { valid } = validateManifest({
+      id: "extra-prop",
+      name: "Extra Prop",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin with extra property in hostSecrets.",
+      hostSecrets: { read: ["llm.apiKey.openai"], write: ["llm.apiKey.openai"] },
+    });
+    expect(valid).toBe(false);
+  });
+});
+
 // ─── PluginManifest edge cases ─────────────────────────────────────────────
 describe("PluginManifest — edge cases", () => {
   it("accepts empty tools array", () => {
     const { valid, errors } = validateManifest({
-      id: "com.example.empty-tools",
+      id: "empty-tools",
       name: "Empty Tools",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -1462,7 +1570,7 @@ describe("PluginManifest — edge cases", () => {
 
   it("accepts multiple tools", () => {
     const { valid, errors } = validateManifest({
-      id: "com.example.multi-tools",
+      id: "multi-tools",
       name: "Multi",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -1483,9 +1591,9 @@ describe("PluginManifest — edge cases", () => {
     expect(valid).toBe(false);
   });
 
-  it("accepts id in reverse-DNS format", () => {
+  it("accepts id in kebab-lowercase format", () => {
     const { valid, errors } = validateManifest({
-      id: "com.company.plugin-name",
+      id: "plugin-name",
       name: "N",
       version: "1.0.0",
       entry: "dist/index.js",
@@ -1498,7 +1606,7 @@ describe("PluginManifest — edge cases", () => {
   it("installPolicy accepts admin or user", () => {
     for (const policy of ["admin", "user"] as const) {
       const manifest: PluginManifest = {
-        id: "com.example.pol",
+        id: "pol-plugin",
         name: "N",
         version: "1.0.0",
         entry: "dist/index.js",
@@ -1512,19 +1620,142 @@ describe("PluginManifest — edge cases", () => {
 
   it("dependencies accept string or DependencySpec items", () => {
     const manifest: PluginManifest = {
-      id: "com.example.dep",
+      id: "dep-plugin2",
       name: "N",
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
       description: "Test fixture.",
       dependencies: [
-        "com.example.simple-dep",
-        { pluginId: "com.example.complex-dep", versionRange: ">=1.0.0", required: true },
+        "simple-dep",
+        { pluginId: "complex-dep", versionRange: ">=1.0.0", required: true },
       ],
     };
     expect(manifest.dependencies).toHaveLength(2);
     expect(typeof manifest.dependencies![0]).toBe("string");
     expect(typeof manifest.dependencies![1]).toBe("object");
+  });
+});
+
+// ─── B5: compileManifestValidator() ──────────────────────────────────────────
+describe("compileManifestValidator — SDK-exported AJV validator", () => {
+  it("returns a function", () => {
+    const validate = compileManifestValidator();
+    expect(typeof validate).toBe("function");
+  });
+
+  it("returns the same instance on repeated calls (cached)", () => {
+    const a = compileManifestValidator();
+    const b = compileManifestValidator();
+    expect(a).toBe(b);
+  });
+
+  it("validates a minimal valid manifest as valid", () => {
+    const validate = compileManifestValidator();
+    const valid = validate({
+      id: "my-plugin",
+      name: "My Plugin",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: ["my_tool"],
+      description: "A valid plugin.",
+    });
+    expect(valid).toBe(true);
+    expect(validate.errors).toBeNull();
+  });
+
+  it("rejects a manifest missing required fields", () => {
+    const validate = compileManifestValidator();
+    const valid = validate({ name: "No Id Plugin" });
+    expect(valid).toBe(false);
+    expect(validate.errors).not.toBeNull();
+  });
+});
+
+// ─── B8: plugin id pattern narrowing ─────────────────────────────────────────
+describe("PluginManifest — id pattern ^[a-z][a-z0-9-]*$ (B8)", () => {
+  const BASE = {
+    name: "Test",
+    version: "1.0.0",
+    entry: "dist/index.js",
+    tools: [] as string[],
+    description: "Test fixture.",
+  };
+
+  it("rejects id with uppercase (\"Foo\")", () => {
+    const { valid } = validateManifest({ ...BASE, id: "Foo" });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects id with dot (\"foo.bar\")", () => {
+    const { valid } = validateManifest({ ...BASE, id: "foo.bar" });
+    expect(valid).toBe(false);
+  });
+
+  it("accepts id with hyphen (\"foo-bar\")", () => {
+    const { valid, errors } = validateManifest({ ...BASE, id: "foo-bar" });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("rejects id with underscore (\"foo_bar\")", () => {
+    const { valid } = validateManifest({ ...BASE, id: "foo_bar" });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects id starting with uppercase (\"MyPlugin\")", () => {
+    const { valid } = validateManifest({ ...BASE, id: "MyPlugin" });
+    expect(valid).toBe(false);
+  });
+});
+
+// ─── T1-7: hostSecrets.read AJV pattern ──────────────────────────────────────
+describe("PluginManifest — hostSecrets.read pattern ^llm\\.apiKey\\.[a-z]+(-[a-z]+)*$ (T1-7)", () => {
+  const BASE = {
+    id: "secrets-test",
+    name: "Secrets Test",
+    version: "1.0.0",
+    entry: "dist/index.js",
+    tools: [] as string[],
+    description: "Test fixture.",
+  };
+
+  it("rejects trailing dash (\"llm.apiKey.azure-\")", () => {
+    const { valid } = validateManifest({
+      ...BASE,
+      hostSecrets: { read: ["llm.apiKey.azure-"] },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects leading dash (\"llm.apiKey.-azure\")", () => {
+    const { valid } = validateManifest({
+      ...BASE,
+      hostSecrets: { read: ["llm.apiKey.-azure"] },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects consecutive dashes (\"llm.apiKey.azure--foundry\")", () => {
+    const { valid } = validateManifest({
+      ...BASE,
+      hostSecrets: { read: ["llm.apiKey.azure--foundry"] },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("accepts valid compound key (\"llm.apiKey.azure-foundry\")", () => {
+    const { valid, errors } = validateManifest({
+      ...BASE,
+      hostSecrets: { read: ["llm.apiKey.azure-foundry"] },
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts simple key (\"llm.apiKey.openai\")", () => {
+    const { valid, errors } = validateManifest({
+      ...BASE,
+      hostSecrets: { read: ["llm.apiKey.openai"] },
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 });
