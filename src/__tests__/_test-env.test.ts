@@ -15,20 +15,20 @@ describe("assertTestEnvironment", () => {
     LVIS_TEST: process.env.LVIS_TEST,
   };
 
-  beforeEach(() => {
-    process.env.NODE_ENV = saved.NODE_ENV;
-    process.env.VITEST = saved.VITEST;
-    process.env.LVIS_TEST = saved.LVIS_TEST;
-  });
-
-  afterEach(() => {
+  // Node's `process.env[K] = value` setter stringifies any non-string RHS,
+  // so a literal `undefined` becomes the string `"undefined"` (truthy) —
+  // both beforeEach and afterEach use the explicit delete-or-assign pattern
+  // to avoid that coercion.
+  function restoreEnv() {
     if (saved.NODE_ENV === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = saved.NODE_ENV;
     if (saved.VITEST === undefined) delete process.env.VITEST;
     else process.env.VITEST = saved.VITEST;
     if (saved.LVIS_TEST === undefined) delete process.env.LVIS_TEST;
     else process.env.LVIS_TEST = saved.LVIS_TEST;
-  });
+  }
+  beforeEach(restoreEnv);
+  afterEach(restoreEnv);
 
   it("no-throws under vitest (VITEST=true is the default test-runner signal)", () => {
     process.env.NODE_ENV = "production";
