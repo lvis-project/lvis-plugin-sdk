@@ -80,8 +80,8 @@ ms-graph (advisory MSAL tenant routing) 와 lge-api (hard SSO pre-gate) 가
 
 ### Notes
 
-- 5.7.0 (PR #139, startupTools 제거) 의 CHANGELOG 누락은 본 PR scope 외 —
-  추후 보정 PR.
+- 5.7.0 (PR #139, startupTools 제거) 의 CHANGELOG 누락은 본 PR scope
+  외 — PR #153 에서 보정 완료 (아래 5.7.0 entry 참조).
 - 에러 클래스 SDK 승격은 의도적으로 보류 — 두 소비자 중 하나만 throw
   하고 메시지/code 가 회사-특화라 generic 화 시 wrapping 필요.
 
