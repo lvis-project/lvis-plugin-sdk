@@ -942,3 +942,30 @@ export interface RuntimePlugin {
  * export default factory;
  */
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
+
+// ─── Manifest validator ────────────────────────────────────────────────────────
+
+import { createRequire } from "node:module";
+import type { ValidateFunction } from "ajv";
+
+const _require = createRequire(import.meta.url);
+
+let _cachedValidator: ValidateFunction | null = null;
+
+/**
+ * Compile the bundled plugin manifest JSON schema into an AJV validator.
+ * Host applications should import this instead of re-compiling locally — keeps
+ * SDK schema as the single source of truth.
+ */
+export function compileManifestValidator(): ValidateFunction {
+  if (_cachedValidator) return _cachedValidator;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { default: Ajv } = _require("ajv") as { default: typeof import("ajv").default };
+  const schema = _require("../schemas/plugin-manifest.schema.json") as Record<string, unknown>;
+  const ajv = new Ajv({ strict: true, strictRequired: false, allErrors: true, useDefaults: false });
+  // The schema uses format:"uri" on the $schema advisory field; register a
+  // pass-through so strict mode does not throw on the unknown format keyword.
+  ajv.addFormat("uri", { validate: () => true });
+  _cachedValidator = ajv.compile(schema);
+  return _cachedValidator;
+}
