@@ -87,6 +87,32 @@ ms-graph (advisory MSAL tenant routing) 와 lge-api (hard SSO pre-gate) 가
 
 ---
 
+## [5.7.0] - 2026-05-15
+
+### Removed (BREAKING) — `manifest.startupTools` field
+
+플러그인 자기-시작(plugin self-start) 이 single SoT 로 자리잡으면서
+`PluginManifest.startupTools` 필드는 호스트가 더 이상 참조하지 않게
+됨. SDK 의 type 정의 + JSON schema 에서 제거.
+
+- `PluginManifest.startupTools?: string[]` 타입 필드 삭제
+- `schemas/plugin-manifest.schema.json` 의 `startupTools` 정의 + 룰
+  삭제
+- 호스트 동기화 스크립트가 host main 의 매니페스트 타입과 다시 일치
+
+### Migration
+
+플러그인 manifest 에 `startupTools` 가 남아있으면 schema 검증에서
+`additionalProperties` 위반으로 거부될 수 있음 — 매니페스트에서
+필드를 제거하면 됨. 호스트 보트 시점에 도구를 self-start 하려면
+SDK `createPlugin().start` 콜백 안에서 직접 핸들러를 호출하는 방식
+으로 옮겨야 함.
+
+- 분리된 entry 로 작성된 이유: PR #139 (3df3874) 의 5.7.0 릴리스가
+  CHANGELOG 누락된 채 머지된 것을 v5.10.0 발행 전 backfill (PR #142).
+
+---
+
 ## [5.6.0] - 2026-05-14
 
 ### Added — auth-window visibility + partition wipe
