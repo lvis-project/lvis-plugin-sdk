@@ -22,7 +22,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync, execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -52,6 +52,16 @@ function assertSafeRepoUrl(rawUrl) {
   if (!SAFE_REPO_HOST_ALLOWLIST.has(parsed.hostname)) {
     throw new Error(
       `LVIS_HOST_REPO_URL host ${parsed.hostname} is not allowlisted. Allowed: ${[...SAFE_REPO_HOST_ALLOWLIST].join(", ")}.`,
+    );
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error(
+      `LVIS_HOST_REPO_URL must not carry userinfo (user:pass@host). Strip credentials and use git's credential helper instead.`,
+    );
+  }
+  if (parsed.port) {
+    throw new Error(
+      `LVIS_HOST_REPO_URL must not carry an explicit port (got :${parsed.port}).`,
     );
   }
 }

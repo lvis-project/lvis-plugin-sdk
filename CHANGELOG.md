@@ -15,19 +15,34 @@ host (lvis-app) 가 추가한 MCP 서버 인증 metadata 컨트랙트가 drift s
 SDK 에 반영. 새 type surface — 외부 consumer 가 import 가능한 추가 contract
 라서 minor (5.9.x → 5.10.0).
 
-- `McpRuntimeSpec.apiKeyEnv?: string` — host 가 plugin 환경변수에서 읽을 API
-  key 의 env 이름.
-- `McpRuntimeSpec.apiKeyHeader?: string` — request header 이름 (default
-  `Authorization`).
-- `McpRuntimeSpec.oauth?: McpOAuthMetadata` — OAuth client metadata 핸들.
-- 신규 `interface McpOAuthMetadata` — `clientId`, `scopes`, `authorizationUrl`,
-  `tokenUrl`.
-- 신규 `interface McpAuthMetadata extends McpOAuthMetadata` — 향후 OAuth 외
-  메커니즘 확장 anchor.
-- `PluginManifest.mcpAuth?: McpAuthMetadata` — manifest 최상위 노출.
+- **`McpRuntimeSpec.stdio` 변형 추가 필드**:
+  - `apiKeyEnv?: string` — host 가 plugin 환경변수에서 읽을 API key envvar
+    이름.
+- **`McpRuntimeSpec.http` 변형 추가 필드**:
+  - `apiKeyHeader?: string` — request header 이름.
+  - `allowPrivateNetworks?: boolean` — RFC1918 / loopback URL 접근 허용 opt-in.
+  - `oauth?: McpOAuthMetadata` — OAuth resource-server discovery handle.
+- **신규 `interface McpOAuthMetadata`** (MCP 2025-06-18 + RFC 8414/7591 매핑):
+  - `resource?: string`
+  - `resourceMetadataUrl?: string`
+  - `authorizationServers?: string[]`
+  - `scopes?: string[]`
+  - `clientRegistration?: "client-id-metadata-document" | "dynamic" |
+    "preregistration" | "manual"`
+- **신규 `interface McpAuthMetadata extends McpOAuthMetadata`**:
+  - `mode: "none" | "api-key" | "sso" | "oauth"` (discriminator)
+  - `transport?: "stdio" | "http"`
+- **`PluginMarketplaceItem.mcpAuth?: McpAuthMetadata`** — 마켓플레이스 카탈로그
+  entry 에 노출 (PluginManifest 아님).
 
 Host PR (lvis-app side) 에서 emit 책임을 가지며 SDK 는 type 만 노출. plugin
 런타임 로직 변경 없음.
+
+**Schema gap (known)**: `schemas/plugin-manifest.schema.json` 에는 `mcpAuth`/
+`mcpRuntime` 가 아직 없음. 본 PR 은 type 만 sync — host 가 `additionalProperties:
+false` 라서 plugin manifest 에 `mcpAuth` 적으면 host validate 실패. host 측
+schema PR 머지 후 `bun run sync:schema` 로 따라잡을 예정 (architecture.md §9.5
+mcpAuth 문서화와 같은 follow-up).
 
 ### Chore — issue sweep: drift sync + script precedence + react-bundle 주석
 

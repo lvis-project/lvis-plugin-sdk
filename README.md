@@ -133,6 +133,28 @@ the schema enum will be tightened to the new URL only. The `applyDollarSchemaMig
 hook in `scripts/sync-schema-from-host.mjs` is the anchor point for that
 follow-up change.
 
+### v5.10.0 Additions (additive — no migration)
+
+**MCP auth metadata types** are new. SDK 가 host 의 MCP 서버 인증 컨트랙트
+를 type 형태로 노출:
+
+- `McpRuntimeSpec.stdio` 의 `apiKeyEnv?: string` — host 가 plugin 환경변수
+  에서 읽을 API key envvar 이름.
+- `McpRuntimeSpec.http` 의 `apiKeyHeader?: string` / `allowPrivateNetworks?:
+  boolean` / `oauth?: McpOAuthMetadata`.
+- `interface McpOAuthMetadata` — MCP 2025-06-18 + RFC 8414/7591 매핑 필드
+  (`resource`, `resourceMetadataUrl`, `authorizationServers`, `scopes`,
+  `clientRegistration`).
+- `interface McpAuthMetadata extends McpOAuthMetadata` — `mode` discriminator
+  추가.
+- `PluginMarketplaceItem.mcpAuth?: McpAuthMetadata` — 마켓플레이스 카탈로그
+  entry 에 노출.
+
+**Schema gap (known)**: 본 릴리스는 type 만 sync. `schemas/plugin-manifest.schema.json`
+은 host 측 schema PR 머지 후 `bun run sync:schema` 로 따라잡을 예정. 즉
+현 시점에 plugin manifest 에 `mcpAuth` 적으면 host `additionalProperties:
+false` 에 막힘.
+
 ### v3.1.0 Additions (additive — no migration)
 
 **`PluginHostApi.getInstalledPluginIds()` and `onPluginsChanged(handler)` are
