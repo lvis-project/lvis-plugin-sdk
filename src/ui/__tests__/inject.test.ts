@@ -107,7 +107,7 @@ describe("applyThemeFromHostEvent", () => {
   it("applies tokens via applyThemeTokens (allowlist + unsafe guard enforced)", async () => {
     const { applyThemeFromHostEvent } = await import("../tokens/inject.js");
     applyThemeFromHostEvent({
-      bundleId: "lge-light",
+      bundleId: "violet-light",
       shell: "light",
       tokens: { "--lvis-bg": "#ffffff", "--lvis-fg": "#000000" } as never,
     });

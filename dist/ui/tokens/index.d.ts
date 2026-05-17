@@ -60,7 +60,7 @@ export declare function isLvisThemeBundleId(id: unknown): id is LvisThemeBundleI
  * Emitted on the `"host.theme.changed"` event bus channel.
  */
 export interface LvisHostThemeEvent {
-    /** Active theme bundle identifier (e.g. `"tokyo-night"`, `"lge-light"`). */
+    /** Active theme bundle identifier (e.g. `"tokyo-night"`, `"violet-light"`). */
     bundleId: LvisThemeBundleId;
     /** Shell color mode of the active bundle. */
     shell: "light" | "dark";
