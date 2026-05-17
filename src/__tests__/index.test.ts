@@ -1446,6 +1446,114 @@ describe("scripts/sync-from-host.mjs — idempotency (M14)", () => {
   });
 });
 
+// ─── hostSecrets field (#893) ──────────────────────────────────────────────
+describe("PluginManifest — hostSecrets field (#893)", () => {
+  it("accepts manifest with hostSecrets.read containing a valid llm.apiKey.* entry", () => {
+    const manifest: PluginManifest = {
+      id: "com.example.secrets-plugin",
+      name: "Secrets Plugin",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: ["secrets_ping"],
+      description: "Plugin that reads LLM provider keys.",
+      hostSecrets: { read: ["llm.apiKey.openai"] },
+    };
+    const { valid, errors } = validateManifest(manifest);
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    expect(manifest.hostSecrets?.read).toContain("llm.apiKey.openai");
+  });
+
+  it("accepts manifest with multiple llm.apiKey.* entries", () => {
+    const { valid, errors } = validateManifest({
+      id: "com.example.multi-key",
+      name: "Multi Key",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin that reads multiple LLM keys.",
+      hostSecrets: { read: ["llm.apiKey.openai", "llm.apiKey.anthropic"] },
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts manifest without hostSecrets (optional field, default deny)", () => {
+    const { valid, errors } = validateManifest({
+      id: "com.example.no-secrets",
+      name: "No Secrets",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin that does not declare any host secrets.",
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts hostSecrets with empty read array", () => {
+    const { valid, errors } = validateManifest({
+      id: "com.example.empty-secrets",
+      name: "Empty Secrets",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin with empty hostSecrets.read.",
+      hostSecrets: { read: [] },
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("rejects hostSecrets.read entry with disallowed prefix (web.apiKey.*)", () => {
+    const { valid } = validateManifest({
+      id: "com.example.bad-prefix",
+      name: "Bad Prefix",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin with disallowed secret prefix.",
+      hostSecrets: { read: ["web.apiKey.google"] },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects hostSecrets.read entry with bare llm.apiKey (missing provider segment)", () => {
+    const { valid } = validateManifest({
+      id: "com.example.bare-key",
+      name: "Bare Key",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin with bare llm.apiKey secret.",
+      hostSecrets: { read: ["llm.apiKey"] },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects duplicate entries in hostSecrets.read (uniqueItems)", () => {
+    const { valid } = validateManifest({
+      id: "com.example.dup-secrets",
+      name: "Dup Secrets",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin with duplicate secret entries.",
+      hostSecrets: { read: ["llm.apiKey.openai", "llm.apiKey.openai"] },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects additional properties inside hostSecrets (additionalProperties: false)", () => {
+    const { valid } = validateManifest({
+      id: "com.example.extra-prop",
+      name: "Extra Prop",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Plugin with extra property in hostSecrets.",
+      hostSecrets: { read: ["llm.apiKey.openai"], write: ["llm.apiKey.openai"] },
+    });
+    expect(valid).toBe(false);
+  });
+});
+
 // ─── PluginManifest edge cases ─────────────────────────────────────────────
 describe("PluginManifest — edge cases", () => {
   it("accepts empty tools array", () => {
