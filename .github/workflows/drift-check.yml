@@ -26,19 +26,10 @@ jobs:
     steps:
       - name: Checkout SDK
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-      - name: Generate host-read App token
-        id: app-token
-        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3  # v3.1.1
-        with:
-          client-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          owner: lvis-project
-          repositories: lvis-app
-      - name: Checkout host repo (private)
+      - name: Checkout host repo (public)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: lvis-project/lvis-app
-          token: ${{ steps.app-token.outputs.token }}
           path: .host
           fetch-depth: 1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
