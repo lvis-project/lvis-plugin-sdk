@@ -303,11 +303,13 @@
       "properties": {
         "read": {
           "type": "array",
-          "description": "Secret keys this plugin is permitted to read. Each entry MUST match ^llm\\.apiKey\\.[a-z]+(-[a-z]+)*$ — leading/trailing/consecutive dashes and other prefixes are rejected at validation time.",
+          "description": "Secret keys this plugin is permitted to read. Each entry MUST match ^llm\\.apiKey\\.[a-z]+(-[a-z]+)*$ — leading/trailing/consecutive dashes and other prefixes are rejected at validation time. Bounded (maxItems=32, per-item maxLength=64) to prevent registry-level DoS via oversized manifests.",
           "items": {
             "type": "string",
-            "pattern": "^llm\\.apiKey\\.[a-z]+(-[a-z]+)*$"
+            "pattern": "^llm\\.apiKey\\.[a-z]+(-[a-z]+)*$",
+            "maxLength": 64
           },
+          "maxItems": 32,
           "uniqueItems": true,
           "default": []
         }
@@ -518,6 +520,12 @@
         }
       },
       "additionalProperties": false
+    },
+    "llmKeySource": {
+      "type": "string",
+      "enum": ["host", "plugin", "none"],
+      "default": "none",
+      "description": "Whether this plugin uses host-managed LLM keys (host), its own keys (plugin), or no LLM at all (none). The 'host' source requires marketplace whitelist authorization at runtime."
     },
     "publisher": {
       "type": "string",
