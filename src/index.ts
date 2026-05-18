@@ -184,25 +184,6 @@ export interface PluginManifest {
   /** Event type names this plugin may emit on the host event bus. Used by the host for validation and ownership checks. @optional */
   emittedEvents?: string[];
 
-  /**
-   * Host secret access declaration — explicit allowlist for which host-managed
-   * secrets this plugin can read via `hostApi.getSecret`. Default deny: if
-   * unset, plugins can only read their own `plugin.${id}.*` namespaced secrets.
-   *
-   * Currently allowed key prefix: `llm.apiKey.*` only (LLM provider keys).
-   * Other prefixes (web.apiKey, marketplace.apiKey, etc.) are REJECTED by
-   * the manifest validator.
-   *
-   * Audited: every read attempt is logged to host audit; allowed reads
-   * additionally increment a telemetry counter.
-   *
-   * Example:
-   *   "hostSecrets": { "read": ["llm.apiKey.openai"] }
-   */
-  hostSecrets?: {
-    read?: string[];
-  };
-
   /** Events that should be surfaced as host notifications. Each entry names the event and maps fields of its payload to notification title and body. @optional */
   notificationEvents?: Array<{
     event: string;
@@ -266,6 +247,21 @@ export interface PluginManifest {
   author?: string;
   /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */
   uiSlots?: string[];
+  /**
+   * Host-managed secret allowlist (#893 Stage 1). Plugins declaring keys under
+   * `read` request the host to fulfil them through {@link PluginHostApi.resolveApiKey}.
+   * Schema acceptance is necessary but not sufficient — the marketplace
+   * whitelist gates the actual runtime fulfilment. @optional
+   */
+  hostSecrets?: { read: string[] };
+  /**
+   * LLM key sourcing declaration (#893 Stage 1):
+   *  - `"host"` — plugin relies on host-managed LLM keys via {@link PluginHostApi.resolveApiKey}; requires marketplace whitelist at runtime.
+   *  - `"plugin"` — plugin owns its own LLM keys (declared in `configSchema` or `hostSecrets`-unrelated channels).
+   *  - `"none"` — plugin does not call any LLM (default).
+   * @optional
+   */
+  llmKeySource?: "host" | "plugin" | "none";
 }
 
 /**
@@ -805,7 +801,117 @@ export interface PluginHostApi {
 
     respond(requestId: string, choice: ApprovalChoice, nonce?: string, hmac?: string): Promise<void>;
   };
+
+  /**
+   * Resolve an API key for a host-managed AI surface (#893 Stage 1). The host
+   * decides whether the calling plugin is allowed to receive a host key —
+   * sources include the marketplace whitelist, the plugin's manifest
+   * (`hostSecrets.read`, `llmKeySource`), and the active user/admin mode.
+   *
+   * Plugins MUST feature-detect this method at runtime — a v5.4 (or older)
+   * host returns `undefined` for the property:
+   *
+   * ```ts
+   * if (typeof hostApi.resolveApiKey === "function") {
+   *   // Omit `vendor` to let the host pick the active provider (recommended
+   *   // for vendor-agnostic plugins — host may failover or alias e.g.
+   *   // anthropic→claude).
+   *   const ac = new AbortController();
+   *   const out = await hostApi.resolveApiKey({ purpose: "llm", signal: ac.signal });
+   *   if (out.ok) {
+   *     try {
+   *       // Pass the SAME signal to downstream fetch() — `signal` only aborts
+   *       // the resolution promise here, not in-flight requests the plugin
+   *       // makes with the bearer.
+   *       const res = await fetch(out.baseUrl ?? defaultUrl, {
+   *         headers: { authorization: `Bearer ${out.bearer()}` },
+   *         signal: ac.signal,
+   *       });
+   *       // After release(), `out.bearer()` MUST throw Error("released").
+   *     } finally {
+   *       // `release()` may be sync or async — await for async-safe hosts.
+   *       await out.release?.();
+   *     }
+   *   } else {
+   *     // out.reason is a discriminated string — plugin decides whether to
+   *     // fall back to its own key, mock, or surface a user error.
+   *   }
+   * }
+   * ```
+   *
+   * @param opts.signal - Aborts ONLY the resolution promise (rejects with the
+   * "aborted" reason on the discriminated failure branch). Plugins MUST pass
+   * the same signal to their own downstream `fetch()` calls to abort
+   * in-flight requests. Aborting after a successful resolution also triggers
+   * automatic `release()` on the success result so callers cannot leak keys
+   * via dropped promises.
+   *
+   * @optional
+   */
+  resolveApiKey?(opts: {
+    purpose: "llm" | "stt" | "embedding" | "vision";
+    vendor?: "openai" | "azure-openai" | "vertex" | "anthropic";
+    signal?: AbortSignal;
+  }): Promise<ResolveApiKeyResult>;
 }
+
+/**
+ * Result of {@link PluginHostApi.resolveApiKey} — discriminated union (#893 Stage 1).
+ *
+ * Success: callers obtain the bearer via the `bearer()` thunk (never stored as a
+ * plain string field, so it is harder to leak through serialization) and MUST
+ * invoke `release()` once the request that consumed the key has completed.
+ *
+ * Failure: `reason` enumerates every refusal cause exposed to plugins; new
+ * causes will only be added in subsequent minor versions, so consumers should
+ * branch with a `default:` for forward compatibility.
+ */
+export type ResolveApiKeyResult =
+  | {
+      ok: true;
+      /**
+       * The vendor actually resolved by the host. May DIFFER from the
+       * `opts.vendor` the plugin requested — hosts are permitted to fail over
+       * to an alternate provider (e.g. when the primary is unhealthy) and to
+       * normalize aliases (e.g. `anthropic→claude`). Plugins that branch on
+       * vendor-specific behavior MUST inspect this field rather than reusing
+       * the request value.
+       */
+      vendor: string;
+      /**
+       * Returns the bearer token at the moment of call. Implemented as a thunk
+       * (rather than a plain string field) so the secret is harder to leak via
+       * serialization, structured-clone, or accidental logging.
+       *
+       * @throws {Error} `Error("released")` — after `release()` has been
+       *   invoked (or the request's `AbortSignal` has fired), further
+       *   `bearer()` calls MUST throw. This is a runtime contract; TypeScript
+       *   cannot enforce it at compile time.
+       */
+      bearer: () => string;
+      baseUrl?: string;
+      /**
+       * Disposer that signals the plugin no longer needs the key. The host is
+       * then free to rotate it, zero out buffers, decrement the active-lease
+       * count, etc. MUST be called — plugin authors using the `try/finally`
+       * pattern should `await out.release?.()` so async-safe hosts that need
+       * to flush state (e.g. write an audit row) complete deterministically.
+       *
+       * Return type is intentionally `void | Promise<void>` so hosts may
+       * implement either signature without breaking SDK consumers.
+       */
+      release(): void | Promise<void>;
+    }
+  | {
+      ok: false;
+      reason:
+        | "no-host-vendor"
+        | "vendor-mismatch"
+        | "not-whitelisted"
+        | "user-mode-plugin"
+        | "aborted"
+        | "user-endpoint-with-host-key";
+    };
 
 /**
  * §8 ApprovalChoice — mirrors the host `approval-gate.ts` union.
