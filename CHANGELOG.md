@@ -7,6 +7,23 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v5.13.0 — 2026-05-18 (#893)
+
+### Added
+- `llmKeySource` enum manifest field (`host` | `plugin` | `none`)
+- `hostSecrets.read[]` allowlist (pattern `^llm\.apiKey\.[a-z]+(-[a-z]+)*$`)
+- Host API: optional `resolveApiKey({purpose, vendor, signal})` → `{ok:true, bearer, release} | {ok:false, reason}`
+- `ResolveApiKeyResult` discriminated union with `bearer()` thunk (throws `Error("released")` after release)
+
+### Changed
+- `release()` widened to `void | Promise<void>` for async hosts
+- `hostSecrets.read[]` bounded: `maxItems: 32`, per-item `maxLength: 64`, `uniqueItems`
+
+### CI
+- `drift-check` workflow uses anonymous public checkout (lvis-app went public)
+
+---
+
 ## [5.11.0] - 2026-05-17
 
 ### BREAKING (soft) — plugin `id` pattern narrowed
