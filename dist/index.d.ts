@@ -157,6 +157,18 @@ export interface PluginManifest {
         titleField?: string;
         bodyField?: string;
         bypassFocusGate?: boolean;
+        /**
+         * Window focus state 분기 우회 — `true` 면 host 가 window 가 focused 상태일
+         * 때도 OS native notification 을 *추가* 로 발화 (in-app toast 와 함께).
+         * `false` (default) 면 focus 분기 그대로 (focused → toast만, unfocused → OS만).
+         *
+         * 의미 구분:
+         * - `bypassFocusGate`: 사용자의 DND/focus-mode 정책 우회 (manual mute 무관 발화)
+         * - `alwaysFireOs`: window focus *state* 우회 (focused 중에도 OS 알림 추가)
+         *
+         * 두 필드는 직교 (orthogonal) — 동시 사용 가능.
+         */
+        alwaysFireOs?: boolean;
     }>;
     installPolicy?: InstallPolicy;
     dependencies?: Array<string | DependencySpec>;
@@ -426,6 +438,7 @@ export interface PluginMarketplaceItem {
         titleField?: string;
         bodyField?: string;
         bypassFocusGate?: boolean;
+        alwaysFireOs?: boolean;
     }>;
     installPolicy?: InstallPolicy;
     dependencies?: Array<string | DependencySpec>;
@@ -692,15 +705,38 @@ export interface PluginHostApi {
      *
      * ```ts
      * if (typeof hostApi.resolveApiKey === "function") {
-     *   const out = await hostApi.resolveApiKey({ purpose: "llm", vendor: "openai" });
+     *   // Omit `vendor` to let the host pick the active provider (recommended
+     *   // for vendor-agnostic plugins — host may failover or alias e.g.
+     *   // anthropic→claude).
+     *   const ac = new AbortController();
+     *   const out = await hostApi.resolveApiKey({ purpose: "llm", signal: ac.signal });
      *   if (out.ok) {
-     *     try { useKey(out.bearer()); } finally { out.release(); }
+     *     try {
+     *       // Pass the SAME signal to downstream fetch() — `signal` only aborts
+     *       // the resolution promise here, not in-flight requests the plugin
+     *       // makes with the bearer.
+     *       const res = await fetch(out.baseUrl ?? defaultUrl, {
+     *         headers: { authorization: `Bearer ${out.bearer()}` },
+     *         signal: ac.signal,
+     *       });
+     *       // After release(), `out.bearer()` MUST throw Error("released").
+     *     } finally {
+     *       // `release()` may be sync or async — await for async-safe hosts.
+     *       await out.release?.();
+     *     }
      *   } else {
      *     // out.reason is a discriminated string — plugin decides whether to
      *     // fall back to its own key, mock, or surface a user error.
      *   }
      * }
      * ```
+     *
+     * @param opts.signal - Aborts ONLY the resolution promise (rejects with the
+     * "aborted" reason on the discriminated failure branch). Plugins MUST pass
+     * the same signal to their own downstream `fetch()` calls to abort
+     * in-flight requests. Aborting after a successful resolution also triggers
+     * automatic `release()` on the success result so callers cannot leak keys
+     * via dropped promises.
      *
      * @optional
      */
@@ -723,10 +759,38 @@ export interface PluginHostApi {
  */
 export type ResolveApiKeyResult = {
     ok: true;
+    /**
+     * The vendor actually resolved by the host. May DIFFER from the
+     * `opts.vendor` the plugin requested — hosts are permitted to fail over
+     * to an alternate provider (e.g. when the primary is unhealthy) and to
+     * normalize aliases (e.g. `anthropic→claude`). Plugins that branch on
+     * vendor-specific behavior MUST inspect this field rather than reusing
+     * the request value.
+     */
     vendor: string;
+    /**
+     * Returns the bearer token at the moment of call. Implemented as a thunk
+     * (rather than a plain string field) so the secret is harder to leak via
+     * serialization, structured-clone, or accidental logging.
+     *
+     * @throws {Error} `Error("released")` — after `release()` has been
+     *   invoked (or the request's `AbortSignal` has fired), further
+     *   `bearer()` calls MUST throw. This is a runtime contract; TypeScript
+     *   cannot enforce it at compile time.
+     */
     bearer: () => string;
     baseUrl?: string;
-    release(): void;
+    /**
+     * Disposer that signals the plugin no longer needs the key. The host is
+     * then free to rotate it, zero out buffers, decrement the active-lease
+     * count, etc. MUST be called — plugin authors using the `try/finally`
+     * pattern should `await out.release?.()` so async-safe hosts that need
+     * to flush state (e.g. write an audit row) complete deterministically.
+     *
+     * Return type is intentionally `void | Promise<void>` so hosts may
+     * implement either signature without breaking SDK consumers.
+     */
+    release(): void | Promise<void>;
 } | {
     ok: false;
     reason: "no-host-vendor" | "vendor-mismatch" | "not-whitelisted" | "user-mode-plugin" | "aborted" | "user-endpoint-with-host-key";

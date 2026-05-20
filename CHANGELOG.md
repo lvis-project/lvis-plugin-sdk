@@ -7,6 +7,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v5.14.0 — 2026-05-20
+
+### Added
+- `notificationEvents[*].alwaysFireOs` 옵션 추가 — window focus state 우회, per-event opt-in으로 focused 중에도 OS native notification 추가 발화 (in-app toast 와 함께). `bypassFocusGate` 와 직교(orthogonal).
+
+---
+
 ## v5.13.0 — 2026-05-18 (#893)
 
 ### Added

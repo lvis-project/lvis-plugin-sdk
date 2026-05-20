@@ -190,6 +190,18 @@ export interface PluginManifest {
     titleField?: string;
     bodyField?: string;
     bypassFocusGate?: boolean;
+    /**
+     * Window focus state 분기 우회 — `true` 면 host 가 window 가 focused 상태일
+     * 때도 OS native notification 을 *추가* 로 발화 (in-app toast 와 함께).
+     * `false` (default) 면 focus 분기 그대로 (focused → toast만, unfocused → OS만).
+     *
+     * 의미 구분:
+     * - `bypassFocusGate`: 사용자의 DND/focus-mode 정책 우회 (manual mute 무관 발화)
+     * - `alwaysFireOs`: window focus *state* 우회 (focused 중에도 OS 알림 추가)
+     *
+     * 두 필드는 직교 (orthogonal) — 동시 사용 가능.
+     */
+    alwaysFireOs?: boolean;
   }>;
   installPolicy?: InstallPolicy;
   dependencies?: Array<string | DependencySpec>;
@@ -515,6 +527,7 @@ export interface PluginMarketplaceItem {
     titleField?: string;
     bodyField?: string;
     bypassFocusGate?: boolean;
+    alwaysFireOs?: boolean;
   }>;
   installPolicy?: InstallPolicy;
   dependencies?: Array<string | DependencySpec>;

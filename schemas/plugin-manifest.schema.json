@@ -414,6 +414,10 @@
           "bypassFocusGate": {
             "type": "boolean",
             "description": "When true, this event bypasses the host focus-gate AND cooldown-gate suppression and always fires an OS-level notification regardless of LVIS window focus state or recent prior emits from the same plugin. The host additionally promotes urgent=true for bypass events (sound + critical urgency) unless the caller explicitly opts out. Use for critical flows (meeting capture, security alerts) where the user must be notified out-of-band. Refs lvis-project/lvis-app#843."
+          },
+          "alwaysFireOs": {
+            "type": "boolean",
+            "description": "When true, the host fires an OS-level notification *in addition to* the in-app toast even when the LVIS window is focused (dual delivery). The default focus-aware routing (focused → toast only, unfocused → OS only) still applies otherwise. Orthogonal to bypassFocusGate which forces OS-only routing and skips cooldown for critical flows; this field preserves toast delivery while adding OS visibility. Cooldown gate still applies. Use sparingly — opt-in per-event for high-importance plugin alerts that should reach the user even while they are actively in LVIS."
           }
         }
       }
