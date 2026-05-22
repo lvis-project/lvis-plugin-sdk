@@ -1,8 +1,9 @@
 # @lvis/plugin-sdk
 
-Source/type-only SDK for LVIS plugin authors. The SDK is the plugin contract
-surface only; it does not ship runtime code, build output, lifecycle hooks, or
-marketplace trust keys.
+**Version: 5.13.0** — Source/type-only SDK for LVIS plugin authors. Provides
+the complete plugin contract surface: `PluginManifest`, `PluginHostApi`,
+`PluginRuntimeContext`, `RuntimePlugin`. Does not ship runtime code, build
+output, lifecycle hooks, or marketplace trust keys.
 
 ```ts
 import type {
@@ -11,9 +12,10 @@ import type {
   PluginManifest,
 } from "@lvis/plugin-sdk";
 
-const createPlugin: RuntimePluginFactory = ({ hostApi }) => ({
+const createPlugin: RuntimePluginFactory = async ({ hostApi, log }) => ({
+  async start() { log("ready"); },
   handlers: {
-    hello: async () => "world",
+    my_plugin_ping: async () => ({ ok: true }),
   },
 });
 
@@ -27,211 +29,202 @@ Consume the SDK as a Git dependency pinned to a release tag:
 ```json
 {
   "devDependencies": {
-    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v5.0.0"
+    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v5.13.0"
   }
 }
 ```
 
 No submodule is required.
 
-## v5.0.0 Migration Guide — LvisHostThemeEvent v2 (BREAKING)
+## Exports
 
-**다음 필드들이 `LvisHostThemeEvent` 에서 모두 제거되었습니다.**
-하위호환 alias 없음 — atomic cutover. 참조 시 TypeScript 컴파일 에러 발생.
+| Subpath | Contents |
+|---|---|
+| `@lvis/plugin-sdk` | All type contracts (`PluginManifest`, `PluginHostApi`, `PluginRuntimeContext`, `RuntimePlugin`, …) |
+| `@lvis/plugin-sdk/ui` | UI primitives barrel (legacy/prototyping) |
+| `@lvis/plugin-sdk/ui/components/<Name>` | Per-component subpath (canonical — see below) |
+| `@lvis/plugin-sdk/ui/hooks/useTheme` | React hook for live theme |
+| `@lvis/plugin-sdk/ui/hooks/primeTheme` | Vanilla theme subscriber |
+| `@lvis/plugin-sdk/ui/tokens/inject` | `injectTokenCss` / `applyThemeTokens` / `applyThemeFromHostEvent` |
+| `@lvis/plugin-sdk/ui/tokens/validate` | CSS namespace + token allowlist validators |
 
-| 제거된 필드 | v1 타입 | v2 대체 |
-|---|---|---|
-| `theme` | `"light" \| "dark" \| "high-contrast"` | `bundleId` + `shell` |
-| `chatTheme` | `"default" \| "lg" \| "purple" \| "orange" \| "blue"` | `bundleId` |
-| `codeTheme` | `"light" \| "dark"` | `bundleId` + `shell` |
-| `colorScheme` | `string` (optional) | `shell: "light" \| "dark"` |
-| `reducedMotion` | `boolean` (optional) | OS-level CSS media query (`prefers-reduced-motion`) — SDK 책임 범위 아님 |
-| `fonts?.family` | `string` | plugin 자체 폰트 관리 또는 향후 `--lvis-*` font token 예정 |
+## Plugin anatomy
 
-### 신규 shape
+A plugin has two artifacts:
 
-```typescript
-interface LvisHostThemeEvent {
-  bundleId: "tokyo-night" | "midnight" | "forest" | "violet-light" | "violet-dark" | "high-contrast";
-  shell: "light" | "dark";
-  tokens: LvisTokenMap; // key 는 이미 "--lvis-bg" 형태 — prefix 추가 불필요
+1. **`plugin.json`** — declarative manifest parsed by the host before the runtime loads.
+2. **Entry module** (`entry` field in manifest) — exports a `RuntimePluginFactory` as default.
+
+### Minimal `plugin.json`
+
+```json
+{
+  "id": "com.example.my-plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "description": "One-line summary (required, 1-280 chars). The LLM reads this.",
+  "entry": "dist/index.js",
+  "tools": ["my_plugin_ping"]
 }
 ```
 
-### 변경 전 → 후
+### `PluginManifest` — key fields
 
-```typescript
-// ❌ v1 (제거됨)
-bridge.onEvent("host.theme.changed", (data) => {
-  const e = data as LvisHostThemeEvent;
-  root.setAttribute("data-theme", e.theme);              // 없음
-  root.setAttribute("data-chat-theme", e.chatTheme);     // 없음
-  root.setAttribute("data-code-theme", e.codeTheme);     // 없음
-  // e.colorScheme, e.reducedMotion, e.fonts?.family      // 모두 없음
-});
-
-// ✅ v2 — SDK helper 사용 (권장)
-import { applyThemeFromHostEvent } from "@lvis/plugin-sdk/ui";
-
-bridge.onEvent("host.theme.changed", (data) => {
-  applyThemeFromHostEvent(data as LvisHostThemeEvent);
-  // bundleId 검증 + data-theme-bundle/data-shell 속성 설정 + tokens 적용 한 번에 처리
-});
-
-// ✅ v2 — 직접 처리 (helper 없이)
-bridge.onEvent("host.theme.changed", (data) => {
-  const e = data as LvisHostThemeEvent;
-  root.setAttribute("data-theme-bundle", e.bundleId);
-  root.setAttribute("data-shell", e.shell);
-  // tokens 의 key 는 이미 "--lvis-bg" 형태 — `--lvis-${k}` 형태 prefix 추가 금지
-  Object.entries(e.tokens).forEach(([key, value]) => {
-    document.documentElement.style.setProperty(key, value);
-  });
-});
-```
-
-### useTheme 훅 사용자 (변경 없음)
-
-`useTheme(bridge)` 훅은 내부적으로 v2 로 갱신되었습니다. 훅을 그대로 사용하는 plugin 은
-**코드 수정 없이** SDK 버전만 `5.0.0` 으로 올리면 됩니다.
-
-`colorScheme` / `reducedMotion` / `fonts.family` 는 `useTheme` 훅이 이전에 DOM에
-직접 적용하던 v1 전용 처리입니다 — v2에서 훅은 `bundleId`, `shell`, `tokens` 만 처리합니다.
-해당 필드를 참조하는 코드가 있다면 제거하세요. 대체:
-- `colorScheme` → `event.shell` (`"light"` / `"dark"`)
-- `reducedMotion` → `window.matchMedia("(prefers-reduced-motion: reduce)").matches`
-- `fonts.family` → plugin 자체 CSS 변수 또는 향후 `--lvis-*` font token
-
-### bundleId 값
-
-| bundleId | shell | 설명 |
+| Field | Type | Notes |
 |---|---|---|
-| `"tokyo-night"` | `"dark"` | Tokyo Night 다크 테마 |
-| `"midnight"` | `"dark"` | Midnight 다크 테마 |
-| `"forest"` | `"dark"` | Forest 다크 테마 |
-| `"violet-light"` | `"light"` | Violet 라이트 테마 |
-| `"violet-dark"` | `"dark"` | Violet 다크 테마 |
-| `"high-contrast"` | `"dark"` | 고대비 접근성 테마 |
+| `id` | `string` | Globally unique. Reverse-DNS style recommended (`com.example.my-plugin`). |
+| `name` | `string` | Display name. |
+| `version` | `string` | SemVer. |
+| `description` | `string` | **Required** since v3.0.0. 1-280 chars. LLM-visible. |
+| `entry` | `string` | Path relative to plugin root; default export must be `RuntimePluginFactory`. |
+| `tools` | `string[]` | Tool names exposed to host LLM. Pattern: `^[a-zA-Z_][a-zA-Z0-9_]*$` — **dots and hyphens are rejected**. |
+| `toolSchemas` | `Record<string, ToolSchema>` | Per-tool description, `category`, `pathFields`, `writesToOwnSandbox`, input JSON Schema. |
+| `capabilities` | `string[]` | Capability tags (e.g. `"meeting-recorder"`, `"host:overlay"`). Hosts gate features on these. |
+| `keywords` | `Array<{keyword, skillId}>` | Skill keywords registered with host keyword engine. |
+| `eventSubscriptions` | `string[] \| EventSubscription[]` | Events the plugin listens to via `hostApi.onEvent`. |
+| `emittedEvents` | `string[]` | Events the plugin emits via `hostApi.emitEvent`. Declare all emitted events here. |
+| `notificationEvents` | `Array<{event, titleField?, bodyField?, bypassFocusGate?}>` | Events surfaced as host OS notifications. |
+| `ui` | `PluginUiExtension[]` | Sidebar/panel UI extensions. Currently `slot: "sidebar"` only. |
+| `uiCallable` | `string[]` | Tools the UI may invoke directly (bypassing LLM). Use sparingly. |
+| `auth` | `PluginAuthSpec` | Declarative auth contract for OAuth/cookie flows. `statusTool`/`loginTool`/`logoutTool` must also appear in `uiCallable[]`. |
+| `configSchema` | `PluginConfigSchema` | JSON Schema draft-07 subset; `format: "secret"` routes values through the encrypted keychain. |
+| `dependencies` | `Array<string \| DependencySpec>` | Plugin-level dependencies (other plugin ids). |
+| `pluginAccess` | `PluginAccessSpec` | Cross-plugin tool/event access grants. |
+| `publisher` | `string` | Non-empty string. Required for marketplace submissions. |
+| `startupTimeoutMs` | `number` | Max ms host waits for `start()` to resolve. |
+| `python` | `{managedBy?, requirementsLock?, interpreter?}` | Python co-deployment metadata for plugins with Python workers. |
 
-### `$schema` URL migration (deprecation in progress)
+### Tool tool category + path fields
 
-The schema `$id` is moving from `https://sdk.lvis.com/schemas/plugin.schema.json`
-to `https://sdk.lvisai.xyz/schemas/plugin.schema.json` as part of the LVIS
-domain rename. Plugin authors who hard-code a `$schema` URL in `plugin.json`
-should migrate at their next release:
+`toolSchemas[name].category` is **required** — no default. Host rejects tools without it.
 
-```diff
--  "$schema": "https://sdk.lvis.com/schemas/plugin.schema.json",
-+  "$schema": "https://sdk.lvisai.xyz/schemas/plugin.schema.json",
+| Category | Meaning |
+|---|---|
+| `"read"` | Read-only access |
+| `"write"` | Write access to plugin's own sandbox |
+| `"shell"` | Shell-level operations |
+| `"network"` | Network I/O |
+
+`pathFields?: string[]` — list of input schema property names that contain filesystem paths. The host uses these to enforce the `~/.lvis/plugins/<pluginId>/` boundary.
+
+`writesToOwnSandbox?: boolean` — self-attestation that write paths stay inside `~/.lvis/plugins/<pluginId>/`. The host verifies this at call time and downgrades the approval tier to LOW when true.
+
+## `PluginRuntimeContext`
+
+The context object passed by the host to `RuntimePluginFactory`:
+
+```ts
+interface PluginRuntimeContext {
+  pluginId: string;        // matches manifest.id
+  pluginRoot: string;      // absolute path to plugin install dir (read-safe)
+  hostRoot: string;        // absolute path to host working dir (avoid direct writes)
+  pluginDataDir: string;   // ~/.lvis/plugins/<pluginId>/ — plugin's private data dir
+  config?: Record<string, unknown>; // manifest defaults merged with user overrides
+  log: (message: string, meta?: unknown) => void; // scoped logger (prefix = pluginId)
+  hostApi: PluginHostApi;
+}
 ```
 
-Both URLs validate (the field uses `format: uri` rather than a strict enum
-today) so plugins migrating during the deprecation window will not fail
-validation. The deprecation lasts for **one SDK release**: from v3.2.x the
-SDK warns when the legacy URL is detected, and starting at the next major
-the schema enum will be tightened to the new URL only. The `applyDollarSchemaMigration`
-hook in `scripts/sync-schema-from-host.mjs` is the anchor point for that
-follow-up change.
+Plugin data is stored under `~/.lvis/plugins/<pluginId>/`. Do not read or write outside this directory without going through a host API method.
 
-### v5.10.0 Additions (additive — no migration)
+## `PluginHostApi` — full surface
 
-**MCP auth metadata types** are new. SDK 가 host 의 MCP 서버 인증 컨트랙트
-를 type 형태로 노출:
+```ts
+interface PluginHostApi {
+  // ── Config (reactive) ─────────────────────────────────────────────────────
+  config: {
+    get<T = unknown>(key: string): T | undefined;
+    set<T = unknown>(key: string, value: T): Promise<void>;
+    onChange<T = unknown>(key: string, cb: (value: T | undefined) => void): () => void;
+  };
 
-- `McpRuntimeSpec.stdio` 의 `apiKeyEnv?: string` — host 가 plugin 환경변수
-  에서 읽을 API key envvar 이름.
-- `McpRuntimeSpec.http` 의 `apiKeyHeader?: string` / `allowPrivateNetworks?:
-  boolean` / `oauth?: McpOAuthMetadata`.
-- `interface McpOAuthMetadata` — MCP 2025-06-18 + RFC 8414/7591 매핑 필드
-  (`resource`, `resourceMetadataUrl`, `authorizationServers`, `scopes`,
-  `clientRegistration`).
-- `interface McpAuthMetadata extends McpOAuthMetadata` — `mode` discriminator
-  추가.
-- `PluginMarketplaceItem.mcpAuth?: McpAuthMetadata` — 마켓플레이스 카탈로그
-  entry 에 노출.
+  // ── Storage (scoped to pluginDataDir) ─────────────────────────────────────
+  storage: PluginStorage; // read / write / exists / mkdir — all paths relative to pluginDataDir
 
-**Schema gap (known)**: 본 릴리스는 type 만 sync. `schemas/plugin-manifest.schema.json`
-은 host 측 schema PR 머지 후 `bun run sync:schema` 로 따라잡을 예정. 즉
-현 시점에 plugin manifest 에 `mcpAuth` 적으면 host `additionalProperties:
-false` 에 막힘.
+  // ── Keywords ──────────────────────────────────────────────────────────────
+  registerKeywords(keywords: Array<{ keyword: string; skillId: string }>): void;
 
-### v3.1.0 Additions (additive — no migration)
+  // ── Events ────────────────────────────────────────────────────────────────
+  emitEvent(eventType: string, data?: unknown): void;
+  onEvent(eventType: string, handler: (data: unknown) => void): () => void; // returns unsubscribe fn
 
-**`PluginHostApi.getInstalledPluginIds()` and `onPluginsChanged(handler)` are
-new.** Brain plugins (e.g. `work-proactive`) can now read the installed
-plugin set and subscribe to install/uninstall lifecycle without a host
-restart. `getInstalledPluginIds` returns ids in load order — treat as a SET
-(`includes()`); insertion order is NOT priority.
+  // ── Plugin lifecycle ──────────────────────────────────────────────────────
+  getInstalledPluginIds(): string[];                                         // excludes caller
+  onPluginsChanged(handler: (event: PluginLifecycleEvent) => void): () => void;
 
-**`PluginLifecycleEvent` discriminated union is new.** Handlers receive
-`{type: "installed", pluginId, source: "marketplace" | "local-dev"}` or
-`{type: "uninstalled", pluginId}`. Self-events filtered by the host. The
-union also carries a `_future` sentinel variant — never produced at runtime,
-present only to force exhaustive `switch (event.type)` consumers to add a
-`default:` branch so future variants (e.g. `"updated"` for version bumps)
-don't silently break subscribers.
+  // ── Secrets (Electron safeStorage) ────────────────────────────────────────
+  getSecret(key: string): string | null;
 
-**`source: "local-dev"` on installs marks the dev-mode local-folder install
-path** (LVIS_DEV=1 + Settings → 로컬 폴더에서 설치). Production consumers
-SHOULD ignore these so a developer's local test plugin doesn't trigger
-downstream cascades.
+  // ── LLM API key resolution ─────────────────────────────────────────────────
+  resolveApiKey?(opts: {
+    purpose: "llm" | "stt" | "embedding" | "vision";
+    vendor?: "openai" | "azure-openai" | "vertex" | "anthropic";
+    signal?: AbortSignal;
+  }): Promise<{ ok: true; vendor: string; bearer: () => string } | { ok: false; error: string; message: string }>;
 
-The companion host change reserves `plugin.*` as a host-only event namespace
-— plugin-side `hostApi.emitEvent("plugin.installed", ...)` is rejected so a
-plugin cannot spoof lifecycle events to other subscribers.
+  // ── Overlay / conversation trigger ────────────────────────────────────────
+  triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
 
-### v3.0.0 Migration Guide (breaking)
+  // ── Auth window ───────────────────────────────────────────────────────────
+  openAuthWindow(options: OpenAuthWindowWithFinalUrlOptions): Promise<OpenAuthWindowFinalUrlResult>;
+  openAuthWindow(options: OpenAuthWindowCookieOptions): Promise<AuthWindowCookie[]>;
+  openAuthPartitionViewer(pluginId: string): Promise<void>;
 
-**`description` is now a required MUST field** (was optional). Add a one-line
-description to every `plugin.json` if not already present.
+  // ── Logging ────────────────────────────────────────────────────────────────
+  log(level: "info" | "warn" | "error", message: string, data?: unknown): void;
 
-**`eventPublishes` is removed** — use `emittedEvents` exclusively. Rename any
-`eventPublishes` fields in `plugin.json` to `emittedEvents`. No compat shim.
-
-**`permissions` top-level field is no longer allowed** (`additionalProperties: false`
-enforced). Remove any `permissions` arrays from `plugin.json` manifests.
-
-**`additionalProperties: false`** — the schema now rejects unknown manifest keys.
-Any undocumented fields in `plugin.json` will cause host load failure. This
-includes the previously-accepted `permissions[]` field.
-
-**`python` field added** — the `PluginManifest` interface now includes an
-optional `python?: { managedBy?, requirementsLock?, interpreter? }` field for
-Python co-deployment metadata (e.g. pageindex). This was already supported at
-runtime but was previously undeclared in the type.
-
-**`publisher` requires `minLength: 1`** — an empty-string publisher now fails
-schema validation. Either omit the field or provide a non-empty value.
-
-### Upgrading
-
-To pull in a new SDK release, update the tag in your `package.json` and reinstall:
-
-```bash
-# bun (recommended)
-bun update @lvis/plugin-sdk
-# or pin explicitly:
-bun add -d github:lvis-project/lvis-plugin-sdk#v3.0.0
-
-# npm
-npm install --save-dev github:lvis-project/lvis-plugin-sdk#v3.0.0
+  // ── Shutdown ───────────────────────────────────────────────────────────────
+  onShutdown(handler: () => void | Promise<void>): void;
+}
 ```
 
-After upgrading, check your `plugin.json` manifest against the updated JSON
-schema at `node_modules/@lvis/plugin-sdk/schemas/plugin-manifest.schema.json`.
+## `RuntimePlugin` lifecycle
+
+```ts
+interface RuntimePlugin {
+  start?: () => Promise<void> | void;  // async setup — connections, state restore
+  stop?: () => Promise<void> | void;   // flush state, release resources
+  handlers: Record<string, PluginToolHandler>; // keys must match manifest.tools
+}
+```
+
+Call `hostApi.onEvent` unsubscribe functions and release resources in `stop()`.
+
+## Event naming convention
+
+Events are **dot-delimited** strings. Plugin-emitted events must be namespaced
+under the plugin's own id to avoid collisions:
+
+```
+<manifest.id>.<verb>.<noun>
+```
+
+Examples:
+- `com.example.my-plugin.task.created`
+- `com.example.my-plugin.auth.changed`  ← required when `auth` spec is declared (§9.4a)
+
+The namespace `plugin.*` is reserved by the host — `hostApi.emitEvent("plugin.installed", ...)` is rejected.
+
+No underscore↔hyphen normalization is applied: the string you emit must exactly
+match the string subscribers register with `onEvent`.
+
+## Auth event contract
+
+When a plugin declares an `auth` spec in its manifest, it **must** include
+`<pluginId>.auth.changed` in `emittedEvents[]` and emit it from all login/logout
+and auth-state-change paths. The host settings badge polls by event, not by
+timer — omitting the event means the UI never refreshes after login.
 
 ## Schema source-of-truth (US-A1)
 
-`schemas/plugin-manifest.schema.json` is a **byte-equality copy** of the host's
-`lvis-app/schemas/plugin.schema.json`. A plugin that passes SDK validation
-will pass host validation and vice versa.
-
-Sync rules:
+`schemas/plugin-manifest.schema.json` is a **byte-equality copy** of
+`lvis-app/schemas/plugin.schema.json`. A plugin that passes SDK validation will
+pass host validation and vice versa.
 
 - The host repo (`lvis-app`) is the canonical source of truth.
-- The SDK schema is regenerated by `scripts/sync-schema-from-host.mjs`.
-- The `drift-check` GitHub workflow runs nightly and on every PR; it fails
-  CI when the SDK schema (or `src/index.ts` types) differ from the host SoT.
+- SDK schema is regenerated by `scripts/sync-schema-from-host.mjs`.
+- `drift-check` CI workflow runs nightly and on every PR; fails when SDK types
+  or schema diverge from the host.
 - To regenerate locally:
 
   ```bash
@@ -239,21 +232,17 @@ Sync rules:
     bun run sync:schema-from-host
   ```
 
-Both schemas use JSON Schema **draft-07** (the dialect AJV strict-mode
-enforces in the host's runtime validator) so behavior is identical between
-authoring-time SDK validation and runtime host validation. Earlier SDK
-versions used `draft/2020-12`; v2.2.0 unified on draft-07 to close audit
-item HIGH #1 (schema-dialect drift).
+Both schemas use JSON Schema **draft-07** (the dialect AJV strict-mode enforces
+in the host's runtime validator).
 
 ## Plugin CSS namespace validator
 
-Every plugin-local CSS custom property (anything that is NOT `--lvis-*`) must
-carry a 2-3 lowercase-letter namespace prefix to avoid collisions across
-co-loaded plugins (e.g. `--pm-accent-bg` for the meeting plugin).
+Every plugin-local CSS custom property must carry a 2-3 lowercase-letter
+namespace prefix (e.g. `--pm-accent-bg` for a `pm`-prefixed plugin). The
+`--lvis-*` namespace is owned by the host — plugins must not define tokens in
+that namespace.
 
-### Quick start — CI enforcement
-
-Add to your plugin repo's `package.json`:
+### CI enforcement
 
 ```json
 {
@@ -263,15 +252,10 @@ Add to your plugin repo's `package.json`:
 }
 ```
 
-Then call it from GitHub Actions:
-
 ```yaml
 - name: Check CSS namespace
   run: bun run check:plugin-css
 ```
-
-The script scans `dist/` and `src/` by default. It exits with code 1 when
-violations are found, so CI fails automatically.
 
 ### Programmatic API
 
@@ -279,32 +263,11 @@ violations are found, so CI fails automatically.
 import { validatePluginCssNamespace } from "@lvis/plugin-sdk/ui/tokens/validate";
 
 const result = validatePluginCssNamespace(css, {
-  // Vendor library prefixes exempt from enforcement (default: tw/radix/shiki/reach/vis/react)
-  vendorAllowlist: ["tw", "radix", "shiki"],
-  // Restrict to this plugin's known prefix(es); any other 2-3-char prefix is also flagged
-  validPrefixes: ["pm"],
-  // "error" (default): findings → violations[], ok=false
-  // "warn":            findings → warnings[], ok=true  (soft mode for gradual rollout)
-  mode: "warn",
+  vendorAllowlist: ["tw", "radix", "shiki"], // default list; extend as needed
+  validPrefixes: ["pm"],   // flag any other 2-3-char prefix not in this list
+  mode: "warn",            // "error" (default) | "warn"
 });
-
-if (!result.ok) {
-  console.error("Violations:", result.violations);
-}
-if (result.warnings.length > 0) {
-  console.warn("Warnings:", result.warnings);
-}
 ```
-
-### Environment variables (CI script)
-
-| Variable | Default | Description |
-|---|---|---|
-| `LVIS_CSS_MODE` | `error` | Set to `warn` for soft mode — findings go to `warnings[]`, exit 0 |
-| `LVIS_CSS_FAIL_ON_WARN` | — | Set to `1` to exit 1 even in warn mode |
-| `LVIS_CSS_ROOTS` | `dist,src` | Comma-separated directories to scan |
-| `LVIS_CSS_VENDOR` | (default list) | Override vendor allowlist (comma-separated prefixes) |
-| `LVIS_CSS_PREFIXES` | (default list) | Override valid plugin prefix list (comma-separated) |
 
 ### What counts as a violation
 
@@ -318,17 +281,22 @@ if (result.warnings.length > 0) {
 | `--tw-ring-color` | OK — vendor-allowlisted (`tw`) |
 | `--radix-popper-anchor-width` | OK — vendor-allowlisted (`radix`) |
 
+### Environment variables (CI script)
+
+| Variable | Default | Description |
+|---|---|---|
+| `LVIS_CSS_MODE` | `error` | Set to `warn` for soft mode |
+| `LVIS_CSS_FAIL_ON_WARN` | — | Set to `1` to exit 1 even in warn mode |
+| `LVIS_CSS_ROOTS` | `dist,src` | Comma-separated scan roots |
+| `LVIS_CSS_VENDOR` | (default list) | Override vendor allowlist (comma-separated) |
+| `LVIS_CSS_PREFIXES` | (default list) | Override valid plugin prefix list |
+
 ## UI token allowlist (build-time validator)
 
-Plugin UI must reference only the 17 `--lvis-*` design tokens enumerated in
-`LVIS_TOKEN_NAMES`. The host validates the same allowlist at theme-broadcast
-time, so any other `var(--lvis-*)` reference would silently render as the CSS
-`initial` keyword — invisible regression. The SDK ships a build-time validator
-that catches the mistake before publish.
+Plugins may only reference the 17 `--lvis-*` design tokens in `LVIS_TOKEN_NAMES`.
+Any other `var(--lvis-*)` reference silently renders as the CSS `initial` keyword.
 
 ```ts
-// plugin's CI script — e.g. scripts/check-ui-tokens.mjs
-import { readFileSync } from "node:fs";
 import { validateTokenUsage, validateTokenDefinitions } from "@lvis/plugin-sdk/ui/tokens/validate";
 
 const css = readFileSync("dist/plugin-ui.css", "utf8");
@@ -339,29 +307,17 @@ if (!usage.ok) {
   process.exit(1);
 }
 
-const defs = validateTokenDefinitions(css); // allowDefinitions: false (default)
+const defs = validateTokenDefinitions(css); // plugins must not redefine --lvis-* tokens
 if (!defs.ok) {
-  console.error("Plugin must not redefine --lvis-* tokens (host owns them):", defs.forbiddenRedefinitions);
+  console.error("Forbidden redefinitions:", defs.forbiddenRedefinitions);
   process.exit(1);
 }
 ```
 
-The validator is a pure string-scan (no postcss / CSS-AST dependency), so it
-runs in any Node 18+ context — including a vitest unit test, a `bun run check`
-script, or a GitHub Actions step.
-
-The SDK's own `bun run test` self-checks every component CSS string against
-the allowlist (`src/ui/__tests__/sdk-self-token-allowlist.test.ts`); a typo
-or a stale token entry fails CI immediately.
-
 ## UI imports — canonical pattern (5.4.0+)
 
-**Per-component subpath is the canonical import path** for new plugin
-code. The `./ui` barrel still works (no breaking change for existing
-plugins) but is now considered the "prototyping / legacy" path because
-every component module has a top-level `injectTokenCss(...)` side effect
-that bundlers cannot tree-shake — importing one component from the
-barrel pulls all 10.
+Use per-component subpath imports. The `./ui` barrel re-exports every component
+and each carries an `injectTokenCss()` side effect that bundlers cannot tree-shake.
 
 ```ts
 // canonical — only the imported components ship in the bundle
@@ -373,42 +329,60 @@ import { Card } from "@lvis/plugin-sdk/ui/components/Card";
 import { Stack, Toggle, Card } from "@lvis/plugin-sdk/ui";
 ```
 
-Plugins paint with the host-primed `--lvis-*` tokens shipped on every
-BrowserWindow via `webPreferences.additionalArguments`, so components
-render with the correct theme from frame 0 without any SDK-side fallback
-stylesheet. Subscribe to live theme changes with `primeTheme` (or
-`useTheme` under React). `injectTokenCss` is keyed by stable id so
-importing it from multiple component bundles in the same plugin is
-safe — the `<style>` element is upserted once, never duplicated.
+Available subpaths (5.4.0+):
 
-Available subpaths (5.4.0):
-
-- `@lvis/plugin-sdk/ui/components/<Name>` — Badge / Button / Card /
-  Checkbox / Input / Select / Spinner / Stack / Text / Toggle
+- `@lvis/plugin-sdk/ui/components/<Name>` — Badge / Button / Card / Checkbox / Input / Select / Spinner / Stack / Text / Toggle
 - `@lvis/plugin-sdk/ui/hooks/useTheme` — React hook wrapping `primeTheme`
-- `@lvis/plugin-sdk/ui/hooks/primeTheme` — vanilla theme subscriber
-  (pull + subscribe + paint, multi-document aware)
-- `@lvis/plugin-sdk/ui/tokens/inject` — `injectTokenCss` / `applyThemeTokens` /
-  `applyThemeFromHostEvent`
+- `@lvis/plugin-sdk/ui/hooks/primeTheme` — vanilla theme subscriber (pull + subscribe + paint, multi-document aware)
+- `@lvis/plugin-sdk/ui/tokens/inject` — `injectTokenCss` / `applyThemeTokens` / `applyThemeFromHostEvent`
+
+`injectTokenCss` is keyed by stable id — importing from multiple component bundles in the same plugin is safe; the `<style>` element is upserted once.
+
+## Theme events
+
+Subscribe to host theme changes:
+
+```ts
+import { applyThemeFromHostEvent } from "@lvis/plugin-sdk/ui/tokens/inject";
+
+hostApi.onEvent("host.theme.changed", (data) => {
+  applyThemeFromHostEvent(data as LvisHostThemeEvent);
+});
+```
+
+`LvisHostThemeEvent` shape (v2, introduced in v5.0.0):
+
+```ts
+interface LvisHostThemeEvent {
+  bundleId: "tokyo-night" | "midnight" | "forest" | "violet-light" | "violet-dark" | "high-contrast";
+  shell: "light" | "dark";
+  tokens: LvisTokenMap; // keys are already "--lvis-bg" form — do NOT add prefix
+}
+```
+
+| bundleId | shell |
+|---|---|
+| `"tokyo-night"` | `"dark"` |
+| `"midnight"` | `"dark"` |
+| `"forest"` | `"dark"` |
+| `"violet-light"` | `"light"` |
+| `"violet-dark"` | `"dark"` |
+| `"high-contrast"` | `"dark"` |
 
 ## Trust model
 
-Marketplace signing keys are intentionally not part of this SDK. LVIS follows
-the commercial IDE/browser marketplace model:
+Marketplace signing keys are intentionally not part of this SDK:
 
 - `lvis-marketplace` validates and signs uploaded plugin artifacts.
-- `lvis-app` owns the marketplace trust anchors and verifies signed artifacts
-  during install/update.
+- `lvis-app` owns the marketplace trust anchors and verifies signed artifacts during install/update.
 - Plugin repos use this SDK only for authoring types and manifest contracts.
 
 ## Tag policy
 
 - `v2.0.0+` tags are immutable release points.
-- Consumers should pin a specific tag (`github:lvis-project/lvis-plugin-sdk#vX.Y.Z`).
-- Each tag push triggers the `release.yml` workflow which creates a corresponding
-  GitHub Release with automated release notes.
-- Tagging follows semver: patch for fixes, minor for additive type changes,
-  major for breaking contract changes.
+- Pin a specific tag: `github:lvis-project/lvis-plugin-sdk#vX.Y.Z`.
+- Each tag push triggers the `release.yml` workflow which creates a GitHub Release with automated release notes.
+- Semver: patch for fixes, minor for additive type changes, major for breaking contract changes.
 
 ## Releasing a new version
 
@@ -417,3 +391,74 @@ the commercial IDE/browser marketplace model:
 3. Push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
 4. The `release` workflow creates the GitHub Release automatically.
 5. Notify downstream plugin authors to update their `#vX.Y.Z` pin.
+
+## Changelog highlights
+
+### v5.13.0 (current)
+
+Downstream pin: `github:lvis-project/lvis-plugin-sdk#v5.13.0`
+
+### v5.10.0 Additions (additive — no migration)
+
+MCP auth metadata types added:
+
+- `McpRuntimeSpec.stdio.apiKeyEnv?: string`
+- `McpRuntimeSpec.http.apiKeyHeader?` / `allowPrivateNetworks?` / `oauth?: McpOAuthMetadata`
+- `interface McpOAuthMetadata` — MCP 2025-06-18 + RFC 8414/7591 fields
+- `interface McpAuthMetadata extends McpOAuthMetadata` — `mode` discriminator
+- `PluginMarketplaceItem.mcpAuth?: McpAuthMetadata`
+
+**Schema gap (known)**: types are synced; `schemas/plugin-manifest.schema.json`
+will be updated via `bun run sync:schema` after the host schema PR merges.
+Until then, adding `mcpAuth` to `plugin.json` will be rejected by `additionalProperties: false`.
+
+### v5.0.0 Migration Guide — LvisHostThemeEvent v2 (BREAKING)
+
+The following fields were **removed** from `LvisHostThemeEvent`. No compat alias.
+
+| Removed field | v1 type | v2 replacement |
+|---|---|---|
+| `theme` | `"light" \| "dark" \| "high-contrast"` | `bundleId` + `shell` |
+| `chatTheme` | `"default" \| "lg" \| "purple" \| "orange" \| "blue"` | `bundleId` |
+| `codeTheme` | `"light" \| "dark"` | `bundleId` + `shell` |
+| `colorScheme` | `string` (optional) | `shell: "light" \| "dark"` |
+| `reducedMotion` | `boolean` (optional) | OS-level `prefers-reduced-motion` media query |
+| `fonts?.family` | `string` | plugin-managed CSS or future `--lvis-*` font token |
+
+`useTheme(bridge)` users: the hook is updated internally — no code changes needed, just bump the SDK version.
+
+### v3.1.0 Additions (additive — no migration)
+
+- `PluginHostApi.getInstalledPluginIds()` and `onPluginsChanged(handler)` added.
+- `PluginLifecycleEvent` discriminated union added: `{type: "installed", pluginId, source: "marketplace" | "local-dev"}` / `{type: "uninstalled", pluginId}`.
+- `plugin.*` event namespace reserved for host — plugin-side emit is rejected.
+
+### v3.0.0 Migration Guide (breaking)
+
+- `description` is now **required** in every `plugin.json`.
+- `eventPublishes` removed — use `emittedEvents` exclusively.
+- `permissions` top-level field removed (`additionalProperties: false` enforced).
+- `python` field added (optional) for plugins with Python workers.
+- `publisher` requires `minLength: 1` — empty string fails validation.
+
+### `$schema` URL migration
+
+```diff
+- "$schema": "https://sdk.lvis.com/schemas/plugin.schema.json",
++ "$schema": "https://sdk.lvisai.xyz/schemas/plugin.schema.json",
+```
+
+Both URLs validate during the deprecation window. The legacy URL will be rejected at the next major release.
+
+### Upgrading
+
+```bash
+# bun (recommended)
+bun add -d github:lvis-project/lvis-plugin-sdk#v5.13.0
+
+# npm
+npm install --save-dev github:lvis-project/lvis-plugin-sdk#v5.13.0
+```
+
+After upgrading, validate your `plugin.json` against:
+`node_modules/@lvis/plugin-sdk/schemas/plugin-manifest.schema.json`
