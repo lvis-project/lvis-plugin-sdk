@@ -138,7 +138,7 @@ export interface EventSubscription {
  *
  * @example
  * const manifest: PluginManifest = {
- *   id: "my-plugin",
+ *   id: "com.example.my-plugin",
  *   name: "My Plugin",
  *   version: "1.0.0",
  *   entry: "dist/index.js",
@@ -148,7 +148,7 @@ export interface EventSubscription {
  */
 export interface PluginManifest {
 
-  /** Globally unique identifier. Kebab-case (lowercase letters, digits, hyphens; min 3 chars — 2-char names reserved for future system namespaces). Example: `"my-plugin"`. Must be stable across versions. */
+  /** Globally unique identifier. Reverse-DNS style recommended (for example `com.example.my-plugin`). Must be stable across versions. */
   id: string;
   /** Human-readable display name shown in the host UI and plugin pickers. */
   name: string;
@@ -237,6 +237,11 @@ export interface PluginManifest {
   icon?: string;
 
   iconText?: string;
+
+  hostSecrets?: {
+
+    read?: string[];
+  };
   python?: {
     managedBy?: "lvis-app" | "self";
     requirementsLock?: string;
@@ -247,21 +252,6 @@ export interface PluginManifest {
   author?: string;
   /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */
   uiSlots?: string[];
-  /**
-   * Host-managed secret allowlist (#893 Stage 1). Plugins declaring keys under
-   * `read` request the host to fulfil them through {@link PluginHostApi.resolveApiKey}.
-   * Schema acceptance is necessary but not sufficient — the marketplace
-   * whitelist gates the actual runtime fulfilment. @optional
-   */
-  hostSecrets?: { read: string[] };
-  /**
-   * LLM key sourcing declaration (#893 Stage 1):
-   *  - `"host"` — plugin relies on host-managed LLM keys via {@link PluginHostApi.resolveApiKey}; requires marketplace whitelist at runtime.
-   *  - `"plugin"` — plugin owns its own LLM keys (declared in `configSchema` or `hostSecrets`-unrelated channels).
-   *  - `"none"` — plugin does not call any LLM (default).
-   * @optional
-   */
-  llmKeySource?: "host" | "plugin" | "none";
 }
 
 /**
@@ -434,6 +424,17 @@ export class MissingDependenciesError extends Error {
     );
     this.missing = missing;
     this.name = "MissingDependenciesError";
+  }
+}
+
+export class MissingPluginDependenciesError extends Error {
+  readonly missing: string[];
+  constructor(missing: string[]) {
+    super(
+      `Plugin requires the following plugins to be installed first: ${missing.join(", ")}`,
+    );
+    this.missing = missing;
+    this.name = "MissingPluginDependenciesError";
   }
 }
 
@@ -670,6 +671,30 @@ export interface PluginHostApi {
    */
   getSecret(key: string): string | null;
 
+  resolveApiKey?(opts: {
+    purpose: "llm" | "stt" | "embedding" | "vision";
+    vendor?: "openai" | "azure-openai" | "vertex" | "anthropic";
+    signal?: AbortSignal;
+  }): Promise<
+    | {
+        ok: true;
+        vendor: string;
+        bearer: () => string;
+        baseUrl?: string;
+        release: () => void;
+      }
+    | {
+        ok: false;
+        reason:
+          | "no-host-vendor"
+          | "vendor-mismatch"
+          | "not-whitelisted"
+          | "user-mode-plugin"
+          | "aborted"
+          | "user-endpoint-with-host-key";
+      }
+  >;
+
   callTool<T = unknown>(toolName: string, payload?: unknown): Promise<T>;
 
   /**
@@ -801,129 +826,8 @@ export interface PluginHostApi {
 
     respond(requestId: string, choice: ApprovalChoice, nonce?: string, hmac?: string): Promise<void>;
   };
-
-  /**
-   * Resolve an API key for a host-managed AI surface (#893 Stage 1). The host
-   * decides whether the calling plugin is allowed to receive a host key —
-   * sources include the marketplace whitelist, the plugin's manifest
-   * (`hostSecrets.read`, `llmKeySource`), and the active user/admin mode.
-   *
-   * Plugins MUST feature-detect this method at runtime — a v5.4 (or older)
-   * host returns `undefined` for the property:
-   *
-   * ```ts
-   * if (typeof hostApi.resolveApiKey === "function") {
-   *   // Omit `vendor` to let the host pick the active provider (recommended
-   *   // for vendor-agnostic plugins — host may failover or alias e.g.
-   *   // anthropic→claude).
-   *   const ac = new AbortController();
-   *   const out = await hostApi.resolveApiKey({ purpose: "llm", signal: ac.signal });
-   *   if (out.ok) {
-   *     try {
-   *       // Pass the SAME signal to downstream fetch() — `signal` only aborts
-   *       // the resolution promise here, not in-flight requests the plugin
-   *       // makes with the bearer.
-   *       const res = await fetch(out.baseUrl ?? defaultUrl, {
-   *         headers: { authorization: `Bearer ${out.bearer()}` },
-   *         signal: ac.signal,
-   *       });
-   *       // After release(), `out.bearer()` MUST throw Error("released").
-   *     } finally {
-   *       // `release()` may be sync or async — await for async-safe hosts.
-   *       await out.release?.();
-   *     }
-   *   } else {
-   *     // out.reason is a discriminated string — plugin decides whether to
-   *     // fall back to its own key, mock, or surface a user error.
-   *   }
-   * }
-   * ```
-   *
-   * @param opts.signal - Aborts ONLY the resolution promise (rejects with the
-   * "aborted" reason on the discriminated failure branch). Plugins MUST pass
-   * the same signal to their own downstream `fetch()` calls to abort
-   * in-flight requests. Aborting after a successful resolution also triggers
-   * automatic `release()` on the success result so callers cannot leak keys
-   * via dropped promises.
-   *
-   * @optional
-   */
-  resolveApiKey?(opts: {
-    purpose: "llm" | "stt" | "embedding" | "vision";
-    vendor?: "openai" | "azure-openai" | "vertex" | "anthropic";
-    signal?: AbortSignal;
-  }): Promise<ResolveApiKeyResult>;
 }
 
-/**
- * Result of {@link PluginHostApi.resolveApiKey} — discriminated union (#893 Stage 1).
- *
- * Success: callers obtain the bearer via the `bearer()` thunk (never stored as a
- * plain string field, so it is harder to leak through serialization) and MUST
- * invoke `release()` once the request that consumed the key has completed.
- *
- * Failure: `reason` enumerates every refusal cause exposed to plugins; new
- * causes will only be added in subsequent minor versions, so consumers should
- * branch with a `default:` for forward compatibility.
- */
-export type ResolveApiKeyResult =
-  | {
-      ok: true;
-      /**
-       * The vendor actually resolved by the host. May DIFFER from the
-       * `opts.vendor` the plugin requested — hosts are permitted to fail over
-       * to an alternate provider (e.g. when the primary is unhealthy) and to
-       * normalize aliases (e.g. `anthropic→claude`). Plugins that branch on
-       * vendor-specific behavior MUST inspect this field rather than reusing
-       * the request value.
-       */
-      vendor: string;
-      /**
-       * Returns the bearer token at the moment of call. Implemented as a thunk
-       * (rather than a plain string field) so the secret is harder to leak via
-       * serialization, structured-clone, or accidental logging.
-       *
-       * @throws {Error} `Error("released")` — after `release()` has been
-       *   invoked (or the request's `AbortSignal` has fired), further
-       *   `bearer()` calls MUST throw. This is a runtime contract; TypeScript
-       *   cannot enforce it at compile time.
-       */
-      bearer: () => string;
-      baseUrl?: string;
-      /**
-       * Disposer that signals the plugin no longer needs the key. The host is
-       * then free to rotate it, zero out buffers, decrement the active-lease
-       * count, etc. MUST be called — plugin authors using the `try/finally`
-       * pattern should `await out.release?.()` so async-safe hosts that need
-       * to flush state (e.g. write an audit row) complete deterministically.
-       *
-       * Return type is intentionally `void | Promise<void>` so hosts may
-       * implement either signature without breaking SDK consumers.
-       */
-      release(): void | Promise<void>;
-    }
-  | {
-      ok: false;
-      reason:
-        | "no-host-vendor"
-        | "vendor-mismatch"
-        | "not-whitelisted"
-        | "user-mode-plugin"
-        | "aborted"
-        | "user-endpoint-with-host-key";
-    };
-
-/**
- * §8 ApprovalChoice — mirrors the host `approval-gate.ts` union.
- *
- * Plugin contract (REQUIRED):
- *   - "allow-once" / "allow-session" are HOST-OWNED LIFETIMES. Plugins MUST
- *     re-request through the host approval gate for each tool invocation;
- *     caching either value inside the plugin process is a contract violation.
- *   - Only "allow-always" may be remembered, and only if the host's
- *     `rememberPattern` indicates a persisted rule (verified by host audit).
- *   - "deny-once" / "deny-always" terminate the current tool call only.
- */
 export type ApprovalChoice =
   | "allow-once"
   | "allow-session"
@@ -1060,30 +964,3 @@ export interface RuntimePlugin {
  * export default factory;
  */
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
-
-// ─── Manifest validator ────────────────────────────────────────────────────────
-
-import { createRequire } from "node:module";
-import type { ValidateFunction } from "ajv";
-
-const _require = createRequire(import.meta.url);
-
-let _cachedValidator: ValidateFunction | null = null;
-
-/**
- * Compile the bundled plugin manifest JSON schema into an AJV validator.
- * Host applications should import this instead of re-compiling locally — keeps
- * SDK schema as the single source of truth.
- */
-export function compileManifestValidator(): ValidateFunction {
-  if (_cachedValidator) return _cachedValidator;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { default: Ajv } = _require("ajv") as { default: typeof import("ajv").default };
-  const schema = _require("../schemas/plugin-manifest.schema.json") as Record<string, unknown>;
-  const ajv = new Ajv({ strict: true, strictRequired: false, allErrors: true, useDefaults: false });
-  // The schema uses format:"uri" on the $schema advisory field; register a
-  // pass-through so strict mode does not throw on the unknown format keyword.
-  ajv.addFormat("uri", { validate: () => true });
-  _cachedValidator = ajv.compile(schema);
-  return _cachedValidator;
-}
