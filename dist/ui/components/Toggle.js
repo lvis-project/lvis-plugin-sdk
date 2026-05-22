@@ -3,6 +3,7 @@ import React from "react";
 
 // src/ui/tokens/theme-bundles.ts
 var BUNDLE_IDS = [
+  "cherry-blossom",
   "tokyo-night",
   "midnight",
   "forest",
@@ -14,8 +15,7 @@ var BUNDLE_IDS = [
   "nord",
   "gruvbox-dark-hard",
   "solarized-light",
-  "rose-pine",
-  "cherry-blossom"
+  "rose-pine"
 ];
 
 // src/ui/tokens/index.ts
@@ -110,7 +110,7 @@ var CSS = `
 .lvis-toggle-label { font-size: 0.875rem; color: var(--lvis-fg); }
 `;
 injectTokenCss("lvis-toggle", CSS);
-function Toggle({ checked, defaultChecked, onChange, label, disabled, id }) {
+function Toggle({ checked, defaultChecked, onChange, label, disabled, id, className = "", style }) {
   const [internal, setInternal] = React.useState(defaultChecked ?? false);
   const isOn = checked !== void 0 ? checked : internal;
   const handleClick = () => {
@@ -122,7 +122,8 @@ function Toggle({ checked, defaultChecked, onChange, label, disabled, id }) {
   const cls = [
     "lvis-toggle",
     isOn ? "lvis-toggle-checked" : "",
-    disabled ? "lvis-toggle-disabled" : ""
+    disabled ? "lvis-toggle-disabled" : "",
+    className
   ].filter(Boolean).join(" ");
   return /* @__PURE__ */ jsxs(
     "div",
@@ -132,6 +133,7 @@ function Toggle({ checked, defaultChecked, onChange, label, disabled, id }) {
       "aria-checked": isOn,
       "aria-disabled": disabled ?? false,
       className: cls,
+      style,
       onClick: handleClick,
       tabIndex: disabled ? -1 : 0,
       onKeyDown: (e) => {

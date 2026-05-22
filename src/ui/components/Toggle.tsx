@@ -33,9 +33,11 @@ export interface ToggleProps {
   label?: string;
   disabled?: boolean;
   id?: string;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
-export function Toggle({ checked, defaultChecked, onChange, label, disabled, id }: ToggleProps) {
+export function Toggle({ checked, defaultChecked, onChange, label, disabled, id, className = "", style }: ToggleProps) {
   const [internal, setInternal] = React.useState(defaultChecked ?? false);
   const isOn = checked !== undefined ? checked : internal;
 
@@ -50,11 +52,12 @@ export function Toggle({ checked, defaultChecked, onChange, label, disabled, id 
     "lvis-toggle",
     isOn ? "lvis-toggle-checked" : "",
     disabled ? "lvis-toggle-disabled" : "",
+    className,
   ].filter(Boolean).join(" ");
 
   return (
     <div id={id} role="switch" aria-checked={isOn} aria-disabled={disabled ?? false}
-      className={cls} onClick={handleClick} tabIndex={disabled ? -1 : 0}
+      className={cls} style={style} onClick={handleClick} tabIndex={disabled ? -1 : 0}
       onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); handleClick(); } }}>
       <span className="lvis-toggle-track">
         <span className="lvis-toggle-thumb" />
