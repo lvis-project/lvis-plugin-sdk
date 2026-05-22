@@ -1,5 +1,6 @@
 // src/ui/tokens/theme-bundles.ts
 var BUNDLE_IDS = [
+  "cherry-blossom",
   "tokyo-night",
   "midnight",
   "forest",
@@ -11,8 +12,7 @@ var BUNDLE_IDS = [
   "nord",
   "gruvbox-dark-hard",
   "solarized-light",
-  "rose-pine",
-  "cherry-blossom"
+  "rose-pine"
 ];
 
 // src/ui/tokens/index.ts

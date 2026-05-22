@@ -48,7 +48,7 @@ import type {
   PluginLifecycleEvent,
 } from "../index.js";
 
-import { MissingDependenciesError, compileManifestValidator } from "../index.js";
+import { MissingDependenciesError } from "../index.js";
 
 // ─── PluginManifest schema validation ─────────────────────────────────────────
 describe("PluginManifest — schema validation", () => {
@@ -1634,41 +1634,6 @@ describe("PluginManifest — edge cases", () => {
     expect(manifest.dependencies).toHaveLength(2);
     expect(typeof manifest.dependencies![0]).toBe("string");
     expect(typeof manifest.dependencies![1]).toBe("object");
-  });
-});
-
-// ─── B5: compileManifestValidator() ──────────────────────────────────────────
-describe("compileManifestValidator — SDK-exported AJV validator", () => {
-  it("returns a function", () => {
-    const validate = compileManifestValidator();
-    expect(typeof validate).toBe("function");
-  });
-
-  it("returns the same instance on repeated calls (cached)", () => {
-    const a = compileManifestValidator();
-    const b = compileManifestValidator();
-    expect(a).toBe(b);
-  });
-
-  it("validates a minimal valid manifest as valid", () => {
-    const validate = compileManifestValidator();
-    const valid = validate({
-      id: "my-plugin",
-      name: "My Plugin",
-      version: "1.0.0",
-      entry: "dist/index.js",
-      tools: ["my_tool"],
-      description: "A valid plugin.",
-    });
-    expect(valid).toBe(true);
-    expect(validate.errors).toBeNull();
-  });
-
-  it("rejects a manifest missing required fields", () => {
-    const validate = compileManifestValidator();
-    const valid = validate({ name: "No Id Plugin" });
-    expect(valid).toBe(false);
-    expect(validate.errors).not.toBeNull();
   });
 });
 

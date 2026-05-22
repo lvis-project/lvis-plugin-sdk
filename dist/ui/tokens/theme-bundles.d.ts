@@ -1,4 +1,4 @@
-export declare const BUNDLE_IDS: readonly ["tokyo-night", "midnight", "forest", "violet-light", "violet-dark", "high-contrast", "catppuccin-mocha", "catppuccin-latte", "nord", "gruvbox-dark-hard", "solarized-light", "rose-pine", "cherry-blossom"];
+export declare const BUNDLE_IDS: readonly ["cherry-blossom", "tokyo-night", "midnight", "forest", "violet-light", "violet-dark", "high-contrast", "catppuccin-mocha", "catppuccin-latte", "nord", "gruvbox-dark-hard", "solarized-light", "rose-pine"];
 export type BundleId = (typeof BUNDLE_IDS)[number];
 export declare const DEFAULT_BUNDLE_ID: BundleId;
 //# sourceMappingURL=theme-bundles.d.ts.map

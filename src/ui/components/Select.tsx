@@ -16,6 +16,7 @@ const CSS = `
 }
 .lvis-select:focus { border-color: var(--lvis-ring); box-shadow: 0 0 0 2px color-mix(in srgb, var(--lvis-ring) 25%, transparent); }
 .lvis-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.lvis-select-wrapper:has(.lvis-select:disabled)::after { opacity: 0.5; }
 .lvis-select-wrapper::after {
   content: "";
   position: absolute; right: 0.75rem; top: 50%;
@@ -31,11 +32,11 @@ injectTokenCss("lvis-select", CSS);
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {}
 
-export function Select({ className = "", children, ...rest }: SelectProps) {
-  const cls = ["lvis-select", className].filter(Boolean).join(" ");
+export function Select({ className = "", style, children, ...rest }: SelectProps) {
+  const wrapperCls = ["lvis-select-wrapper", className].filter(Boolean).join(" ");
   return (
-    <div className="lvis-select-wrapper">
-      <select {...rest} className={cls}>{children}</select>
+    <div className={wrapperCls} style={style}>
+      <select {...rest} className="lvis-select">{children}</select>
     </div>
   );
 }

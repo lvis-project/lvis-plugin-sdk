@@ -111,7 +111,7 @@ export interface EventSubscription {
  *
  * @example
  * const manifest: PluginManifest = {
- *   id: "my-plugin",
+ *   id: "com.example.my-plugin",
  *   name: "My Plugin",
  *   version: "1.0.0",
  *   entry: "dist/index.js",
@@ -120,7 +120,7 @@ export interface EventSubscription {
  * };
  */
 export interface PluginManifest {
-    /** Globally unique identifier. Kebab-case (lowercase letters, digits, hyphens; min 3 chars — 2-char names reserved for future system namespaces). Example: `"my-plugin"`. Must be stable across versions. */
+    /** Globally unique identifier. Reverse-DNS style recommended (for example `com.example.my-plugin`). Must be stable across versions. */
     id: string;
     /** Human-readable display name shown in the host UI and plugin pickers. */
     name: string;
@@ -190,6 +190,9 @@ export interface PluginManifest {
     configSchema?: PluginConfigSchema;
     icon?: string;
     iconText?: string;
+    hostSecrets?: {
+        read?: string[];
+    };
     python?: {
         managedBy?: "lvis-app" | "self";
         requirementsLock?: string;
@@ -200,23 +203,6 @@ export interface PluginManifest {
     author?: string;
     /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */
     uiSlots?: string[];
-    /**
-     * Host-managed secret allowlist (#893 Stage 1). Plugins declaring keys under
-     * `read` request the host to fulfil them through {@link PluginHostApi.resolveApiKey}.
-     * Schema acceptance is necessary but not sufficient — the marketplace
-     * whitelist gates the actual runtime fulfilment. @optional
-     */
-    hostSecrets?: {
-        read: string[];
-    };
-    /**
-     * LLM key sourcing declaration (#893 Stage 1):
-     *  - `"host"` — plugin relies on host-managed LLM keys via {@link PluginHostApi.resolveApiKey}; requires marketplace whitelist at runtime.
-     *  - `"plugin"` — plugin owns its own LLM keys (declared in `configSchema` or `hostSecrets`-unrelated channels).
-     *  - `"none"` — plugin does not call any LLM (default).
-     * @optional
-     */
-    llmKeySource?: "host" | "plugin" | "none";
 }
 /**
  * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
@@ -358,6 +344,10 @@ export interface RequiresSpec {
     capabilities: string[];
 }
 export declare class MissingDependenciesError extends Error {
+    readonly missing: string[];
+    constructor(missing: string[]);
+}
+export declare class MissingPluginDependenciesError extends Error {
     readonly missing: string[];
     constructor(missing: string[]);
 }
@@ -558,6 +548,20 @@ export interface PluginHostApi {
      * @returns The secret value, or `null` if no secret exists for `key`.
      */
     getSecret(key: string): string | null;
+    resolveApiKey?(opts: {
+        purpose: "llm" | "stt" | "embedding" | "vision";
+        vendor?: "openai" | "azure-openai" | "vertex" | "anthropic";
+        signal?: AbortSignal;
+    }): Promise<{
+        ok: true;
+        vendor: string;
+        bearer: () => string;
+        baseUrl?: string;
+        release: () => void;
+    } | {
+        ok: false;
+        reason: "no-host-vendor" | "vendor-mismatch" | "not-whitelisted" | "user-mode-plugin" | "aborted" | "user-endpoint-with-host-key";
+    }>;
     callTool<T = unknown>(toolName: string, payload?: unknown): Promise<T>;
     /**
      * Invoke the host's configured language model.
@@ -681,67 +685,7 @@ export interface PluginHostApi {
         }): Promise<ApprovalChoice>;
         respond(requestId: string, choice: ApprovalChoice, nonce?: string, hmac?: string): Promise<void>;
     };
-    /**
-     * Resolve an API key for a host-managed AI surface (#893 Stage 1). The host
-     * decides whether the calling plugin is allowed to receive a host key —
-     * sources include the marketplace whitelist, the plugin's manifest
-     * (`hostSecrets.read`, `llmKeySource`), and the active user/admin mode.
-     *
-     * Plugins MUST feature-detect this method at runtime — a v5.4 (or older)
-     * host returns `undefined` for the property:
-     *
-     * ```ts
-     * if (typeof hostApi.resolveApiKey === "function") {
-     *   const out = await hostApi.resolveApiKey({ purpose: "llm", vendor: "openai" });
-     *   if (out.ok) {
-     *     try { useKey(out.bearer()); } finally { out.release(); }
-     *   } else {
-     *     // out.reason is a discriminated string — plugin decides whether to
-     *     // fall back to its own key, mock, or surface a user error.
-     *   }
-     * }
-     * ```
-     *
-     * @optional
-     */
-    resolveApiKey?(opts: {
-        purpose: "llm" | "stt" | "embedding" | "vision";
-        vendor?: "openai" | "azure-openai" | "vertex" | "anthropic";
-        signal?: AbortSignal;
-    }): Promise<ResolveApiKeyResult>;
 }
-/**
- * Result of {@link PluginHostApi.resolveApiKey} — discriminated union (#893 Stage 1).
- *
- * Success: callers obtain the bearer via the `bearer()` thunk (never stored as a
- * plain string field, so it is harder to leak through serialization) and MUST
- * invoke `release()` once the request that consumed the key has completed.
- *
- * Failure: `reason` enumerates every refusal cause exposed to plugins; new
- * causes will only be added in subsequent minor versions, so consumers should
- * branch with a `default:` for forward compatibility.
- */
-export type ResolveApiKeyResult = {
-    ok: true;
-    vendor: string;
-    bearer: () => string;
-    baseUrl?: string;
-    release(): void;
-} | {
-    ok: false;
-    reason: "no-host-vendor" | "vendor-mismatch" | "not-whitelisted" | "user-mode-plugin" | "aborted" | "user-endpoint-with-host-key";
-};
-/**
- * §8 ApprovalChoice — mirrors the host `approval-gate.ts` union.
- *
- * Plugin contract (REQUIRED):
- *   - "allow-once" / "allow-session" are HOST-OWNED LIFETIMES. Plugins MUST
- *     re-request through the host approval gate for each tool invocation;
- *     caching either value inside the plugin process is a contract violation.
- *   - Only "allow-always" may be remembered, and only if the host's
- *     `rememberPattern` indicates a persisted rule (verified by host audit).
- *   - "deny-once" / "deny-always" terminate the current tool call only.
- */
 export type ApprovalChoice = "allow-once" | "allow-session" | "allow-always" | "deny-once" | "deny-always";
 /** Spec for `PluginHostApi.triggerConversation()`. */
 export interface ConversationTriggerSpec {
@@ -848,11 +792,4 @@ export interface RuntimePlugin {
  * export default factory;
  */
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
-import type { ValidateFunction } from "ajv";
-/**
- * Compile the bundled plugin manifest JSON schema into an AJV validator.
- * Host applications should import this instead of re-compiling locally — keeps
- * SDK schema as the single source of truth.
- */
-export declare function compileManifestValidator(): ValidateFunction;
 //# sourceMappingURL=index.d.ts.map

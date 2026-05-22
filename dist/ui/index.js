@@ -1,5 +1,6 @@
 // src/ui/tokens/theme-bundles.ts
 var BUNDLE_IDS = [
+  "cherry-blossom",
   "tokyo-night",
   "midnight",
   "forest",
@@ -11,8 +12,7 @@ var BUNDLE_IDS = [
   "nord",
   "gruvbox-dark-hard",
   "solarized-light",
-  "rose-pine",
-  "cherry-blossom"
+  "rose-pine"
 ];
 
 // src/ui/tokens/index.ts
@@ -423,6 +423,7 @@ var CSS8 = `
 }
 .lvis-select:focus { border-color: var(--lvis-ring); box-shadow: 0 0 0 2px color-mix(in srgb, var(--lvis-ring) 25%, transparent); }
 .lvis-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.lvis-select-wrapper:has(.lvis-select:disabled)::after { opacity: 0.5; }
 .lvis-select-wrapper::after {
   content: "";
   position: absolute; right: 0.75rem; top: 50%;
@@ -435,9 +436,9 @@ var CSS8 = `
 }
 `;
 injectTokenCss("lvis-select", CSS8);
-function Select({ className = "", children, ...rest }) {
-  const cls = ["lvis-select", className].filter(Boolean).join(" ");
-  return /* @__PURE__ */ jsx8("div", { className: "lvis-select-wrapper", children: /* @__PURE__ */ jsx8("select", { ...rest, className: cls, children }) });
+function Select({ className = "", style, children, ...rest }) {
+  const wrapperCls = ["lvis-select-wrapper", className].filter(Boolean).join(" ");
+  return /* @__PURE__ */ jsx8("div", { className: wrapperCls, style, children: /* @__PURE__ */ jsx8("select", { ...rest, className: "lvis-select", children }) });
 }
 
 // src/ui/components/Toggle.tsx
@@ -467,7 +468,7 @@ var CSS9 = `
 .lvis-toggle-label { font-size: 0.875rem; color: var(--lvis-fg); }
 `;
 injectTokenCss("lvis-toggle", CSS9);
-function Toggle({ checked, defaultChecked, onChange, label, disabled, id }) {
+function Toggle({ checked, defaultChecked, onChange, label, disabled, id, className = "", style }) {
   const [internal, setInternal] = React2.useState(defaultChecked ?? false);
   const isOn = checked !== void 0 ? checked : internal;
   const handleClick = () => {
@@ -479,7 +480,8 @@ function Toggle({ checked, defaultChecked, onChange, label, disabled, id }) {
   const cls = [
     "lvis-toggle",
     isOn ? "lvis-toggle-checked" : "",
-    disabled ? "lvis-toggle-disabled" : ""
+    disabled ? "lvis-toggle-disabled" : "",
+    className
   ].filter(Boolean).join(" ");
   return /* @__PURE__ */ jsxs3(
     "div",
@@ -489,6 +491,7 @@ function Toggle({ checked, defaultChecked, onChange, label, disabled, id }) {
       "aria-checked": isOn,
       "aria-disabled": disabled ?? false,
       className: cls,
+      style,
       onClick: handleClick,
       tabIndex: disabled ? -1 : 0,
       onKeyDown: (e) => {
