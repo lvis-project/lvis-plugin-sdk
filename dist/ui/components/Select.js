@@ -1,5 +1,6 @@
 // src/ui/tokens/theme-bundles.ts
 var BUNDLE_IDS = [
+  "cherry-blossom",
   "tokyo-night",
   "midnight",
   "forest",
@@ -11,8 +12,7 @@ var BUNDLE_IDS = [
   "nord",
   "gruvbox-dark-hard",
   "solarized-light",
-  "rose-pine",
-  "cherry-blossom"
+  "rose-pine"
 ];
 
 // src/ui/tokens/index.ts
@@ -98,6 +98,7 @@ var CSS = `
 }
 .lvis-select:focus { border-color: var(--lvis-ring); box-shadow: 0 0 0 2px color-mix(in srgb, var(--lvis-ring) 25%, transparent); }
 .lvis-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.lvis-select-wrapper:has(.lvis-select:disabled)::after { opacity: 0.5; }
 .lvis-select-wrapper::after {
   content: "";
   position: absolute; right: 0.75rem; top: 50%;
@@ -110,9 +111,9 @@ var CSS = `
 }
 `;
 injectTokenCss("lvis-select", CSS);
-function Select({ className = "", children, ...rest }) {
-  const cls = ["lvis-select", className].filter(Boolean).join(" ");
-  return /* @__PURE__ */ jsx("div", { className: "lvis-select-wrapper", children: /* @__PURE__ */ jsx("select", { ...rest, className: cls, children }) });
+function Select({ className = "", style, children, ...rest }) {
+  const wrapperCls = ["lvis-select-wrapper", className].filter(Boolean).join(" ");
+  return /* @__PURE__ */ jsx("div", { className: wrapperCls, style, children: /* @__PURE__ */ jsx("select", { ...rest, className: "lvis-select", children }) });
 }
 export {
   Select
