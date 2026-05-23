@@ -1036,7 +1036,7 @@ function restrictMarketplaceChannelToStable(text) {
 }
 
 /**
- * H3 — host `types.ts` is missing the `python?` block that the host's
+ * Host `types.ts` is missing the `python?` block that the host's
  * JSON Schema (and pageindex's published `plugin.json`) already accept.
  * Inject it into `PluginManifest` so plugin authors get type-checking
  * parity with what the schema validates. Idempotent — skips when already

@@ -129,7 +129,7 @@ function normalize(s) {
 }
 
 /**
- * H6 — cross-field invariant `auth.statusTool ∈ uiCallable[]` (and the
+ * Cross-field invariant `auth.statusTool ∈ uiCallable[]` (and the
  * matching `loginTool` / `logoutTool`) currently lives only in prose
  * under `properties.auth.description`. Inject a JSON Schema `allOf`
  * clause that lifts the *structural half* of the invariant — when
