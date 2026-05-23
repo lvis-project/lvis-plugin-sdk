@@ -219,10 +219,10 @@ function tightenVersionPatternToStable(schema) {
 }
 
 /**
- * Phase-1 schema-master sync — author + uiSlots + bounded configSchema default.
+ * Schema-master sync — author + uiSlots + bounded configSchema default.
  *
  * The host's `plugin.schema.json` historically had a richer `author` field
- * (PR #404 era) that was lost during the Phase-1 prune. The host doesn't
+ * (PR #404 era) that was lost during the schema prune. The host doesn't
  * read it, but plugin authors expect to declare credit somewhere — keeping
  * it in the SDK schema so consumers (marketplace UI, IDE intellisense)
  * have a place to surface "made by". `publisher` (organization) and
