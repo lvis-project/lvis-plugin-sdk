@@ -1067,10 +1067,10 @@ function ensurePluginManifestPackageName(text) {
 }
 
 /**
- * Phase-1 schema-master sync — author + uiSlots TS surface.
+ * Schema-master sync — author + uiSlots TS surface.
  *
  * `author` (individual maintainer) lives in the SDK schema even though
- * the host's plugin.schema.json doesn't carry it after the Phase-1 prune.
+ * the host's plugin.schema.json doesn't carry it after the schema prune.
  * Plugin authors expect a credit field; `publisher` (organization) and
  * `author` (individual) are intentionally distinct. Inject on the SDK
  * side so manifest typings surface it.
