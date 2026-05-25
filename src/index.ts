@@ -375,6 +375,8 @@ export interface PluginRegistryEntry {
   id: string;
   /** Absolute or host-relative filesystem path to the plugin's `manifest.json`. */
   manifestPath: string;
+
+  manifestSha256?: string;
   /** Whether the plugin should be loaded at host startup. Defaults to `true` when omitted. @optional */
   enabled?: boolean;
   bundleRefs?: string[];
