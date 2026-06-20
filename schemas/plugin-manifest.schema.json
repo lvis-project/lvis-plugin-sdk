@@ -230,6 +230,24 @@
         ]
       }
     },
+    "networkAccess": {
+      "type": "object",
+      "description": "Tier A host-mediated egress allow-list. hostApi.hostFetch may only reach hosts matching allowedDomains (dot-boundary suffix match). Deny-by-default: absent or empty = no egress.",
+      "additionalProperties": false,
+      "required": ["allowedDomains"],
+      "properties": {
+        "allowedDomains": {
+          "type": "array",
+          "description": "Hostnames the plugin may reach via host-mediated fetch. Dot-boundary suffix match ('openai.azure.com' allows 'x.openai.azure.com'). No wildcards, no bare public suffixes, max 16.",
+          "items": { "type": "string", "minLength": 1 },
+          "maxItems": 16
+        },
+        "reasoning": {
+          "type": "string",
+          "description": "Human-readable justification surfaced to the user at install for the requested egress."
+        }
+      }
+    },
     "eventSubscriptions": {
       "type": "array",
       "items": {
