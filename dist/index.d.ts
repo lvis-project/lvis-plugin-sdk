@@ -143,6 +143,18 @@ export interface PluginManifest {
     }>;
     /** Free-form capability tags declared by the plugin (for example `"calendar"`, `"email"`). Hosts may gate features on these. @optional */
     capabilities?: string[];
+    /**
+     * Tier A host-mediated egress allow-list. A plugin that calls
+     * `PluginHostApi.hostFetch` may only reach hosts matching `allowedDomains`
+     * (dot-boundary suffix match — `"openai.azure.com"` allows
+     * `"x.openai.azure.com"`). Deny-by-default: absent or empty ⇒ no egress.
+     * No wildcards, no bare public suffixes, max 16 entries. `reasoning` is a
+     * human-readable justification surfaced to the user at install. @optional
+     */
+    networkAccess?: {
+        allowedDomains: string[];
+        reasoning?: string;
+    };
     /** Event type names this plugin subscribes to. The host delivers matching events via `PluginHostApi.onEvent`. @optional */
     eventSubscriptions?: string[] | EventSubscription[];
     /** Runtime methods that the UI is permitted to invoke directly (bypassing the LLM). UI-only methods belong here and should not be duplicated in `tools[]`. Use sparingly. @optional */
@@ -405,6 +417,10 @@ export interface PluginMarketplaceItem {
     /** UI extensions the plugin will contribute once installed. @optional */
     ui?: PluginUiExtension[];
     capabilities?: string[];
+    networkAccess?: {
+        allowedDomains: string[];
+        reasoning?: string;
+    };
     keywords?: Array<{
         keyword: string;
         skillId: string;
