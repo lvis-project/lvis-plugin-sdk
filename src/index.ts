@@ -175,6 +175,8 @@ export interface PluginManifest {
   networkAccess?: {
     allowedDomains: string[];
     reasoning?: string;
+
+    allowPrivateNetworks?: boolean;
   };
 
   /** Event type names this plugin subscribes to. The host delivers matching events via `PluginHostApi.onEvent`. @optional */
