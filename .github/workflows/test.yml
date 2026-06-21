@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'src/**'
+      - 'dist/**'
       - '__tests__/**'
       - 'package.json'
       - 'bun.lock'
@@ -15,6 +16,7 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'dist/**'
       - '__tests__/**'
       - 'package.json'
       - 'bun.lock'
@@ -48,10 +50,14 @@ jobs:
       - run: bun run test
       - name: Typecheck
         run: bunx tsc --noEmit
-      # Smoke-build: confirm `prepare` (tsup + tsc) emits cleanly. Consumers
-      # via `github:lvis-project/lvis-plugin-sdk#vX.Y.Z` regenerate dist on
-      # their own `bun install`, so the SDK no longer commits dist. This
-      # step replaces the prior "dist in sync with src" check — its only
-      # job is to ensure the build doesn't break, not to enforce parity.
-      - name: Smoke build
-        run: bun run build
+      # dist/ IS committed to Git and gated. Consumers install via
+      # `github:lvis-project/lvis-plugin-sdk#vX.Y.Z`, and bun does NOT run a
+      # `prepare` script for `github:` dependencies (security policy) — there
+      # is no prepare script here anyway — so tag consumers load the committed
+      # dist verbatim. This step rebuilds and fails if the committed dist is
+      # stale vs src, so a src-only PR that forgot to rebuild cannot ship
+      # outdated JS to tag consumers. It also smoke-tests that the build emits
+      # cleanly (a broken build fails the rebuild). See `.gitignore`'s dist
+      # rationale and `scripts/check-dist-drift.mjs`.
+      - name: Check committed dist is in sync with src
+        run: bun run check:dist-drift
