@@ -1,14 +1,19 @@
 name: validate-plugin-manifests
 
-# Architect post-merge follow-up H7 — fetch each active plugin's
-# `plugin.json` via the GitHub API and validate it against the SDK's
-# current `schemas/plugin-manifest.schema.json` using ajv-cli. Catches
-# the "SDK schema tightened, plugin manifest still has the old shape"
-# class of break that PR #62 made more likely.
+# Fetch each active plugin's `plugin.json` via the GitHub API and validate
+# it against the SDK's current `schemas/plugin-manifest.schema.json` using
+# ajv-cli. Catches the "SDK schema tightened, plugin manifest still has the
+# old shape" class of break.
 #
 # Runs on every PR that touches the SDK schema, on push to main, and
 # nightly so a plugin-side merge that drifts from the SDK schema gets
 # noticed within 24h instead of at the next plugin release.
+#
+# Matrix invariant: every entry MUST be a current, reachable plugin repo.
+# A renamed/archived/deleted repo returns 404 and FAILS the job (see the
+# "Gate token failure" step) so a future rename surfaces loudly here rather
+# than silently dropping a plugin from validation. This is distinct from the
+# legitimate "GitHub App not yet installed on a real repo" skip.
 
 on:
   pull_request:
@@ -40,23 +45,23 @@ jobs:
       matrix:
         plugin:
           - lvis-plugin-meeting
-          - lvis-plugin-pageindex
+          - lvis-plugin-local-indexer
           - lvis-plugin-ms-graph
           - lvis-plugin-lge-api
-          - lvis-plugin-work-proactive
-          - lvis-plugin-agent-hub
+          - lvis-plugin-work-assistant
           - lvis-plugin-template
     steps:
       - name: Checkout SDK
         uses: actions/checkout@v6
 
-      # `continue-on-error: true` is intentional: the GitHub App that backs
-      # this workflow may not be installed on every plugin repo yet (org
-      # admin one-time action). When the App is missing, the action returns
-      # 404 and we skip downstream steps via `steps.app-token.outcome`.
-      # Once the App is installed on a previously-missing repo, validation
-      # kicks in automatically without any workflow change. The "App missing"
-      # state is surfaced as a step warning so admins see it at a glance.
+      # `continue-on-error: true` lets the next step inspect the outcome and
+      # decide between two very different 404 causes:
+      #   1. The repo was renamed / archived / deleted (matrix is stale) —
+      #      this MUST fail the job so the rename surfaces here loudly.
+      #   2. The backing GitHub App is genuinely not yet installed on an
+      #      existing repo (org-admin one-time action) — tolerated only when
+      #      the repo is on the explicit APP_PENDING_REPOS allow-list below.
+      # A bare 404 with the repo NOT on the allow-list fails (no silent skip).
       - name: Generate read token for plugin repo
         id: app-token
         continue-on-error: true
@@ -67,10 +72,40 @@ jobs:
           owner: lvis-project
           repositories: ${{ matrix.plugin }}
 
-      - name: Annotate when App is not installed on plugin repo
+      # Explicit, reviewed allow-list of repos where the App install is known
+      # to be pending. Keep EMPTY in steady state: every active plugin repo
+      # should have the App installed, so an unexpected token failure is a
+      # stale-matrix (renamed/archived/deleted) signal and must fail. To
+      # tolerate a genuinely-pending install, add the exact repo name here in
+      # a reviewed PR — never widen this to a blanket skip.
+      #
+      # DEFERRED STATE (prod-hardening Known Issue #7 — "HOST_READ_TOKEN
+      # fine-grained PAT 교체 필요"): the GitHub App backing HOST_READ_TOKEN is
+      # NOT yet installed on the plugin repos, so create-github-app-token fails
+      # for ALL of them. Until the org-admin installs the App, every active
+      # plugin is allow-listed below so the job skips-with-`::warning` (loud,
+      # non-failing) instead of blocking CI. This is NOT a silent disable: each
+      # skip emits a warning naming the repo and the required follow-up.
+      # REQUIRED follow-up: once the App is installed on a repo, REMOVE that
+      # repo from APP_PENDING_REPOS in a reviewed PR so real cross-repo manifest
+      # validation reactivates. An empty list is the correct steady state.
+      - name: Gate token failure (fail on stale matrix, allow only pending installs)
         if: steps.app-token.outcome != 'success'
+        env:
+          # Pending HOST_READ_TOKEN App install (Known Issue #7) — remove each
+          # repo here as the App is installed on it. Target: empty.
+          APP_PENDING_REPOS: 'lvis-plugin-meeting lvis-plugin-local-indexer lvis-plugin-ms-graph lvis-plugin-lge-api lvis-plugin-work-assistant lvis-plugin-template'
+          PLUGIN: ${{ matrix.plugin }}
         run: |
-          echo "::warning title=GitHub App not installed::HOST_READ_TOKEN App is not installed on lvis-project/${{ matrix.plugin }} — manifest validation skipped. Install the App via org settings to enable."
+          set -euo pipefail
+          for allowed in $APP_PENDING_REPOS; do
+            if [ "$allowed" = "$PLUGIN" ]; then
+              echo "::warning title=GitHub App install pending::HOST_READ_TOKEN App is not yet installed on lvis-project/${PLUGIN} (explicitly allow-listed) — manifest validation skipped. Install the App via org settings, then remove it from APP_PENDING_REPOS."
+              exit 0
+            fi
+          done
+          echo "::error title=Plugin repo unreachable::Could not mint a read token for lvis-project/${PLUGIN}. The repo is renamed, archived, or deleted (stale matrix), or the GitHub App is not installed and the repo is not on APP_PENDING_REPOS. Update strategy.matrix.plugin or the allow-list."
+          exit 1
 
       - name: Fetch plugin.json from ${{ matrix.plugin }}@main
         if: steps.app-token.outcome == 'success'
