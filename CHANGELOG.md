@@ -7,6 +7,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v5.14.0 — 2026-06-22
+
+### Changed
+- Tool `category` (`toolSchemas[*].category`) is now **optional and deprecated**. The host classifies each tool's permission risk from host-owned signals at invocation time (host-classifies-risk); a plugin-declared category is ignored and not trusted as the authority. The field is still accepted for backward compatibility — manifests that omit it now validate, and manifests that declare a valid category still validate — but it is slated for removal in a future SDK release. New manifests should omit it.
+
+---
+
 ## v5.13.0 — 2026-05-18 (#893)
 
 ### Added

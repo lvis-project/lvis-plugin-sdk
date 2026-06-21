@@ -576,7 +576,6 @@
         "type": "object",
         "required": [
           "description",
-          "category",
           "inputSchema"
         ],
         "additionalProperties": false,
@@ -588,13 +587,14 @@
           },
           "category": {
             "type": "string",
+            "deprecated": true,
             "enum": [
               "read",
               "write",
               "shell",
               "network"
             ],
-            "description": "Host permission policy category. 'meta' is host-only and cannot be declared by plugins."
+            "description": "Deprecated and ignored. The host classifies each tool's permission risk from host-owned signals at invocation time (host-classifies-risk); a plugin-declared category is not trusted as the authority. Still accepted for backward compatibility, but slated for removal in a future SDK release — new manifests should omit it. 'meta' is host-only and cannot be declared by plugins."
           },
           "pathFields": {
             "type": "array",

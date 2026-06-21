@@ -208,7 +208,15 @@ export interface PluginManifest {
       /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */
       description: string;
 
-      category: PluginToolCategory;
+      /**
+       * @deprecated Ignored by the host and slated for removal. The host
+       * classifies each tool's permission risk from host-owned signals at
+       * invocation time (host-classifies-risk); a plugin grading its own
+       * danger is not trusted as the authority. Still accepted for backward
+       * compatibility when declared — new manifests should omit it. `meta` is
+       * host-only and cannot be declared by plugins. @optional
+       */
+      category?: PluginToolCategory;
 
       pathFields?: string[];
 
