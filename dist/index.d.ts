@@ -170,14 +170,6 @@ export interface PluginManifest {
     toolSchemas?: Record<string, {
         /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */
         description: string;
-        /**
-         * @deprecated Ignored by the host and slated for removal. The host
-         * classifies each tool's permission risk from host-owned signals at
-         * invocation time (host-classifies-risk); a plugin grading its own
-         * danger is not trusted as the authority. Still accepted for backward
-         * compatibility when declared — new manifests should omit it. `meta` is
-         * host-only and cannot be declared by plugins. @optional
-         */
         category?: PluginToolCategory;
         pathFields?: string[];
         writesToOwnSandbox?: boolean;
@@ -318,6 +310,7 @@ export interface PluginRegistryEntry {
     id: string;
     /** Absolute or host-relative filesystem path to the plugin's `manifest.json`. */
     manifestPath: string;
+    manifestSha256?: string;
     /** Whether the plugin should be loaded at host startup. Defaults to `true` when omitted. @optional */
     enabled?: boolean;
     bundleRefs?: string[];
@@ -582,6 +575,7 @@ export interface PluginHostApi {
     callLlm(prompt: string, options?: {
         maxTokens?: number;
         systemPrompt?: string;
+        signal?: AbortSignal;
     }): Promise<string>;
     /**
      * Emit a structured log entry to the host log pipeline.
