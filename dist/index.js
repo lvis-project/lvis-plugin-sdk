@@ -9,6 +9,17 @@ var MissingDependenciesError = class extends Error {
     this.name = "MissingDependenciesError";
   }
 };
+var IncompatibleAppVersionError = class extends Error {
+  required;
+  current;
+  constructor(required, current) {
+    super(`plugin requires LVIS >= ${required}, current ${current}`);
+    this.required = required;
+    this.current = current;
+    this.name = "IncompatibleAppVersionError";
+  }
+};
+var INCOMPATIBLE_APP_VERSION_CODE = "incompatible-app-version";
 var MissingPluginDependenciesError = class extends Error {
   missing;
   constructor(missing) {
@@ -20,6 +31,8 @@ var MissingPluginDependenciesError = class extends Error {
   }
 };
 export {
+  INCOMPATIBLE_APP_VERSION_CODE,
+  IncompatibleAppVersionError,
   MissingDependenciesError,
   MissingPluginDependenciesError
 };
