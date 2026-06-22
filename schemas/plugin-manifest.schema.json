@@ -52,7 +52,7 @@
         "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
         "maxLength": 64
       },
-      "description": "Tool name list — underscore format required"
+      "description": "LLM-visible tool name list — underscore format required. UI-only runtime methods belong in uiCallable[], not tools[]."
     },
     "config": {
       "type": "object"
@@ -220,6 +220,43 @@
           "lifecycle-observer",
           "host:overlay"
         ]
+      }
+    },
+    "networkAccess": {
+      "type": "object",
+      "description": "Tier A host-mediated egress allow-list. hostApi.hostFetch may only reach hosts matching allowedDomains (dot-boundary suffix match). Deny-by-default: absent or empty = no egress.",
+      "additionalProperties": false,
+      "required": ["allowedDomains"],
+      "properties": {
+        "allowedDomains": {
+          "type": "array",
+          "description": "Hostnames the plugin may reach via hostApi.hostFetch. Dot-boundary suffix-match allow-list ('openai.azure.com' allows 'x.openai.azure.com' but not 'openai.azure.com.attacker.com'). Lowercase ASCII hostnames, >=1 dot, RFC1035 label/length bounds; wildcards / URLs / ports / whitespace / IDN-punycode (xn--*) / bare public suffixes are rejected — mirrors the host's load-time validator and the auth.partitionDomains rules so manifest-publish surfaces them before runtime. Max 16. The host re-validates at every hostFetch call.",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "allOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$",
+                "minLength": 3,
+                "maxLength": 253
+              },
+              {
+                "not": {
+                  "enum": ["com", "net", "org", "kr", "co.kr", "or.kr", "go.kr", "io", "ai", "dev", "app"]
+                }
+              },
+              {
+                "not": { "type": "string", "pattern": "(^|\\.)xn--" }
+              }
+            ]
+          }
+        },
+        "reasoning": {
+          "type": "string",
+          "description": "Human-readable justification surfaced to the user at install for the requested egress."
+        }
       }
     },
     "eventSubscriptions": {

@@ -85,7 +85,7 @@ A plugin has two artifacts:
 | `emittedEvents` | `string[]` | Events the plugin emits via `hostApi.emitEvent`. Declare all emitted events here. |
 | `notificationEvents` | `Array<{event, titleField?, bodyField?, bypassFocusGate?}>` | Events surfaced as host OS notifications. |
 | `ui` | `PluginUiExtension[]` | Sidebar/panel UI extensions. Currently `slot: "sidebar"` only. |
-| `uiCallable` | `string[]` | Tools the UI may invoke directly (bypassing LLM). Use sparingly. |
+| `uiCallable` | `string[]` | Runtime methods the UI may invoke directly (bypassing LLM). UI-only methods belong here and must not be duplicated in `tools`. Use sparingly. |
 | `auth` | `PluginAuthSpec` | Declarative auth contract for OAuth/cookie flows. `statusTool`/`loginTool`/`logoutTool` must also appear in `uiCallable[]`. |
 | `configSchema` | `PluginConfigSchema` | JSON Schema draft-07 subset; `format: "secret"` routes values through the encrypted keychain. |
 | `dependencies` | `Array<string \| DependencySpec>` | Plugin-level dependencies (other plugin ids). |
