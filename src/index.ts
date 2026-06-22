@@ -172,6 +172,13 @@ export interface PluginManifest {
   /** Free-form capability tags declared by the plugin (for example `"calendar"`, `"email"`). Hosts may gate features on these. @optional */
   capabilities?: string[];
 
+  networkAccess?: {
+    allowedDomains: string[];
+    reasoning?: string;
+
+    allowPrivateNetworks?: boolean;
+  };
+
   /** Event type names this plugin subscribes to. The host delivers matching events via `PluginHostApi.onEvent`. @optional */
   eventSubscriptions?: string[] | EventSubscription[];
 
@@ -356,7 +363,6 @@ export interface PluginUiExtension {
     minHeight?: number;
     resizable?: boolean;
     alwaysOnTop?: boolean;
-    defaultMode?: "embedded" | "detached";
   };
 }
 
@@ -708,6 +714,8 @@ export interface PluginHostApi {
    * @returns The model's completion text.
    */
   callLlm(prompt: string, options?: { maxTokens?: number; systemPrompt?: string; signal?: AbortSignal }): Promise<string>;
+
+  hostFetch?(input: string | URL, init?: RequestInit): Promise<Response>;
 
   /**
    * Emit a structured log entry to the host log pipeline.
