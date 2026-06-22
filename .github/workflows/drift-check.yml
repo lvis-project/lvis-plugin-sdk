@@ -31,6 +31,11 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           repository: lvis-project/lvis-app
+          # Track the host `dev` branch while the host-classifies-risk migration
+          # is staged there (the SoT type changes land on dev before main).
+          # REVERT to the default (main) once the migration's dev→main promotion
+          # completes, so the contract re-pins to production.
+          ref: dev
           path: .host
           fetch-depth: 1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0

@@ -175,7 +175,7 @@ export interface PluginManifest {
     toolSchemas?: Record<string, {
         /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */
         description: string;
-        category: PluginToolCategory;
+        category?: PluginToolCategory;
         pathFields?: string[];
         writesToOwnSandbox?: boolean;
         /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
@@ -297,7 +297,6 @@ export interface PluginUiExtension {
         minHeight?: number;
         resizable?: boolean;
         alwaysOnTop?: boolean;
-        defaultMode?: "embedded" | "detached";
     };
 }
 /**
