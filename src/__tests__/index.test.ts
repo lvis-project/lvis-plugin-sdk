@@ -86,8 +86,9 @@ describe("PluginManifest — schema validation", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
-  it("requires SDK-backed authority metadata for toolSchemas", () => {
-    const withAuthority: PluginManifest = {
+  it("treats toolSchemas[*].category as optional and deprecated (host classifies risk)", () => {
+    // A category-bearing toolSchema still validates (backward compatibility).
+    const withCategory: PluginManifest = {
       ...VALID_MINIMAL,
       toolSchemas: {
         my_plugin_ping: {
@@ -97,10 +98,12 @@ describe("PluginManifest — schema validation", () => {
         },
       },
     };
-    const validAuthority = validateManifest(withAuthority);
-    expect(validAuthority.valid, `Errors: ${validAuthority.errors.join(", ")}`).toBe(true);
+    const validWithCategory = validateManifest(withCategory);
+    expect(validWithCategory.valid, `Errors: ${validWithCategory.errors.join(", ")}`).toBe(true);
 
-    const missingCategory = {
+    // A category-less toolSchema now validates — the host derives the
+    // permission risk itself, so plugins no longer grade their own tools.
+    const withoutCategory = {
       ...VALID_MINIMAL,
       toolSchemas: {
         my_plugin_ping: {
@@ -109,18 +112,34 @@ describe("PluginManifest — schema validation", () => {
         },
       },
     };
-    expect(validateManifest(missingCategory).valid).toBe(false);
+    const validWithoutCategory = validateManifest(withoutCategory);
+    expect(validWithoutCategory.valid, `Errors: ${validWithoutCategory.errors.join(", ")}`).toBe(
+      true,
+    );
 
+    // When a plugin still declares a category, an out-of-enum value is
+    // rejected. `meta` is host-only and not part of the plugin-facing enum.
     const hostOnlyMeta = {
-      ...withAuthority,
+      ...withCategory,
       toolSchemas: {
         my_plugin_ping: {
-          ...withAuthority.toolSchemas!.my_plugin_ping,
+          ...withCategory.toolSchemas!.my_plugin_ping,
           category: "meta",
         },
       },
     };
     expect(validateManifest(hostOnlyMeta).valid).toBe(false);
+
+    const bogusCategory = {
+      ...withCategory,
+      toolSchemas: {
+        my_plugin_ping: {
+          ...withCategory.toolSchemas!.my_plugin_ping,
+          category: "danger",
+        },
+      },
+    };
+    expect(validateManifest(bogusCategory).valid).toBe(false);
   });
 
   // Issue #664 P1 / PR #860 — sandbox-write self-attestation flag contract.

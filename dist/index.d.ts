@@ -170,7 +170,7 @@ export interface PluginManifest {
     toolSchemas?: Record<string, {
         /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */
         description: string;
-        category: PluginToolCategory;
+        category?: PluginToolCategory;
         pathFields?: string[];
         writesToOwnSandbox?: boolean;
         /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
@@ -310,6 +310,7 @@ export interface PluginRegistryEntry {
     id: string;
     /** Absolute or host-relative filesystem path to the plugin's `manifest.json`. */
     manifestPath: string;
+    manifestSha256?: string;
     /** Whether the plugin should be loaded at host startup. Defaults to `true` when omitted. @optional */
     enabled?: boolean;
     bundleRefs?: string[];
@@ -574,6 +575,7 @@ export interface PluginHostApi {
     callLlm(prompt: string, options?: {
         maxTokens?: number;
         systemPrompt?: string;
+        signal?: AbortSignal;
     }): Promise<string>;
     /**
      * Emit a structured log entry to the host log pipeline.
