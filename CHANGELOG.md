@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v5.16.1 — 2026-06-22
+
+### Changed
+- `src/index.ts` mirror resynced from the host production branch: `RequiresSpec.minAppVersion?` now appears in the TypeScript surface (the host `types.ts` source of truth carries the field, completing what v5.16.0 deferred to `sync-from-host`). The mirror also picks up the host-exported `IncompatibleAppVersionError` and `INCOMPATIBLE_APP_VERSION_CODE` that accompany the gate. `dist/` rebuilt to match.
+- `drift-check` now checks the host contract against the `main` branch again (the temporary host-branch pin used while the migration was staged is removed). Schema and `src/index.ts` agree on `minAppVersion`.
+
+---
+
 ## v5.16.0 — 2026-06-22
 
 ### Added
