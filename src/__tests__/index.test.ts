@@ -86,8 +86,9 @@ describe("PluginManifest — schema validation", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
-  it("requires SDK-backed authority metadata for toolSchemas", () => {
-    const withAuthority: PluginManifest = {
+  it("treats toolSchemas[*].category as optional and deprecated (host classifies risk)", () => {
+    // A category-bearing toolSchema still validates (backward compatibility).
+    const withCategory: PluginManifest = {
       ...VALID_MINIMAL,
       toolSchemas: {
         my_plugin_ping: {
@@ -97,10 +98,12 @@ describe("PluginManifest — schema validation", () => {
         },
       },
     };
-    const validAuthority = validateManifest(withAuthority);
-    expect(validAuthority.valid, `Errors: ${validAuthority.errors.join(", ")}`).toBe(true);
+    const validWithCategory = validateManifest(withCategory);
+    expect(validWithCategory.valid, `Errors: ${validWithCategory.errors.join(", ")}`).toBe(true);
 
-    const missingCategory = {
+    // A category-less toolSchema now validates — the host derives the
+    // permission risk itself, so plugins no longer grade their own tools.
+    const withoutCategory = {
       ...VALID_MINIMAL,
       toolSchemas: {
         my_plugin_ping: {
@@ -109,18 +112,34 @@ describe("PluginManifest — schema validation", () => {
         },
       },
     };
-    expect(validateManifest(missingCategory).valid).toBe(false);
+    const validWithoutCategory = validateManifest(withoutCategory);
+    expect(validWithoutCategory.valid, `Errors: ${validWithoutCategory.errors.join(", ")}`).toBe(
+      true,
+    );
 
+    // When a plugin still declares a category, an out-of-enum value is
+    // rejected. `meta` is host-only and not part of the plugin-facing enum.
     const hostOnlyMeta = {
-      ...withAuthority,
+      ...withCategory,
       toolSchemas: {
         my_plugin_ping: {
-          ...withAuthority.toolSchemas!.my_plugin_ping,
+          ...withCategory.toolSchemas!.my_plugin_ping,
           category: "meta",
         },
       },
     };
     expect(validateManifest(hostOnlyMeta).valid).toBe(false);
+
+    const bogusCategory = {
+      ...withCategory,
+      toolSchemas: {
+        my_plugin_ping: {
+          ...withCategory.toolSchemas!.my_plugin_ping,
+          category: "danger",
+        },
+      },
+    };
+    expect(validateManifest(bogusCategory).valid).toBe(false);
   });
 
   // Issue #664 P1 / PR #860 — sandbox-write self-attestation flag contract.
@@ -337,8 +356,11 @@ describe("PluginManifest — schema validation", () => {
   });
 });
 
-// ─── window.defaultMode: "detached" (post-2c10491) ─────────────────────────
-describe("PluginManifest — window.defaultMode:detached (2c10491)", () => {
+// ─── window placement is host-decided (appMode), not plugin-declared ───────
+// View placement (inline vs detached) is owned solely by the host's appMode
+// (chat detaches, action stays inline). The removed `window.defaultMode`
+// field let plugins declare placement; the schema now rejects it.
+describe("PluginManifest — window has no defaultMode (host-decided placement)", () => {
   const BASE: PluginManifest = {
     id: "detach-plugin",
     name: "Detach Plugin",
@@ -351,33 +373,33 @@ describe("PluginManifest — window.defaultMode:detached (2c10491)", () => {
         id: "main-panel",
         slot: "sidebar",
         kind: "embedded-module",
-        title: "Detached Panel",
+        title: "Panel",
         entry: "dist/panel.js",
         exportName: "Panel",
-        window: { defaultMode: "detached" },
+        window: { width: 480, height: 640 },
       },
     ],
   };
 
-  it("accepts PluginUiExtension with window.defaultMode: 'detached'", () => {
+  it("accepts a UI extension whose window omits defaultMode", () => {
     const { valid, errors } = validateManifest(BASE);
-    // Schema may not enforce window.defaultMode enum (it's advisory) — structural check via TypeScript type
-    // The manifest object must at least be constructable and not crash AJV
-    expect(errors).not.toContain(
-      expect.stringMatching(/window.*defaultMode|defaultMode.*invalid/i)
-    );
-    // TypeScript structural check: this assignment compiles = type is accepted
-    const ext: PluginUiExtension = BASE.ui![0];
-    expect(ext.window?.defaultMode).toBe("detached");
+    expect(valid).toBe(true);
+    expect(errors).toEqual([]);
   });
 
-  it("accepts PluginUiExtension with window.defaultMode: 'embedded'", () => {
-    const manifest: PluginManifest = {
+  it("rejects a UI extension that still declares window.defaultMode", () => {
+    const manifest = {
       ...BASE,
-      ui: [{ ...BASE.ui![0], window: { defaultMode: "embedded" } }],
+      ui: [
+        {
+          ...BASE.ui![0],
+          window: { width: 480, height: 640, defaultMode: "detached" },
+        },
+      ],
     };
-    const ext: PluginUiExtension = manifest.ui![0];
-    expect(ext.window?.defaultMode).toBe("embedded");
+    const { valid, errors } = validateManifest(manifest);
+    expect(valid).toBe(false);
+    expect(errors.join(" ")).toMatch(/additional propert|defaultMode/i);
   });
 
   it("PluginUiExtension.window is optional", () => {

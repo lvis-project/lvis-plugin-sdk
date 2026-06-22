@@ -215,7 +215,7 @@ export interface PluginManifest {
       /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */
       description: string;
 
-      category: PluginToolCategory;
+      category?: PluginToolCategory;
 
       pathFields?: string[];
 
@@ -363,7 +363,6 @@ export interface PluginUiExtension {
     minHeight?: number;
     resizable?: boolean;
     alwaysOnTop?: boolean;
-    defaultMode?: "embedded" | "detached";
   };
 }
 
