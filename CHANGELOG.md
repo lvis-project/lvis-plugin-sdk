@@ -7,6 +7,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v5.15.0 — 2026-06-22
+
+### Removed
+- Deprecated `window.defaultMode` (`ui[*].window.defaultMode`) — view placement is host-decided (appMode), not plugin-declared. The host treats `appMode` (chat/action) as the sole authority for inline-vs-detached view placement: chat detaches, action stays inline. The field is gone from the manifest schema and the TypeScript `PluginUiExtension.window` type; with `additionalProperties: false` on the `window` object, a manifest that still declares `window.defaultMode` is now rejected.
+
+---
+
 ## v5.14.0 — 2026-06-22
 
 ### Changed
