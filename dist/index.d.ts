@@ -347,11 +347,18 @@ export interface VerifyResult {
 }
 export interface RequiresSpec {
     capabilities: string[];
+    minAppVersion?: string;
 }
 export declare class MissingDependenciesError extends Error {
     readonly missing: string[];
     constructor(missing: string[]);
 }
+export declare class IncompatibleAppVersionError extends Error {
+    readonly required: string;
+    readonly current: string;
+    constructor(required: string, current: string);
+}
+export declare const INCOMPATIBLE_APP_VERSION_CODE = "incompatible-app-version";
 export declare class MissingPluginDependenciesError extends Error {
     readonly missing: string[];
     constructor(missing: string[]);
