@@ -309,6 +309,36 @@ function ensureBoundedConfigSchemaDefault(schema) {
   return schema;
 }
 
+/**
+ * Plugin↔app minimum-version gate — `requires.minAppVersion`.
+ *
+ * Optional plain SemVer (MAJOR.MINOR.PATCH, NOT a range — Obsidian-style)
+ * declaring the lowest LVIS app version that can load this plugin. The host
+ * enforces it at BOTH install (marketplace.ts hard block before download)
+ * and load (runtime/index.ts skips start() on a too-old app); absent =
+ * compatible with every app version (backward-compat, purely additive).
+ *
+ * Lives in the SDK-side post-process layer (alongside `author` / `uiSlots`)
+ * until the host's `plugin.schema.json` carries the field in its own
+ * `requires` block. Once the host schema gains `minAppVersion`, this
+ * injector becomes a no-op (the idempotent guard below) and can be retired
+ * in the same pass that retires the host-lagging author/uiSlots injectors.
+ */
+function ensureRequiresMinAppVersion(schema) {
+  const requires = schema.properties?.requires;
+  if (!requires || requires.type !== "object") return schema;
+  if (!requires.properties) requires.properties = {};
+  if (!requires.properties.minAppVersion) {
+    requires.properties.minAppVersion = {
+      type: "string",
+      pattern: "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      description:
+        "Minimum LVIS app version (plain SemVer MAJOR.MINOR.PATCH, not a range) required to load this plugin. The host refuses to install (hard block before download) and refuses to activate (skips start(), surfaces a non-dismissable \"needs newer app\" state) when the running app is older. Omit for no minimum (compatible with all app versions).",
+    };
+  }
+  return schema;
+}
+
 function postProcessSdkSchema(text) {
   const obj = JSON.parse(text);
   tightenVersionPatternToStable(obj);
@@ -317,6 +347,7 @@ function postProcessSdkSchema(text) {
   ensurePluginManifestAuthor(obj);
   ensurePluginManifestUiSlots(obj);
   ensureBoundedConfigSchemaDefault(obj);
+  ensureRequiresMinAppVersion(obj);
   return JSON.stringify(obj, null, 2) + "\n";
 }
 

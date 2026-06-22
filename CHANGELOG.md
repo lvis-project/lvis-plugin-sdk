@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v5.16.0 — 2026-06-22
+
+### Added
+- `requires.minAppVersion` — optional plain SemVer (`MAJOR.MINOR.PATCH`, **not** a range, Obsidian-style) declaring the lowest LVIS app version that can load this plugin. Lives in the manifest's existing `requires` block alongside `capabilities`. **Optional and purely additive**: a manifest without it stays compatible with every app version (no behavior change for existing plugins). The host enforces it at BOTH install (marketplace hard block before download) and load (skips `start()` and surfaces a non-dismissable "needs newer app" state on a too-old app). Schema validates the SemVer pattern (`>=1.2.3`, `1.2`, leading zeros, and non-strings are rejected).
+  - SDK ships only the JSON-schema acceptance for the field this release. The TypeScript `RequiresSpec.minAppVersion` mirror lands in `src/index.ts` via `sync-from-host` once the host `types.ts` (the SoT) carries the field; until then the schema is the authority and the host owns the compare/enforce logic.
+
+---
+
 ## v5.15.0 — 2026-06-22
 
 ### Removed

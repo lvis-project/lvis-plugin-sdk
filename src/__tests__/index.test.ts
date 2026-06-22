@@ -86,6 +86,84 @@ describe("PluginManifest — schema validation", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
+  // Plugin↔app minimum-version gate — `requires.minAppVersion`.
+  // The field is authored in the manifest's `requires` block (alongside
+  // `capabilities`) as a plain SemVer string. It is optional and purely
+  // additive: a manifest without it MUST keep validating (backward-compat).
+  // NOTE: the SDK's generated `RequiresSpec` type (src/index.ts) does not
+  // yet carry `minAppVersion` — it lands there via `sync-from-host` once the
+  // host's types.ts (SoT) gains the field. So these fixtures are authored as
+  // plain objects (no PluginManifest annotation) to exercise the SCHEMA,
+  // which is the artifact this phase ships.
+  describe("requires.minAppVersion — minimum-version gate", () => {
+    it("accepts a manifest WITHOUT minAppVersion (backward-compat — no minimum)", () => {
+      const noGate = {
+        ...VALID_MINIMAL,
+        requires: { capabilities: ["calendar"] },
+      };
+      const { valid, errors } = validateManifest(noGate);
+      expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    });
+
+    it("accepts a manifest with a valid SemVer minAppVersion", () => {
+      const gated = {
+        ...VALID_MINIMAL,
+        requires: { capabilities: [], minAppVersion: "1.2.3" },
+      };
+      const { valid, errors } = validateManifest(gated);
+      expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    });
+
+    it("accepts minAppVersion as the sole field of requires (capabilities optional in schema)", () => {
+      const gatedOnly = {
+        ...VALID_MINIMAL,
+        requires: { minAppVersion: "0.2.13" },
+      };
+      const { valid, errors } = validateManifest(gatedOnly);
+      expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    });
+
+    it("rejects a non-SemVer minAppVersion (range syntax)", () => {
+      const ranged = {
+        ...VALID_MINIMAL,
+        requires: { minAppVersion: ">=1.2.3" },
+      };
+      expect(validateManifest(ranged).valid).toBe(false);
+    });
+
+    it("rejects a non-SemVer minAppVersion (MAJOR.MINOR only)", () => {
+      const partial = {
+        ...VALID_MINIMAL,
+        requires: { minAppVersion: "1.2" },
+      };
+      expect(validateManifest(partial).valid).toBe(false);
+    });
+
+    it("rejects a non-SemVer minAppVersion (leading zero)", () => {
+      const leadingZero = {
+        ...VALID_MINIMAL,
+        requires: { minAppVersion: "1.02.3" },
+      };
+      expect(validateManifest(leadingZero).valid).toBe(false);
+    });
+
+    it("rejects a non-SemVer minAppVersion (non-numeric)", () => {
+      const bogus = {
+        ...VALID_MINIMAL,
+        requires: { minAppVersion: "latest" },
+      };
+      expect(validateManifest(bogus).valid).toBe(false);
+    });
+
+    it("rejects a non-string minAppVersion", () => {
+      const numeric = {
+        ...VALID_MINIMAL,
+        requires: { minAppVersion: 1.2 },
+      };
+      expect(validateManifest(numeric).valid).toBe(false);
+    });
+  });
+
   it("treats toolSchemas[*].category as optional and deprecated (host classifies risk)", () => {
     // A category-bearing toolSchema still validates (backward compatibility).
     const withCategory: PluginManifest = {
