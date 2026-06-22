@@ -208,7 +208,7 @@ export interface PluginManifest {
       /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */
       description: string;
 
-      category: PluginToolCategory;
+      category?: PluginToolCategory;
 
       pathFields?: string[];
 
@@ -375,6 +375,8 @@ export interface PluginRegistryEntry {
   id: string;
   /** Absolute or host-relative filesystem path to the plugin's `manifest.json`. */
   manifestPath: string;
+
+  manifestSha256?: string;
   /** Whether the plugin should be loaded at host startup. Defaults to `true` when omitted. @optional */
   enabled?: boolean;
   bundleRefs?: string[];
@@ -705,7 +707,7 @@ export interface PluginHostApi {
    * @param options.systemPrompt - System instructions prepended to the call. @optional
    * @returns The model's completion text.
    */
-  callLlm(prompt: string, options?: { maxTokens?: number; systemPrompt?: string }): Promise<string>;
+  callLlm(prompt: string, options?: { maxTokens?: number; systemPrompt?: string; signal?: AbortSignal }): Promise<string>;
 
   /**
    * Emit a structured log entry to the host log pipeline.
