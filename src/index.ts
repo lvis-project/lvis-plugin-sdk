@@ -157,7 +157,7 @@ export interface PluginManifest {
   /** Path (relative to the plugin root) to the JavaScript module whose default export is a `RuntimePluginFactory`. */
   entry: string;
 
-  /** Tool names exposed to the host LLM. Each name must match `^[a-zA-Z_][a-zA-Z0-9_]*$` — dots and hyphens are not allowed. */
+  /** Tool names exposed to the host LLM. UI-only runtime methods belong in `uiCallable[]`, not `tools[]`. Each name must match `^[a-zA-Z_][a-zA-Z0-9_]*$` — dots and hyphens are not allowed. */
   tools: string[];
 
   /** One-line summary (1-280 chars) of what the plugin does. **Required** since v3.0.0 — the LLM uses this in the inactive-plugin catalogue to decide whether to surface the plugin to the user. */
@@ -182,7 +182,7 @@ export interface PluginManifest {
   /** Event type names this plugin subscribes to. The host delivers matching events via `PluginHostApi.onEvent`. @optional */
   eventSubscriptions?: string[] | EventSubscription[];
 
-  /** Tools that the UI is permitted to invoke directly (bypassing the LLM). Use sparingly — prefer LLM-mediated calls. @optional */
+  /** Runtime methods that the UI is permitted to invoke directly (bypassing the LLM). UI-only methods belong here and should not be duplicated in `tools[]`. Use sparingly. @optional */
   uiCallable?: string[];
 
   /** Declarative auth contract — see {@link PluginAuthSpec}. When present, the host renders a generic 미인증 / signed-in badge + login/logout button in Settings. @optional */
@@ -208,7 +208,7 @@ export interface PluginManifest {
   /** Maximum time in milliseconds the host will wait for `RuntimePlugin.start` to resolve. Plugins exceeding this are considered failed. @optional */
   startupTimeoutMs?: number;
 
-  /** JSON Schema descriptions of each tool's input. Used by the host to advertise tools to the LLM and to validate arguments before dispatch. Keys must appear in `tools`. @optional */
+  /** JSON Schema descriptions of each LLM-callable tool's input. UI-only runtime methods should not be declared here. Keys must appear in `tools`. @optional */
   toolSchemas?: Record<
     string,
     {
