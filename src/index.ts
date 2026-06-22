@@ -422,6 +422,8 @@ export interface VerifyResult {
 
 export interface RequiresSpec {
   capabilities: string[];
+
+  minAppVersion?: string;
 }
 
 export class MissingDependenciesError extends Error {
@@ -434,6 +436,19 @@ export class MissingDependenciesError extends Error {
     this.name = "MissingDependenciesError";
   }
 }
+
+export class IncompatibleAppVersionError extends Error {
+  readonly required: string;
+  readonly current: string;
+  constructor(required: string, current: string) {
+    super(`plugin requires LVIS >= ${required}, current ${current}`);
+    this.required = required;
+    this.current = current;
+    this.name = "IncompatibleAppVersionError";
+  }
+}
+
+export const INCOMPATIBLE_APP_VERSION_CODE = "incompatible-app-version";
 
 export class MissingPluginDependenciesError extends Error {
   readonly missing: string[];
