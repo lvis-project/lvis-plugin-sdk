@@ -52,7 +52,7 @@ jobs:
           - lvis-plugin-template
     steps:
       - name: Checkout SDK
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # `continue-on-error: true` lets the next step inspect the outcome and
       # decide between two very different 404 causes:
