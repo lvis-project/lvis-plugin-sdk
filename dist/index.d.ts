@@ -49,10 +49,14 @@ export interface PluginAccessSpec {
  * `architecture.md` §9.4a "Plugin-Owned OAuth — Host UI Surface".
  *
  * The three referenced tool names (`statusTool`, `loginTool`,
- * `logoutTool`) MUST also appear in `PluginManifest.uiCallable[]`;
- * the host validates this cross-field at load time. On state
- * transitions the plugin SHOULD emit `<pluginId>.auth.changed` so
- * the host UI refreshes without polling.
+ * `logoutTool`) MUST appear in `PluginManifest.uiCallable[]` and MUST
+ * NOT appear in `PluginManifest.tools[]`. Auth is a HOST-managed
+ * lifecycle, not an LLM capability: `tools[]` is the LLM-facing surface
+ * (projected verbatim to the model), so listing an auth tool there would
+ * expose sign-in/sign-out as an agent-callable tool. The host validates
+ * both rules at load time and REJECTS a manifest that lists an auth tool
+ * in `tools[]`. On state transitions the plugin SHOULD emit
+ * `<pluginId>.auth.changed` so the host UI refreshes without polling.
  */
 export interface PluginAuthSpec {
     /** Human-readable label shown next to the badge (defaults to plugin `name`). @optional */
