@@ -470,6 +470,23 @@ export type PluginLifecycleEvent = {
     type: "_future";
     readonly __exhaustive: never;
 };
+export interface PluginWorkerSpec {
+    readonly workerId: string;
+    readonly command: string;
+    readonly args?: readonly string[];
+    readonly env?: Record<string, string | undefined>;
+    readonly allowWritePaths?: readonly string[];
+    readonly udsArgName?: string | {
+        readonly env: string;
+    };
+}
+export interface SpawnedPluginWorker {
+    readonly socketPath: string | null;
+    readonly pid: number | undefined;
+    stop(): void;
+    onStdout(listener: (chunk: string) => void): void;
+    onStderr(listener: (chunk: string) => void): void;
+}
 /**
  * Services exposed by the host to a running plugin. An instance is provided
  * on `PluginRuntimeContext.hostApi` when the host calls the plugin's
@@ -607,6 +624,7 @@ export interface PluginHostApi {
      * chance to flush state.
      */
     onShutdown(handler: () => void | Promise<void>): void;
+    spawnWorker?(spec: PluginWorkerSpec): Promise<SpawnedPluginWorker>;
     openAuthWindow(options: OpenAuthWindowWithFinalUrlOptions): Promise<OpenAuthWindowFinalUrlResult>;
     openAuthWindow(options: OpenAuthWindowCookieOptions): Promise<AuthWindowCookie[]>;
     /**
