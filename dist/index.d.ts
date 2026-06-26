@@ -486,6 +486,10 @@ export interface SpawnedPluginWorker {
     stop(): void;
     onStdout(listener: (chunk: string) => void): void;
     onStderr(listener: (chunk: string) => void): void;
+    onExit(listener: (info: {
+        code: number | null;
+        signal: NodeJS.Signals | null;
+    }) => void): void;
 }
 /**
  * Services exposed by the host to a running plugin. An instance is provided
