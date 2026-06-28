@@ -7,6 +7,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v5.19.0 — 2026-06-29
+
+### Added
+- `PluginHostApi.hasRoutineBySource(source: string): Promise<boolean>` — mirrors the host `types.ts` addition from lvis-app PR #1397. Least-privilege scoped query: the host returns `false` for any `source` outside the caller's own `suggestion:<pluginId>:` prefix, so plugins can use this as a "propose once" gate without cross-plugin enumeration. `src/index.ts` regenerated via `sync:from-host` (HOST_REF=main).
+
+---
+
 ## v5.16.1 — 2026-06-22
 
 ### Changed
