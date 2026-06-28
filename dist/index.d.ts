@@ -685,6 +685,7 @@ export interface PluginHostApi {
      * `^overlay:[a-z][a-z0-9-]*$`.
      */
     triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
+    hasRoutineBySource(source: string): Promise<boolean>;
     /**
      * Show a host-rendered overlay attached to a plugin-initiated long
      * running operation (e.g., async tool call surfacing user-visible
