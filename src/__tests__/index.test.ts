@@ -956,6 +956,7 @@ describe("PluginHostApi — interface contract (structural)", () => {
       openAuthPartitionViewer: async (_opts: { url: string; windowTitle?: string }) => {},
       clearAuthPartition: async (_partition: string) => {},
       triggerConversation: async (_spec) => ({ accepted: true, source: _spec.source }),
+      hasRoutineBySource: async (_source: string) => false,
       agentApproval: {
         request: async (_input: { toolName: string; args: unknown; reason: string; scope: string }) =>
           "deny-once" as const,
