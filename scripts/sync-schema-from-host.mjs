@@ -129,33 +129,33 @@ function normalize(s) {
 }
 
 /**
- * Cross-field invariant `auth.statusTool ∈ uiCallable[]` (and the
+ * Cross-field invariant `auth.statusTool ∈ uiActions` (and the
  * matching `loginTool` / `logoutTool`) currently lives only in prose
  * under `properties.auth.description`. Inject a JSON Schema `allOf`
  * clause that lifts the *structural half* of the invariant — when
- * `auth` is declared, `uiCallable` MUST also be a non-empty array — so
- * AJV catches the most common manifest mistake (forgetting `uiCallable`
+ * `auth` is declared, `uiActions` MUST also be a non-empty object — so
+ * AJV catches the most common manifest mistake (forgetting `uiActions`
  * entirely while declaring `auth`).
  *
  * The full value-level cross-reference (statusTool/loginTool/logoutTool
- * MUST each appear inside the uiCallable array) cannot be expressed in
+ * MUST each appear inside uiActions) cannot be expressed in
  * pure draft-07 without AJV's non-standard `$data` extension, so it is
  * still enforced in `manifest-validation.ts` on the host side. The SDK
  * test suite (`auth-cross-field` describe block) covers the structural
  * check and documents the remaining gap. Idempotent — when the host
  * schema already carries an `allOf` clause we leave it alone.
  */
-function ensureAuthUiCallableInvariant(schema) {
+function ensureAuthUiActionsInvariant(schema) {
   if (Array.isArray(schema.allOf)) return schema;
   schema.allOf = [
     {
       $comment:
-        "auth contract requires a uiCallable allowlist — the three referenced tool names MUST also be in uiCallable[]; value-level cross-check is enforced in lvis-app's manifest-validation.ts",
+        "auth contract requires a UI action allowlist — the three referenced tool names MUST also be in uiActions; value-level cross-check is enforced in lvis-app's manifest-validation.ts",
       if: { required: ["auth"] },
       then: {
-        required: ["uiCallable"],
+        required: ["uiActions"],
         properties: {
-          uiCallable: { type: "array", minItems: 1 },
+          uiActions: { type: "object", minProperties: 1 },
         },
       },
     },
@@ -342,7 +342,7 @@ function ensureRequiresMinAppVersion(schema) {
 function postProcessSdkSchema(text) {
   const obj = JSON.parse(text);
   tightenVersionPatternToStable(obj);
-  ensureAuthUiCallableInvariant(obj);
+  ensureAuthUiActionsInvariant(obj);
   applyDollarSchemaMigration(obj);
   ensurePluginManifestAuthor(obj);
   ensurePluginManifestUiSlots(obj);

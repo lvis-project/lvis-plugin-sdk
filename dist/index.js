@@ -1,4 +1,20 @@
 // src/index.ts
+import { createRequire } from "module";
+var requireFromSdk = createRequire(import.meta.url);
+function compileManifestValidator() {
+  const AjvModule = requireFromSdk("ajv");
+  const AddFormatsModule = requireFromSdk("ajv-formats");
+  const AjvCtor = AjvModule.default ?? AjvModule;
+  const addFormats = AddFormatsModule.default ?? AddFormatsModule;
+  const ajv = new AjvCtor({
+    strict: true,
+    strictRequired: false,
+    allErrors: true,
+    allowUnionTypes: true
+  });
+  addFormats(ajv);
+  return ajv.compile(requireFromSdk("../schemas/plugin-manifest.schema.json"));
+}
 var MissingDependenciesError = class extends Error {
   missing;
   constructor(missing) {
@@ -34,5 +50,6 @@ export {
   INCOMPATIBLE_APP_VERSION_CODE,
   IncompatibleAppVersionError,
   MissingDependenciesError,
-  MissingPluginDependenciesError
+  MissingPluginDependenciesError,
+  compileManifestValidator
 };
