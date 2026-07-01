@@ -1,3 +1,5 @@
+import type { ValidateFunction } from "ajv";
+export declare function compileManifestValidator(): ValidateFunction;
 export type InstallPolicy = "admin" | "user";
 export type PluginToolCategory = "read" | "write" | "shell" | "network";
 export type AuthWindowCookie = {
@@ -49,7 +51,7 @@ export interface PluginAccessSpec {
  * `architecture.md` §9.4a "Plugin-Owned OAuth — Host UI Surface".
  *
  * The three referenced tool names (`statusTool`, `loginTool`,
- * `logoutTool`) MUST appear in `PluginManifest.uiCallable[]` and MUST
+ * `logoutTool`) MUST appear in `PluginManifest.uiActions` and MUST
  * NOT appear in `PluginManifest.tools[]`. Auth is a HOST-managed
  * lifecycle, not an LLM capability: `tools[]` is the LLM-facing surface
  * (projected verbatim to the model), so listing an auth tool there would
@@ -61,11 +63,11 @@ export interface PluginAccessSpec {
 export interface PluginAuthSpec {
     /** Human-readable label shown next to the badge (defaults to plugin `name`). @optional */
     label?: string;
-    /** Name of a uiCallable tool returning {@link PluginAuthStatus}. */
+    /** Name of a uiActions tool returning {@link PluginAuthStatus}. */
     statusTool: string;
-    /** Name of a uiCallable tool the host invokes when the user clicks "로그인". The plugin owns the actual auth flow (e.g. MSAL interactive, openAuthWindow). */
+    /** Name of a uiActions tool the host invokes when the user clicks "로그인". The plugin owns the actual auth flow (e.g. MSAL interactive, openAuthWindow). */
     loginTool: string;
-    /** Optional uiCallable tool the host invokes when the user clicks "로그아웃". Omit when the plugin has no programmatic sign-out path. @optional */
+    /** Optional uiActions tool the host invokes when the user clicks "로그아웃". Omit when the plugin has no programmatic sign-out path. @optional */
     logoutTool?: string;
     /** Hostnames the plugin may open in its `persist:plugin-auth:<pluginId>` partition via {@link PluginHostApi.openAuthPartitionViewer}. Dot-boundary suffix-match — `outlook.office.com` matches `mail.outlook.office.com` but not `outlook.office.com.attacker.com`. Wildcards, single-label hosts, public suffixes (`com`, `co.kr`), URL-paste, and IDN-punycode are rejected at load time. Max 16 entries. @optional */
     partitionDomains?: string[];
@@ -82,6 +84,9 @@ export interface PluginAuthStatus {
     authenticated: boolean;
     /** Optional human-readable identity (email, login id) shown next to the green badge. Display only — not a stable id. @optional */
     account?: string;
+}
+export interface PluginUiActionSpec {
+    description?: string;
 }
 /**
  * Optional structured hint attached to an event subscription. Allows the host
@@ -132,7 +137,7 @@ export interface PluginManifest {
     version: string;
     /** Path (relative to the plugin root) to the JavaScript module whose default export is a `RuntimePluginFactory`. */
     entry: string;
-    /** Tool names exposed to the host LLM. UI-only runtime methods belong in `uiCallable[]`, not `tools[]`. Each name must match `^[a-zA-Z_][a-zA-Z0-9_]*$` — dots and hyphens are not allowed. */
+    /** Tool names exposed to the host LLM. UI-only runtime methods belong in `uiActions`, not `tools[]`. Each name must match `^[a-zA-Z_][a-zA-Z0-9_]*$` — dots and hyphens are not allowed. */
     tools: string[];
     /** One-line summary (1-280 chars) of what the plugin does. **Required** since v3.0.0 — the LLM uses this in the inactive-plugin catalogue to decide whether to surface the plugin to the user. */
     description: string;
@@ -154,8 +159,7 @@ export interface PluginManifest {
     };
     /** Event type names this plugin subscribes to. The host delivers matching events via `PluginHostApi.onEvent`. @optional */
     eventSubscriptions?: string[] | EventSubscription[];
-    /** Runtime methods that the UI is permitted to invoke directly (bypassing the LLM). UI-only methods belong here and should not be duplicated in `tools[]`. Use sparingly. @optional */
-    uiCallable?: string[];
+    uiActions?: Record<string, PluginUiActionSpec>;
     /** Declarative auth contract — see {@link PluginAuthSpec}. When present, the host renders a generic 미인증 / signed-in badge + login/logout button in Settings. @optional */
     auth?: PluginAuthSpec;
     /** Event type names this plugin may emit on the host event bus. Used by the host for validation and ownership checks. @optional */
@@ -424,7 +428,7 @@ export interface PluginMarketplaceItem {
         keyword: string;
         skillId: string;
     }>;
-    uiCallable?: string[];
+    uiActions?: Record<string, PluginUiActionSpec>;
     auth?: PluginAuthSpec;
     emittedEvents?: string[];
     notificationEvents?: Array<{

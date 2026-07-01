@@ -74,7 +74,7 @@ describe("PluginManifest — schema validation", () => {
       capabilities: ["calendar-source", "mail-source"],
       eventSubscriptions: ["meeting:started", "meeting:ended"],
       emittedEvents: ["plugin:event:fired"],
-      uiCallable: ["my_plugin_ping"],
+      uiActions: { my_plugin_ping: {} },
       keywords: [{ keyword: "example", skillId: "example-skill" }],
       publisher: "Example Corp",
       startupTimeoutMs: 5000,
@@ -1046,62 +1046,62 @@ describe("PluginHostApi — interface contract (structural)", () => {
 });
 
 // ─── auth cross-field invariant (H6) ───────────────────────────────────────
-describe("PluginManifest — auth ⇒ uiCallable invariant (H6)", () => {
+describe("PluginManifest — auth ⇒ uiActions invariant (H6)", () => {
   // Architect post-merge follow-up: cross-field invariant
-  // `auth.statusTool ∈ uiCallable[]` was prose-only. The SDK-side schema
+  // `auth.statusTool ∈ uiActions` was prose-only. The SDK-side schema
   // now lifts the structural half of the invariant via `allOf` so AJV
   // catches the most common manifest mistake (declaring `auth` without
-  // any `uiCallable` allowlist). The full value-level check stays in
+  // any `uiActions` allowlist). The full value-level check stays in
   // the host's manifest-validation.ts.
-  it("rejects manifest with auth but no uiCallable", () => {
+  it("rejects manifest with auth but no uiActions", () => {
     const { valid } = validateManifest({
       id: "auth-no-ui",
       name: "Auth no UI",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["status_tool", "login_tool"],
-      description: "Auth contract without uiCallable allowlist.",
+      tools: ["regular_tool"],
+      description: "Auth contract without uiActions allowlist.",
       auth: { statusTool: "status_tool", loginTool: "login_tool" },
     });
     expect(valid).toBe(false);
   });
 
-  it("rejects manifest with auth and empty uiCallable[]", () => {
+  it("rejects manifest with auth and empty uiActions", () => {
     const { valid } = validateManifest({
       id: "auth-empty-ui",
       name: "Auth empty UI",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["status_tool", "login_tool"],
-      description: "Auth contract with empty uiCallable allowlist.",
-      uiCallable: [],
+      tools: ["regular_tool"],
+      description: "Auth contract with empty uiActions allowlist.",
+      uiActions: {},
       auth: { statusTool: "status_tool", loginTool: "login_tool" },
     });
     expect(valid).toBe(false);
   });
 
-  it("accepts manifest with auth and a non-empty uiCallable allowlist", () => {
+  it("accepts manifest with auth and a non-empty uiActions allowlist", () => {
     const { valid, errors } = validateManifest({
       id: "auth-ok",
       name: "Auth OK",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["status_tool", "login_tool"],
-      description: "Auth contract with uiCallable.",
-      uiCallable: ["status_tool", "login_tool"],
+      tools: ["regular_tool"],
+      description: "Auth contract with uiActions.",
+      uiActions: { status_tool: {}, login_tool: {} },
       auth: { statusTool: "status_tool", loginTool: "login_tool" },
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
-  it("accepts manifest without auth regardless of uiCallable", () => {
+  it("accepts manifest without auth regardless of uiActions", () => {
     const { valid, errors } = validateManifest({
       id: "no-auth",
       name: "No Auth",
       version: "1.0.0",
       entry: "dist/index.js",
       tools: ["ping"],
-      description: "No auth contract — uiCallable not required.",
+      description: "No auth contract — uiActions not required.",
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
@@ -1118,9 +1118,9 @@ describe("PluginManifest — auth.partitionDomains schema", () => {
       name: "Partition Test",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["status_tool", "login_tool"],
+      tools: ["regular_tool"],
       description: "Partition allow-list test.",
-      uiCallable: ["status_tool", "login_tool"],
+      uiActions: { status_tool: {}, login_tool: {} },
       auth: {
         statusTool: "status_tool",
         loginTool: "login_tool",
@@ -1216,9 +1216,9 @@ describe("PluginManifest — auth.partitionDomains schema", () => {
       name: "No Viewer",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["status_tool", "login_tool"],
+      tools: ["regular_tool"],
       description: "Auth contract without partitionDomains.",
-      uiCallable: ["status_tool", "login_tool"],
+      uiActions: { status_tool: {}, login_tool: {} },
       auth: { statusTool: "status_tool", loginTool: "login_tool" },
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
