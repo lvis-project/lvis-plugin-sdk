@@ -1,6 +1,6 @@
 # @lvis/plugin-sdk
 
-**Version: 5.13.0** — Source/type-only SDK for LVIS plugin authors. Provides
+**Version: 5.20.0** — Source/type-only SDK for LVIS plugin authors. Provides
 the complete plugin contract surface: `PluginManifest`, `PluginHostApi`,
 `PluginRuntimeContext`, `RuntimePlugin`. Does not ship runtime code, build
 output, lifecycle hooks, or marketplace trust keys.
@@ -29,7 +29,7 @@ Consume the SDK as a Git dependency pinned to a release tag:
 ```json
 {
   "devDependencies": {
-    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v5.13.0"
+    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v5.20.0"
   }
 }
 ```
@@ -85,8 +85,8 @@ A plugin has two artifacts:
 | `emittedEvents` | `string[]` | Events the plugin emits via `hostApi.emitEvent`. Declare all emitted events here. |
 | `notificationEvents` | `Array<{event, titleField?, bodyField?, bypassFocusGate?}>` | Events surfaced as host OS notifications. |
 | `ui` | `PluginUiExtension[]` | Sidebar/panel UI extensions. Currently `slot: "sidebar"` only. |
-| `uiCallable` | `string[]` | Runtime methods the UI may invoke directly (bypassing LLM). UI-only methods belong here and must not be duplicated in `tools`. Use sparingly. |
-| `auth` | `PluginAuthSpec` | Declarative auth contract for OAuth/cookie flows. `statusTool`/`loginTool`/`logoutTool` must appear in `uiCallable[]` and must **NOT** appear in `tools[]` — auth is a host-managed lifecycle, not LLM-callable; the host rejects a manifest that lists an auth tool in `tools[]`. |
+| `uiActions` | `Record<string, PluginUiActionSpec>` | Runtime methods the UI may invoke directly. UI-only methods belong here and need not appear in `tools`. |
+| `auth` | `PluginAuthSpec` | Declarative auth contract for OAuth/cookie flows. `statusTool`/`loginTool`/`logoutTool` must appear in `uiActions` and must **NOT** appear in `tools[]` — auth is a host-managed lifecycle, not LLM-callable; the host rejects a manifest that lists an auth tool in `tools[]`. |
 | `configSchema` | `PluginConfigSchema` | JSON Schema draft-07 subset; `format: "secret"` routes values through the encrypted keychain. |
 | `dependencies` | `Array<string \| DependencySpec>` | Plugin-level dependencies (other plugin ids). |
 | `pluginAccess` | `PluginAccessSpec` | Cross-plugin tool/event access grants. |
