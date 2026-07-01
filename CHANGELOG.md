@@ -7,6 +7,15 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v5.20.0 — 2026-07-01
+
+### Changed
+- Replaced the legacy renderer allowlist manifest field with `uiActions`, a renderer/UI action map separate from the LLM-facing `tools[]` surface.
+- Tightened auth manifest shape: `auth.statusTool`, `auth.loginTool`, and `auth.logoutTool` must be declared in `uiActions` and must not be exposed through `tools[]`.
+- Exported `compileManifestValidator()` so hosts can compile the SDK manifest schema directly instead of falling back to a host-local schema copy.
+
+---
+
 ## v5.19.0 — 2026-06-29
 
 ### Added

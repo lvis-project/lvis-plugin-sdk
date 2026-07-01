@@ -3,6 +3,7 @@
 // Mirrored from lvis-app/src/shared/theme-bundles.ts
 
 
+
 export const BUNDLE_IDS = [
   "cherry-blossom",
   "tokyo-night",
@@ -17,6 +18,7 @@ export const BUNDLE_IDS = [
   "gruvbox-dark-hard",
   "solarized-light",
   "rose-pine",
+  "executive-graphite",
 ] as const;
 
 export type BundleId = (typeof BUNDLE_IDS)[number];

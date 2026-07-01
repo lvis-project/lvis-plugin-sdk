@@ -12,7 +12,8 @@ var BUNDLE_IDS = [
   "nord",
   "gruvbox-dark-hard",
   "solarized-light",
-  "rose-pine"
+  "rose-pine",
+  "executive-graphite"
 ];
 
 // src/ui/tokens/index.ts
