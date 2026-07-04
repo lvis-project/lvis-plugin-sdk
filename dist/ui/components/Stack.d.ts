@@ -12,12 +12,12 @@ interface StackBaseProps extends React.HTMLAttributes<HTMLElement> {
 export interface StackProps extends StackBaseProps {
 }
 /** Vertical flex stack. Default `gap="md"`. */
-export declare function Stack({ gap, align, justify, as: Tag, className, children, ...rest }: StackProps): import("react/jsx-runtime").JSX.Element;
+export declare function Stack({ gap, align, justify, as: Tag, className, children, ...rest }: StackProps): React.JSX.Element;
 export interface InlineProps extends StackBaseProps {
     /** Wrap to next line when out of horizontal space. Defaults to `false`. */
     wrap?: boolean;
 }
 /** Horizontal flex stack. Default `gap="sm"`. Common alias for left-to-right rows of badges/buttons. */
-export declare function Inline({ gap, align, justify, wrap, as: Tag, className, children, ...rest }: InlineProps): import("react/jsx-runtime").JSX.Element;
+export declare function Inline({ gap, align, justify, wrap, as: Tag, className, children, ...rest }: InlineProps): React.JSX.Element;
 export {};
 //# sourceMappingURL=Stack.d.ts.map
