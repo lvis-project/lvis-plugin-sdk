@@ -4,5 +4,5 @@ export interface TextProps extends React.HTMLAttributes<HTMLParagraphElement> {
     variant?: TextVariant;
     as?: "p" | "span" | "div" | "h1" | "h2" | "h3";
 }
-export declare function Text({ variant, as: Tag, className, children, ...rest }: TextProps): import("react/jsx-runtime").JSX.Element;
+export declare function Text({ variant, as: Tag, className, children, ...rest }: TextProps): React.JSX.Element;
 //# sourceMappingURL=Text.d.ts.map
