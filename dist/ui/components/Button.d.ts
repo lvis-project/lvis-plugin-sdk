@@ -6,5 +6,5 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
     size?: ButtonSize;
     loading?: boolean;
 }
-export declare function Button({ variant, size, loading, children, className, disabled, ...rest }: ButtonProps): import("react/jsx-runtime").JSX.Element;
+export declare function Button({ variant, size, loading, children, className, disabled, ...rest }: ButtonProps): React.JSX.Element;
 //# sourceMappingURL=Button.d.ts.map
