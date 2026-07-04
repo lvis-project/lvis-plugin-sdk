@@ -1,3 +1,4 @@
+import React from "react";
 export interface CheckboxProps {
     checked?: boolean;
     defaultChecked?: boolean;
@@ -7,5 +8,5 @@ export interface CheckboxProps {
     disabled?: boolean;
     id?: string;
 }
-export declare function Checkbox({ checked, defaultChecked, indeterminate, onChange, label, disabled, id }: CheckboxProps): import("react/jsx-runtime").JSX.Element;
+export declare function Checkbox({ checked, defaultChecked, indeterminate, onChange, label, disabled, id }: CheckboxProps): React.JSX.Element;
 //# sourceMappingURL=Checkbox.d.ts.map
