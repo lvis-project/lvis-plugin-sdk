@@ -9,5 +9,5 @@ export interface ToggleProps {
     className?: string;
     style?: React.CSSProperties;
 }
-export declare function Toggle({ checked, defaultChecked, onChange, label, disabled, id, className, style }: ToggleProps): import("react/jsx-runtime").JSX.Element;
+export declare function Toggle({ checked, defaultChecked, onChange, label, disabled, id, className, style }: ToggleProps): React.JSX.Element;
 //# sourceMappingURL=Toggle.d.ts.map
