@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v5.21.0 — 2026-07-08
+
+### Added
+- `networkAccess.allowPrivateNetworks` — explicit manifest governance opt-in for allow-listed intranet/private-network egress. This keeps private-network grants in the SDK schema SOT so marketplace, Doctor, and plugin CI can reject mismatched grants instead of silently relying on host-local compatibility.
+- `toolSchemas[*].workerId` is now accepted by the manifest schema to match the exported `PluginManifest` type and host worker routing contract.
+- `hostSecrets.read[]` now accepts `llm.marketplaceProvider.<presetId>.apiKey` in addition to `llm.apiKey.<vendor>` so marketplace-managed provider presets validate without host-local schema patching.
+- Host-sync output also refreshes marketplace package asset types and theme bundle constants from the app SOT; generated `dist/` is rebuilt from the same synchronized surface.
+
+---
+
 ## v5.20.0 — 2026-07-01
 
 ### Changed
