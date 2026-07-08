@@ -6,6 +6,20 @@
 import { createRequire } from "node:module";
 import type { ValidateFunction } from "ajv";
 
+export type MarketplacePackageType =
+  | "plugin"
+  | "mcp"
+  | "agent"
+  | "skill"
+  | "provider"
+  | "theme"
+  | "language-pack";
+
+export type MarketplacePackageAsset =
+  | ({ type: "provider"; providerId: string } & Record<string, unknown>)
+  | ({ type: "theme"; bundleId: string } & Record<string, unknown>)
+  | ({ type: "language-pack"; locale: string } & Record<string, unknown>);
+
 const requireFromSdk = createRequire(import.meta.url);
 
 export function compileManifestValidator(): ValidateFunction {
@@ -248,6 +262,8 @@ export interface PluginManifest {
       category?: PluginToolCategory;
 
       pathFields?: string[];
+
+      workerId?: string;
 
       writesToOwnSandbox?: boolean;
 
@@ -562,6 +578,7 @@ export interface PluginMarketplaceItem {
   keywords?: Array<{ keyword: string; skillId: string }>;
   uiActions?: Record<string, PluginUiActionSpec>;
   auth?: PluginAuthSpec;
+  networkAccess?: PluginManifest["networkAccess"];
   emittedEvents?: string[];
 
   notificationEvents?: Array<{
@@ -579,7 +596,9 @@ export interface PluginMarketplaceItem {
 
   requires?: RequiresSpec;
 
-  pluginType?: "plugin" | "mcp" | "agent" | "skill";
+  pluginType?: MarketplacePackageType;
+
+  packageAsset?: MarketplacePackageAsset;
 
   mcpRuntime?: McpRuntimeSpec;
 

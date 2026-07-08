@@ -256,6 +256,10 @@
         "reasoning": {
           "type": "string",
           "description": "Human-readable justification surfaced to the user at install for the requested egress."
+        },
+        "allowPrivateNetworks": {
+          "type": "boolean",
+          "description": "Governance opt-in for allow-listed intranet/private-network egress. Applies to host-mediated hostApi.hostFetch and explicitly documented browser/direct intranet exceptions; loopback/link-local/metadata addresses remain denied by host guards where applicable."
         }
       }
     },
@@ -327,16 +331,16 @@
     },
     "hostSecrets": {
       "type": "object",
-      "description": "Explicit allowlist of host-managed secrets the plugin reads via hostApi.getSecret. Currently allowed: llm.apiKey.* only. Default deny when unset.",
+      "description": "Explicit allowlist of host-managed LLM secrets the plugin reads via hostApi.getSecret. Default deny when unset.",
       "additionalProperties": false,
       "properties": {
         "read": {
           "type": "array",
-          "description": "Secret keys this plugin is permitted to read. Each entry MUST match ^llm\\.apiKey\\.[a-z]+(-[a-z]+)*$ — leading/trailing/consecutive dashes and other prefixes are rejected at validation time. Bounded (maxItems=32, per-item maxLength=64) to prevent registry-level DoS via oversized manifests.",
+          "description": "Secret keys this plugin is permitted to read. Accepted forms: llm.apiKey.<vendor> or llm.marketplaceProvider.<presetId>.apiKey. Marketplace preset ids follow the host provider-preset id contract. Bounded (maxItems=32, per-item maxLength=111) to prevent registry-level DoS via oversized manifests.",
           "items": {
             "type": "string",
-            "pattern": "^llm\\.apiKey\\.[a-z]+(-[a-z]+)*$",
-            "maxLength": 64
+            "pattern": "^(?:llm\\.apiKey\\.[a-z]+(-[a-z]+)*|llm\\.marketplaceProvider\\.[A-Za-z0-9][A-Za-z0-9._-]{0,79}\\.apiKey)$",
+            "maxLength": 111
           },
           "maxItems": 32,
           "uniqueItems": true,
@@ -649,6 +653,13 @@
               "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$"
             },
             "uniqueItems": true
+          },
+          "workerId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9._-]+$",
+            "description": "Host-spawned plugin worker id. Paired with plugin id so the host reviewer can resolve the specific ASRT-wrapped worker substrate."
           },
           "writesToOwnSandbox": {
             "type": "boolean",

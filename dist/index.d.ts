@@ -1,4 +1,15 @@
 import type { ValidateFunction } from "ajv";
+export type MarketplacePackageType = "plugin" | "mcp" | "agent" | "skill" | "provider" | "theme" | "language-pack";
+export type MarketplacePackageAsset = ({
+    type: "provider";
+    providerId: string;
+} & Record<string, unknown>) | ({
+    type: "theme";
+    bundleId: string;
+} & Record<string, unknown>) | ({
+    type: "language-pack";
+    locale: string;
+} & Record<string, unknown>);
 export declare function compileManifestValidator(): ValidateFunction;
 export type InstallPolicy = "admin" | "user";
 export type PluginToolCategory = "read" | "write" | "shell" | "network";
@@ -185,6 +196,7 @@ export interface PluginManifest {
         description: string;
         category?: PluginToolCategory;
         pathFields?: string[];
+        workerId?: string;
         writesToOwnSandbox?: boolean;
         /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
         version?: string;
@@ -430,6 +442,7 @@ export interface PluginMarketplaceItem {
     }>;
     uiActions?: Record<string, PluginUiActionSpec>;
     auth?: PluginAuthSpec;
+    networkAccess?: PluginManifest["networkAccess"];
     emittedEvents?: string[];
     notificationEvents?: Array<{
         event: string;
@@ -444,7 +457,8 @@ export interface PluginMarketplaceItem {
     publisher?: string;
     toolSchemas?: PluginManifest["toolSchemas"];
     requires?: RequiresSpec;
-    pluginType?: "plugin" | "mcp" | "agent" | "skill";
+    pluginType?: MarketplacePackageType;
+    packageAsset?: MarketplacePackageAsset;
     mcpRuntime?: McpRuntimeSpec;
     mcpAuth?: McpAuthMetadata;
 }

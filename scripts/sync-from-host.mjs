@@ -222,6 +222,20 @@ function render(body) {
 import { createRequire } from "node:module";
 import type { ValidateFunction } from "ajv";
 
+export type MarketplacePackageType =
+  | "plugin"
+  | "mcp"
+  | "agent"
+  | "skill"
+  | "provider"
+  | "theme"
+  | "language-pack";
+
+export type MarketplacePackageAsset =
+  | ({ type: "provider"; providerId: string } & Record<string, unknown>)
+  | ({ type: "theme"; bundleId: string } & Record<string, unknown>)
+  | ({ type: "language-pack"; locale: string } & Record<string, unknown>);
+
 const requireFromSdk = createRequire(import.meta.url);
 
 export function compileManifestValidator(): ValidateFunction {
