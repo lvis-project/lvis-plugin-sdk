@@ -653,6 +653,8 @@ export interface PluginWorkerSpec {
 
   readonly env?: Record<string, string | undefined>;
 
+  readonly allowReadPaths?: readonly string[];
+
   readonly allowWritePaths?: readonly string[];
 
   readonly udsArgName?: string | { readonly env: string };
