@@ -2,7 +2,9 @@
 import React from "react";
 
 // src/ui/tokens/theme-bundles.ts
-var BUNDLE_IDS = [
+var BUNDLE_IDS = Object.freeze([
+  "moonstone",
+  "gallery",
   "cherry-blossom",
   "tokyo-night",
   "midnight",
@@ -17,7 +19,23 @@ var BUNDLE_IDS = [
   "solarized-light",
   "rose-pine",
   "executive-graphite"
-];
+]);
+var BUNDLE_ID_SET = new Set(BUNDLE_IDS);
+var DEFAULT_VISIBLE_THEME_BUNDLE_IDS = Object.freeze([
+  "moonstone",
+  "gallery"
+]);
+var DEFAULT_VISIBLE_THEME_BUNDLE_ID_SET = new Set(
+  DEFAULT_VISIBLE_THEME_BUNDLE_IDS
+);
+var MARKETPLACE_ELIGIBLE_THEME_BUNDLE_IDS = Object.freeze(
+  BUNDLE_IDS.filter(
+    (bundleId) => !DEFAULT_VISIBLE_THEME_BUNDLE_ID_SET.has(bundleId)
+  )
+);
+var MARKETPLACE_ELIGIBLE_THEME_BUNDLE_ID_SET = new Set(
+  MARKETPLACE_ELIGIBLE_THEME_BUNDLE_IDS
+);
 
 // src/ui/tokens/index.ts
 var LVIS_TOKEN_NAMES = [

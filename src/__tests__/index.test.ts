@@ -81,6 +81,21 @@ describe("PluginManifest — schema validation", () => {
       installPolicy: "admin",
       dependencies: ["dep-plugin"],
       requires: { capabilities: ["calendar"] },
+      hostSecrets: {
+        read: ["llm.marketplaceProvider.future-router.apiKey"],
+      },
+      networkAccess: {
+        allowedDomains: ["intranet.example.com"],
+        allowPrivateNetworks: true,
+        reasoning: "On-prem API access.",
+      },
+      toolSchemas: {
+        my_plugin_ping: {
+          description: "Worker-backed ping tool.",
+          workerId: "main-worker",
+          inputSchema: { type: "object", properties: {} },
+        },
+      },
     };
     const { valid, errors } = validateManifest(full);
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
@@ -218,6 +233,34 @@ describe("PluginManifest — schema validation", () => {
       },
     };
     expect(validateManifest(bogusCategory).valid).toBe(false);
+  });
+
+  it("accepts toolSchemas[*].workerId while keeping unknown tool schema fields rejected", () => {
+    const workerBacked: PluginManifest = {
+      ...VALID_MINIMAL,
+      toolSchemas: {
+        my_plugin_ping: {
+          description: "Worker-backed ping tool.",
+          workerId: "main-worker",
+          inputSchema: { type: "object", properties: {} },
+        },
+      },
+    };
+    const validWorkerBacked = validateManifest(workerBacked);
+    expect(validWorkerBacked.valid, `Errors: ${validWorkerBacked.errors.join(", ")}`).toBe(true);
+
+    const unknownToolSchemaField = {
+      ...VALID_MINIMAL,
+      toolSchemas: {
+        my_plugin_ping: {
+          description: "Worker-backed ping tool.",
+          workerId: "main-worker",
+          unsupportedField: true,
+          inputSchema: { type: "object", properties: {} },
+        },
+      },
+    };
+    expect(validateManifest(unknownToolSchemaField).valid).toBe(false);
   });
 
   // Issue #664 P1 / PR #860 — sandbox-write self-attestation flag contract.
