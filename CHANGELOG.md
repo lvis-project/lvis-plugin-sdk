@@ -7,6 +7,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v5.22.0 — 2026-07-08
+
+### Added
+- `PluginWorkerSpec.allowReadPaths` — explicit read-grant declaration for host-spawned long-lived plugin workers. Windows ASRT worker wrapping uses this trusted field for worker script/runtime inputs instead of inferring filesystem authority from argv.
+
+---
+
 ## v5.21.0 — 2026-07-08
 
 ### Added
