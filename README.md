@@ -1,6 +1,6 @@
 # @lvis/plugin-sdk
 
-**Version: 5.20.0** — Source/type-only SDK for LVIS plugin authors. Provides
+**Version: 5.21.0** — Source/type-only SDK for LVIS plugin authors. Provides
 the complete plugin contract surface: `PluginManifest`, `PluginHostApi`,
 `PluginRuntimeContext`, `RuntimePlugin`. Does not ship runtime code, build
 output, lifecycle hooks, or marketplace trust keys.
@@ -29,7 +29,7 @@ Consume the SDK as a Git dependency pinned to a release tag:
 ```json
 {
   "devDependencies": {
-    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v5.20.0"
+    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v5.21.0"
   }
 }
 ```
@@ -94,9 +94,11 @@ A plugin has two artifacts:
 | `startupTimeoutMs` | `number` | Max ms host waits for `start()` to resolve. |
 | `python` | `{managedBy?, requirementsLock?, interpreter?}` | Python co-deployment metadata for plugins with Python workers. |
 
-### Tool tool category + path fields
+### Tool category + path fields
 
-`toolSchemas[name].category` is **required** — no default. Host rejects tools without it.
+`toolSchemas[name].category` is deprecated and optional. The host classifies
+permission risk from host-owned invocation signals; plugin-declared categories
+are accepted for backward compatibility, but new manifests should omit them.
 
 | Category | Meaning |
 |---|---|
