@@ -46,13 +46,24 @@
       "minLength": 1
     },
     "tools": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-        "maxLength": 64
-      },
-      "description": "LLM-visible tool name list — underscore format required. UI-only runtime methods belong in uiActions, not tools[]."
+      "description": "LLM-visible tool surface. Legacy arm (compat window) = underscore name list paired with toolSchemas/uiActions; pure v6 arm = MCP Tool objects (manifest == wire). An empty [] resolves to the legacy arm (the pure arm carries minItems:1).",
+      "oneOf": [
+        {
+          "$comment": "LEGACY (compat window only) — underscore name list; paired with toolSchemas/uiActions.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+            "maxLength": 64
+          }
+        },
+        {
+          "$comment": "PURE (v6) — MCP Tool objects; manifest == wire. minItems:1 disambiguates empty [] to legacy.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/tool" }
+        }
+      ]
     },
     "config": {
       "type": "object"
@@ -869,12 +880,106 @@
       "description": "Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. Kebab-case identifiers, ≤32 entries."
     }
   },
+  "definitions": {
+    "tool": {
+      "$comment": "PURE (v6) MCP Tool object — manifest == wire (#885). additionalProperties:false rejects the removed legacy fields (category/workerId/writesToOwnSandbox/version/deprecatedSince/replacedBy); they are not Tool properties.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "inputSchema"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "maxLength": 64
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10
+        },
+        "inputSchema": {
+          "type": "object",
+          "required": ["type", "properties"],
+          "properties": {
+            "$schema": { "type": "string" },
+            "type": { "const": "object" },
+            "properties": { "type": "object" },
+            "required": { "type": "array", "items": { "type": "string" } },
+            "additionalProperties": { "type": "boolean" }
+          }
+        },
+        "outputSchema": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "$schema": { "type": "string" },
+            "type": { "const": "object" },
+            "properties": { "type": "object" },
+            "required": { "type": "array", "items": { "type": "string" } },
+            "additionalProperties": { "type": "boolean" }
+          }
+        },
+        "icons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["src"],
+            "properties": {
+              "src": { "type": "string" },
+              "mimeType": { "type": "string" },
+              "sizes": { "type": "string" }
+            }
+          }
+        },
+        "_meta": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ui": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "visibility": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "enum": ["model", "app"] }
+                }
+              }
+            },
+            "xyz.lvis/pathFields": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   "allOf": [
     {
-      "$comment": "auth contract requires a UI invocation allowlist — the three referenced tool names MUST also be in uiActions; value-level cross-check is enforced in lvis-app's manifest-validation.ts",
+      "$comment": "auth contract requires a UI invocation allowlist — the three referenced tool names MUST also be in uiActions; value-level cross-check is enforced in lvis-app's manifest-validation.ts. Guarded to the LEGACY arm: a pure-form (v6) manifest carries no uiActions (auth-tool visibility is a host cross-field check on the normalized Tool[], not AJV-expressible).",
       "if": {
-        "required": [
-          "auth"
+        "type": "object",
+        "allOf": [
+          { "required": ["auth"] },
+          {
+            "not": {
+              "type": "object",
+              "properties": {
+                "tools": { "type": "array", "minItems": 1, "items": { "type": "object" } }
+              }
+            }
+          }
         ]
       },
       "then": {
@@ -886,6 +991,24 @@
             "type": "object",
             "minProperties": 1
           }
+        }
+      }
+    },
+    {
+      "$comment": "Pure-form (v6) manifests must not carry the legacy toolSchemas/uiActions maps.",
+      "if": {
+        "type": "object",
+        "properties": {
+          "tools": { "type": "array", "minItems": 1, "items": { "type": "object" } }
+        }
+      },
+      "then": {
+        "type": "object",
+        "not": {
+          "anyOf": [
+            { "required": ["toolSchemas"] },
+            { "required": ["uiActions"] }
+          ]
         }
       }
     }
