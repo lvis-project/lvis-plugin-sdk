@@ -173,6 +173,56 @@ export interface EventSubscription {
   hint?: EventSubscriptionHint;
 }
 
+/* ============================================================================
+ * Plugin Contract v6 (#885) — pure MCP `Tool` object surface.
+ *
+ * These types define the v6 "manifest == wire" tool contract that supersedes the
+ * legacy `tools: string[]` + `toolSchemas` + `uiActions` triple. In phase a2 they
+ * are ADDITIVE: `PluginManifest.tools` stays `string[]` and host consumers keep
+ * reading the legacy shape until a4 rewires them through `normalizeManifest`.
+ * The SDK public surface (`@lvis/plugin-sdk`) mirrors these via `sync-from-host`.
+ * ==========================================================================*/
+
+export interface McpToolUiMeta {
+  visibility?: Array<"model" | "app">;
+}
+
+export interface McpToolMeta {
+
+  ui?: McpToolUiMeta;
+
+  "xyz.lvis/pathFields"?: string[];
+}
+
+export interface Tool {
+
+  name: string;
+
+  title?: string;
+
+  description?: string;
+
+  inputSchema: {
+    $schema?: string;
+    type: "object";
+    properties: Record<string, unknown>;
+    required?: string[];
+    additionalProperties?: boolean;
+  };
+
+  outputSchema?: {
+    $schema?: string;
+    type: "object";
+    properties?: Record<string, unknown>;
+    required?: string[];
+    additionalProperties?: boolean;
+  };
+
+  icons?: Array<{ src: string; mimeType?: string; sizes?: string }>;
+
+  _meta?: McpToolMeta;
+}
+
 /**
  * Declarative metadata for a plugin. Describes the tools, capabilities, UI
  * extensions, lifecycle, and permissions a plugin exposes to the host.
@@ -306,6 +356,104 @@ export interface PluginManifest {
   /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */
   uiSlots?: string[];
 }
+
+export type RawPluginManifest = Omit<PluginManifest, "tools"> & {
+  tools: string[] | Tool[];
+};
+
+export type NormalizedManifest = Omit<
+  PluginManifest,
+  "tools" | "toolSchemas" | "uiActions"
+> & {
+  tools: Tool[];
+};
+
+export interface NormalizeNotice {
+  pluginId: string;
+
+  kind: "legacy-shape";
+
+  droppedFields: Array<
+    "category" | "workerId" | "writesToOwnSandbox" | "version" | "deprecatedSince" | "replacedBy"
+  >;
+}
+
+export type NormalizeReporter = (notice: NormalizeNotice) => void;
+
+export const normalizeManifest = (
+  raw: RawPluginManifest,
+  report?: NormalizeReporter,
+): NormalizedManifest => {
+  const DUAL: Array<"model" | "app"> = ["model", "app"];
+
+  const stripLegacyMaps = (m: RawPluginManifest) => {
+
+    const { toolSchemas: _s, uiActions: _u, tools: _t, ...rest } = m;
+    return rest;
+  };
+
+  const isLegacy = raw.tools.length === 0 || typeof raw.tools[0] === "string";
+  if (!isLegacy) {
+    const tools = (raw.tools as Tool[]).map((t): Tool => {
+      const vis = t._meta?.ui?.visibility;
+      if (vis === undefined) {
+        return { ...t, _meta: { ...t._meta, ui: { ...t._meta?.ui, visibility: DUAL } } };
+      }
+      if (vis.length === 0) {
+        throw new Error(
+          `[normalizeManifest] plugin '${raw.id}' tool '${t.name}': _meta.ui.visibility is [] — ` +
+            "a tool must be reachable by ≥1 surface; empty is rejected (SoT §2.2/§2.3)",
+        );
+      }
+      return t;
+    });
+    return { ...stripLegacyMaps(raw), tools };
+  }
+
+  const names = raw.tools as string[];
+  const uiNames = Object.keys(raw.uiActions ?? {});
+  const schemas = raw.toolSchemas ?? {};
+  const removed = [
+    "category", "workerId", "writesToOwnSandbox", "version", "deprecatedSince", "replacedBy",
+  ] as const;
+  const dropped = new Set<NormalizeNotice["droppedFields"][number]>();
+
+  const deriveVisibility = (inModel: boolean, inApp: boolean): Array<"model" | "app"> => {
+    if (inModel && inApp) return ["model", "app"];
+    if (inModel) return ["model"];
+    if (inApp) return ["app"];
+
+    throw new Error(
+      `[normalizeManifest] plugin '${raw.id}': a tool is reachable by neither surface ` +
+        "(not in tools[] nor uiActions) — every tool needs ≥1 surface (SoT §2.3)",
+    );
+  };
+
+  const allNames = [...names, ...uiNames.filter((n) => !names.includes(n))];
+  const tools: Tool[] = allNames.map((name): Tool => {
+    const schema = schemas[name];
+    const meta: McpToolMeta = {
+      ui: { visibility: deriveVisibility(names.includes(name), uiNames.includes(name)) },
+    };
+    if (schema?.pathFields && schema.pathFields.length > 0) {
+      meta["xyz.lvis/pathFields"] = schema.pathFields;
+    }
+    if (schema) {
+      for (const f of removed) {
+        if ((schema as Record<string, unknown>)[f] !== undefined) dropped.add(f);
+      }
+    }
+    return {
+      name,
+      ...(schema?.description !== undefined ? { description: schema.description } : {}),
+      inputSchema: schema?.inputSchema ?? { type: "object" as const, properties: {} },
+      _meta: meta,
+    };
+  });
+
+  report?.({ pluginId: raw.id, kind: "legacy-shape", droppedFields: [...dropped] });
+  return { ...stripLegacyMaps(raw), tools };
+};
 
 /**
  * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
