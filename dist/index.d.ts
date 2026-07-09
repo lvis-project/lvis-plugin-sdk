@@ -121,6 +121,38 @@ export interface EventSubscription {
     /** Optional structured hint shown by the host alongside the subscription. @optional */
     hint?: EventSubscriptionHint;
 }
+export interface McpToolUiMeta {
+    visibility?: Array<"model" | "app">;
+}
+export interface McpToolMeta {
+    ui?: McpToolUiMeta;
+    "xyz.lvis/pathFields"?: string[];
+}
+export interface Tool {
+    name: string;
+    title?: string;
+    description?: string;
+    inputSchema: {
+        $schema?: string;
+        type: "object";
+        properties: Record<string, unknown>;
+        required?: string[];
+        additionalProperties?: boolean;
+    };
+    outputSchema?: {
+        $schema?: string;
+        type: "object";
+        properties?: Record<string, unknown>;
+        required?: string[];
+        additionalProperties?: boolean;
+    };
+    icons?: Array<{
+        src: string;
+        mimeType?: string;
+        sizes?: string;
+    }>;
+    _meta?: McpToolMeta;
+}
 /**
  * Declarative metadata for a plugin. Describes the tools, capabilities, UI
  * extensions, lifecycle, and permissions a plugin exposes to the host.
@@ -229,6 +261,19 @@ export interface PluginManifest {
     /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */
     uiSlots?: string[];
 }
+export type RawPluginManifest = Omit<PluginManifest, "tools"> & {
+    tools: string[] | Tool[];
+};
+export type NormalizedManifest = Omit<PluginManifest, "tools" | "toolSchemas" | "uiActions"> & {
+    tools: Tool[];
+};
+export interface NormalizeNotice {
+    pluginId: string;
+    kind: "legacy-shape";
+    droppedFields: Array<"category" | "workerId" | "writesToOwnSandbox" | "version" | "deprecatedSince" | "replacedBy">;
+}
+export type NormalizeReporter = (notice: NormalizeNotice) => void;
+export declare const normalizeManifest: (raw: RawPluginManifest, report?: NormalizeReporter) => NormalizedManifest;
 /**
  * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
  * rendered as a typed form in the host's `PluginConfigTab`.
