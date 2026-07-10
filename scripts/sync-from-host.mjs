@@ -3,7 +3,7 @@
  * Extract the host-owned plugin contract into the SDK public surface.
  *
  * Usage:
- *   node scripts/sync-from-host.mjs              # write src/index.ts + src/ui/tokens/index.ts
+ *   node scripts/sync-from-host.mjs              # write src/index.ts
  *   node scripts/sync-from-host.mjs --check      # exit 1 if regenerated output differs from committed
  *
  * Host source resolution (in order):
@@ -78,15 +78,13 @@ function assertSafeGitRef(ref) {
 
 function buildHostSources(hostRoot, source) {
   const typesPath = path.join(hostRoot, "src/plugins/types.ts");
-  const tokenContractPath = path.join(hostRoot, "src/shared/plugin-ui-tokens.ts");
-  const themeBundlesPath = path.join(hostRoot, "src/shared/theme-bundles.ts");
-  if (!fs.existsSync(typesPath) || !fs.existsSync(tokenContractPath)) {
+  if (!fs.existsSync(typesPath)) {
     console.error(
-      `ERROR: host contract files not found under ${hostRoot}. Expected src/plugins/types.ts and src/shared/plugin-ui-tokens.ts.`
+      `ERROR: host contract file not found under ${hostRoot}. Expected src/plugins/types.ts.`
     );
     process.exit(1);
   }
-  return { typesPath, tokenContractPath, themeBundlesPath: fs.existsSync(themeBundlesPath) ? themeBundlesPath : null, source };
+  return { typesPath, source };
 }
 
 function resolveHostSources() {
@@ -97,20 +95,8 @@ function resolveHostSources() {
 
   const envPath = process.env.LVIS_HOST_TYPES_PATH;
   if (envPath && fs.existsSync(envPath)) {
-    const tokenEnvPath = process.env.LVIS_HOST_TOKEN_CONTRACT_PATH;
-    const derivedRoot = path.resolve(path.dirname(envPath), "..", "..");
-    const tokenContractPath = tokenEnvPath && fs.existsSync(tokenEnvPath)
-      ? tokenEnvPath
-      : path.join(derivedRoot, "src/shared/plugin-ui-tokens.ts");
-    if (!fs.existsSync(tokenContractPath)) {
-      console.error(
-        "ERROR: token contract not found. Set LVIS_HOST_TOKEN_CONTRACT_PATH or provide a host root containing src/shared/plugin-ui-tokens.ts."
-      );
-      process.exit(1);
-    }
     return {
       typesPath: envPath,
-      tokenContractPath,
       source: `env:${envPath}`,
     };
   }
@@ -149,7 +135,7 @@ function resolveHostSources() {
   }
 
   console.error(
-    "ERROR: host contract source not configured. Set LVIS_HOST_REPO_ROOT, set LVIS_HOST_TYPES_PATH (and optionally LVIS_HOST_TOKEN_CONTRACT_PATH), place lvis-app next to this repository, or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository."
+    "ERROR: host contract source not configured. Set LVIS_HOST_REPO_ROOT, set LVIS_HOST_TYPES_PATH, place lvis-app next to this repository, or set LVIS_HOST_REPO_URL (and optionally HOST_REF) to clone the host repository."
   );
   process.exit(1);
 }
@@ -387,14 +373,6 @@ export function compileManifestValidator(): ValidateFunction {
 
 ${body}
 ${SDK_MANIFEST_COMPAT_ADAPTER}`;
-}
-
-function renderTokenContract(body) {
-  return `// AUTO-GENERATED — DO NOT EDIT. Regenerate via: bun run sync:from-host
-//
-// @lvis/plugin-sdk — plugin UI token contract mirrored from the host app.
-
-${body}`;
 }
 
 /**
@@ -1302,7 +1280,7 @@ function ensurePluginMarketplaceCatalogFields(text) {
 }
 
 try {
-  const { typesPath, tokenContractPath, themeBundlesPath, source } = resolveHostSources();
+  const { typesPath, source } = resolveHostSources();
   const rendered = render(extract(typesPath));
   const sanitized = sanitizeForPublic(rendered);
   const output = normalizeSdkTypeOnlySurface(enrichWithJsDoc(sanitized, JSDOC_CATALOG))
@@ -1310,36 +1288,9 @@ try {
     .replace(/\r/g, "\n")
     .replace(/^[ \t]+$/gm, "")
     .replace(/\n{3,}/g, "\n\n");
-  const tokenOutput = renderTokenContract(fs.readFileSync(tokenContractPath, "utf8"))
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .replace(/[ \t]+$/gm, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trimEnd() + "\n";
   const targets = [
     { path: path.join(ROOT, "src/index.ts"), output, label: "src/index.ts" },
-    {
-      path: path.join(ROOT, "src/ui/tokens/index.ts"),
-      output: tokenOutput,
-      label: "src/ui/tokens/index.ts",
-    },
   ];
-  if (themeBundlesPath) {
-    const themeBundlesOutput = `// AUTO-GENERATED — DO NOT EDIT. Regenerate via: bun run sync:from-host
-//
-// Mirrored from lvis-app/src/shared/theme-bundles.ts
-
-${fs.readFileSync(themeBundlesPath, "utf8")
-  .replace(/^\/\*\*[\s\S]*?\*\/\n?/m, "")  // strip leading JSDoc
-  .replace(/\r\n/g, "\n")
-  .replace(/[ \t]+$/gm, "")
-  .trimEnd()}\n`;
-    targets.push({
-      path: path.join(ROOT, "src/ui/tokens/theme-bundles.ts"),
-      output: themeBundlesOutput,
-      label: "src/ui/tokens/theme-bundles.ts",
-    });
-  }
 
   // Normalize line endings so CRLF/LF differences don't trigger false drift.
   const normalize = (s) =>

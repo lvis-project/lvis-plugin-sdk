@@ -3,8 +3,6 @@ on:
   pull_request:
     paths:
       - 'src/index.ts'
-      - 'src/ui/tokens/index.ts'
-      - 'src/ui/tokens/theme-bundles.ts'
       - 'scripts/sync-from-host.mjs'
       - '.github/workflows/drift-check.yml'
   schedule:
@@ -44,19 +42,19 @@ jobs:
           LVIS_HOST_TYPES_PATH: ${{ github.workspace }}/.host/src/plugins/types.ts
           LVIS_HOST_REPO_URL: https://github.com/lvis-project/lvis-app.git
         run: node scripts/sync-from-host.mjs
-      # The second run must produce byte-identical output across ALL regenerated
-      # targets, guarding against oscillating JSDoc-strip / token passes that
-      # would otherwise flap drift-check on every PR.
+      # The second run must produce byte-identical output, guarding against
+      # oscillating JSDoc-strip passes that would otherwise flap drift-check
+      # on every PR.
       - name: Verify sync-from-host is idempotent
         env:
           LVIS_HOST_TYPES_PATH: ${{ github.workspace }}/.host/src/plugins/types.ts
         run: |
           set -euo pipefail
-          for f in src/index.ts src/ui/tokens/index.ts src/ui/tokens/theme-bundles.ts; do
+          for f in src/index.ts; do
             cp "$f" "/tmp/$(echo "$f" | tr '/' '_').firstrun"
           done
           node scripts/sync-from-host.mjs
-          for f in src/index.ts src/ui/tokens/index.ts src/ui/tokens/theme-bundles.ts; do
+          for f in src/index.ts; do
             if ! diff -u "/tmp/$(echo "$f" | tr '/' '_').firstrun" "$f"; then
               echo "::error::sync-from-host.mjs is not idempotent — second run produced different output for $f"
               exit 1
@@ -67,11 +65,11 @@ jobs:
       - name: Check for drift
         id: diff
         run: |
-          # Cover every file sync-from-host.mjs regenerates, not just
-          # src/index.ts. A host-side change to plugin-ui-tokens.ts or
-          # theme-bundles.ts that the SDK author forgets to regenerate would
-          # otherwise pass green and ship a stale token contract to plugins.
-          if git diff --quiet -- src/index.ts src/ui/tokens/index.ts src/ui/tokens/theme-bundles.ts; then
+          # The SDK public type surface (src/index.ts) is the only file
+          # sync-from-host.mjs regenerates. A host-side change to
+          # src/plugins/types.ts that the SDK author forgets to regenerate
+          # would otherwise pass green and ship a stale contract to plugins.
+          if git diff --quiet -- src/index.ts; then
             echo "drift=false" >> "$GITHUB_OUTPUT"
           else
             echo "drift=true" >> "$GITHUB_OUTPUT"
@@ -80,7 +78,7 @@ jobs:
         if: github.event_name == 'pull_request' && steps.diff.outputs.drift == 'true'
         run: |
           echo "::error::Drift detected between SDK and host SoT. Run 'bun run sync:from-host' locally and commit the result."
-          git --no-pager diff -- src/index.ts src/ui/tokens/index.ts src/ui/tokens/theme-bundles.ts | head -300
+          git --no-pager diff -- src/index.ts | head -300
           exit 1
       - name: Open PR on drift
         if: github.event_name != 'pull_request' && steps.diff.outputs.drift == 'true'
@@ -88,14 +86,13 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: chore/auto-drift-sync
-          title: 'chore: auto-sync from host SoT (types + tokens)'
-          commit-message: 'chore: auto-sync from host SoT (types + tokens)'
+          title: 'chore: auto-sync from host SoT (types)'
+          commit-message: 'chore: auto-sync from host SoT (types)'
           body: |
             Nightly drift-check detected divergence between `lvis-app` and this SDK.
             Auto-regenerated via `scripts/sync-from-host.mjs`.
 
-            Please review the diffs in `src/index.ts`, `src/ui/tokens/index.ts`,
-            and `src/ui/tokens/theme-bundles.ts` before merging.
+            Please review the diff in `src/index.ts` before merging.
           base: main
           delete-branch: true
       - name: Open issue on workflow failure
