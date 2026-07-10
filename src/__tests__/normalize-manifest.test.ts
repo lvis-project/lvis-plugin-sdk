@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { normalizeManifest } from "../index.js";
-import type { PluginManifest, Tool } from "../index.js";
+import type { NormalizeNotice, PluginManifest, RawPluginManifest, Tool } from "../index.js";
 
 const BASE: Omit<PluginManifest, "tools"> = {
   id: "ms-graph",
@@ -25,6 +25,58 @@ const tool = (name: string, visibility?: Array<"model" | "app">): Tool => ({
 });
 
 describe("normalizeManifest — v6 pure Tool[] contract", () => {
+  it("converts a schema-valid legacy manifest without corrupting tool names", () => {
+    const legacy: RawPluginManifest = {
+      ...BASE,
+      tools: ["legacy_read"],
+      uiActions: { legacy_status: {} },
+      toolSchemas: {
+        legacy_read: {
+          description: "Read legacy data.",
+          pathFields: ["attachmentPath"],
+          category: "read",
+          inputSchema: {
+            type: "object",
+            properties: { attachmentPath: { type: "string" } },
+          },
+        },
+        legacy_status: {
+          description: "Read legacy status.",
+          inputSchema: { type: "object", properties: {} },
+        },
+      },
+    };
+    const notices: NormalizeNotice[] = [];
+
+    const result = normalizeManifest(legacy, (notice) => notices.push(notice));
+
+    expect(result).not.toHaveProperty("toolSchemas");
+    expect(result).not.toHaveProperty("uiActions");
+    expect(result.tools).toEqual([
+      {
+        name: "legacy_read",
+        description: "Read legacy data.",
+        inputSchema: {
+          type: "object",
+          properties: { attachmentPath: { type: "string" } },
+        },
+        _meta: {
+          ui: { visibility: ["model"] },
+          "xyz.lvis/pathFields": ["attachmentPath"],
+        },
+      },
+      {
+        name: "legacy_status",
+        description: "Read legacy status.",
+        inputSchema: { type: "object", properties: {} },
+        _meta: { ui: { visibility: ["app"] } },
+      },
+    ]);
+    expect(notices).toEqual([
+      { pluginId: "ms-graph", kind: "legacy-shape", droppedFields: ["category"] },
+    ]);
+  });
+
   it("preserves explicit model, dual, and app visibility", () => {
     const manifest: PluginManifest = {
       ...BASE,

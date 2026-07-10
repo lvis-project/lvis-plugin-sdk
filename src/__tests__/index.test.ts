@@ -1484,7 +1484,7 @@ describe("PluginManifest.emittedEvents JSDoc — no eventPublishes alias text (H
 
 // ─── MCP Tool surface replaces legacy tool maps (v6) ───────────────────────
 describe("Tool surface — v6 MCP contract", () => {
-  it("exports the MCP Tool description and removes the legacy tool maps", async () => {
+  it("exports the MCP Tool description and confines legacy maps to RawPluginManifest", async () => {
     const { readFileSync } = await import("node:fs");
     const { fileURLToPath } = await import("node:url");
     const here = dirname(fileURLToPath(import.meta.url));
@@ -1493,8 +1493,11 @@ describe("Tool surface — v6 MCP contract", () => {
     expect(toolBlock, "MCP Tool interface not found").not.toBeNull();
     expect(toolBlock![0]).toMatch(/description\?: string;/);
     expect(toolBlock![0]).toMatch(/inputSchema:/);
-    expect(indexSrc).not.toMatch(/\n\s*toolSchemas\?:/);
-    expect(indexSrc).not.toMatch(/\n\s*uiActions\?:/);
+    const manifestBlock = indexSrc.match(/export interface PluginManifest \{[\s\S]*?\n\}/);
+    expect(manifestBlock, "pure PluginManifest interface not found").not.toBeNull();
+    expect(manifestBlock![0]).not.toMatch(/\n\s*toolSchemas\?:/);
+    expect(manifestBlock![0]).not.toMatch(/\n\s*uiActions\?:/);
+    expect(indexSrc).toMatch(/export type RawPluginManifest[\s\S]*?toolSchemas\?:/);
   });
 });
 

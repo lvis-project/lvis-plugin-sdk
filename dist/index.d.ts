@@ -61,24 +61,20 @@ export interface PluginAccessSpec {
  * signed-in surface in Settings → 플러그인 설정. See lvis-app
  * `architecture.md` §9.4a "Plugin-Owned OAuth — Host UI Surface".
  *
- * The three referenced tool names (`statusTool`, `loginTool`,
- * `logoutTool`) MUST appear in `PluginManifest.uiActions` and MUST
- * NOT appear in `PluginManifest.tools[]`. Auth is a HOST-managed
- * lifecycle, not an LLM capability: `tools[]` is the LLM-facing surface
- * (projected verbatim to the model), so listing an auth tool there would
- * expose sign-in/sign-out as an agent-callable tool. The host validates
- * both rules at load time and REJECTS a manifest that lists an auth tool
- * in `tools[]`. On state transitions the plugin SHOULD emit
+ * The referenced tool names (`statusTool`, `loginTool`, `logoutTool`)
+ * identify pure MCP Tool entries. Auth tools are host-initiated UI actions,
+ * so declare them with `_meta.ui.visibility: ["app"]`, not the model
+ * surface. On state transitions the plugin SHOULD emit
  * `<pluginId>.auth.changed` so the host UI refreshes without polling.
  */
 export interface PluginAuthSpec {
     /** Human-readable label shown next to the badge (defaults to plugin `name`). @optional */
     label?: string;
-    /** Name of a uiActions tool returning {@link PluginAuthStatus}. */
+    /** Name of an app-visible Tool returning {@link PluginAuthStatus}. */
     statusTool: string;
-    /** Name of a uiActions tool the host invokes when the user clicks "로그인". The plugin owns the actual auth flow (e.g. MSAL interactive, openAuthWindow). */
+    /** Name of an app-visible Tool the host invokes when the user clicks "로그인". The plugin owns the actual auth flow (e.g. MSAL interactive, openAuthWindow). */
     loginTool: string;
-    /** Optional uiActions tool the host invokes when the user clicks "로그아웃". Omit when the plugin has no programmatic sign-out path. @optional */
+    /** Optional app-visible Tool the host invokes when the user clicks "로그아웃". Omit when the plugin has no programmatic sign-out path. @optional */
     logoutTool?: string;
     /** Hostnames the plugin may open in its `persist:plugin-auth:<pluginId>` partition via {@link PluginHostApi.openAuthPartitionViewer}. Dot-boundary suffix-match — `outlook.office.com` matches `mail.outlook.office.com` but not `outlook.office.com.attacker.com`. Wildcards, single-label hosts, public suffixes (`com`, `co.kr`), URL-paste, and IDN-punycode are rejected at load time. Max 16 entries. @optional */
     partitionDomains?: string[];
@@ -164,7 +160,7 @@ export interface Tool {
  *   name: "My Plugin",
  *   version: "1.0.0",
  *   entry: "dist/index.js",
- *   tools: ["my_plugin_ping"],
+ *   tools: [{ name: "my_plugin_ping", inputSchema: { type: "object", properties: {} } }],
  *   description: "One-line summary shown to the host LLM and in plugin catalogues.",
  * };
  */
@@ -177,7 +173,7 @@ export interface PluginManifest {
     version: string;
     /** Path (relative to the plugin root) to the JavaScript module whose default export is a `RuntimePluginFactory`. */
     entry: string;
-    /** Tool names exposed to the host LLM. UI-only runtime methods belong in `uiActions`, not `tools[]`. Each name must match `^[a-zA-Z_][a-zA-Z0-9_]*$` — dots and hyphens are not allowed. */
+    /** Pure MCP Tool objects exposed to the host. Each `tool.name` must match `^[a-zA-Z_][a-zA-Z0-9_]*$`; use `_meta.ui.visibility` to declare model and/or app reachability. */
     tools: Tool[];
     /** One-line summary (1-280 chars) of what the plugin does. **Required** since v3.0.0 — the LLM uses this in the inactive-plugin catalogue to decide whether to surface the plugin to the user. */
     description: string;
@@ -235,10 +231,6 @@ export interface PluginManifest {
     /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */
     uiSlots?: string[];
 }
-export type NormalizedManifest = Omit<PluginManifest, "tools"> & {
-    tools: Tool[];
-};
-export declare const normalizeManifest: (manifest: PluginManifest) => NormalizedManifest;
 /**
  * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
  * rendered as a typed form in the host's `PluginConfigTab`.
@@ -436,7 +428,7 @@ export interface PluginMarketplaceItem {
     packageSpec: string;
     /** Canonical package name (for example the npm package name) used to identify updates. */
     packageName: string;
-    /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
+    /** Marketplace plugin version represented by this catalog entry. @optional */
     version?: string;
     artifactSha256?: string;
     channel?: "stable";
@@ -844,4 +836,32 @@ export interface RuntimePlugin {
  * export default factory;
  */
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
+export type LegacyToolSchema = {
+    description?: string;
+    pathFields?: string[];
+    inputSchema?: Tool["inputSchema"];
+    category?: unknown;
+    workerId?: unknown;
+    writesToOwnSandbox?: unknown;
+    version?: unknown;
+    deprecatedSince?: unknown;
+    replacedBy?: unknown;
+};
+export type RawPluginManifest = Omit<PluginManifest, "tools"> & {
+    tools: string[] | Tool[];
+    uiActions?: Record<string, {
+        description?: string;
+    }>;
+    toolSchemas?: Record<string, LegacyToolSchema>;
+};
+export type NormalizedManifest = Omit<RawPluginManifest, "tools" | "toolSchemas" | "uiActions"> & {
+    tools: Tool[];
+};
+export interface NormalizeNotice {
+    pluginId: string;
+    kind: "legacy-shape";
+    droppedFields: Array<"category" | "workerId" | "writesToOwnSandbox" | "version" | "deprecatedSince" | "replacedBy">;
+}
+export type NormalizeReporter = (notice: NormalizeNotice) => void;
+export declare const normalizeManifest: (raw: RawPluginManifest, report?: NormalizeReporter) => NormalizedManifest;
 //# sourceMappingURL=index.d.ts.map

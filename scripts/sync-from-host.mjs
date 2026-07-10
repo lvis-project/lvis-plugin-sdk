@@ -162,6 +162,15 @@ function hasDefaultModifier(stmt) {
   return stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword);
 }
 
+function isSdkOwnedManifestAdapter(stmt) {
+  if (ts.isTypeAliasDeclaration(stmt) && stmt.name.text === "NormalizedManifest") {
+    return true;
+  }
+  return ts.isVariableStatement(stmt) && stmt.declarationList.declarations.some(
+    (declaration) => ts.isIdentifier(declaration.name) && declaration.name.text === "normalizeManifest",
+  );
+}
+
 function extract(srcPath) {
   const text = fs.readFileSync(srcPath, "utf8");
   const sf = ts.createSourceFile(srcPath, text, ts.ScriptTarget.ES2022, true);
@@ -202,6 +211,11 @@ function extract(srcPath) {
       process.exit(1);
     }
 
+    // The host's v6 normalizer accepts only its already-pure internal shape.
+    // The SDK additionally supports published legacy plugin.json manifests and
+    // owns the explicit conversion boundary below.
+    if (isSdkOwnedManifestAdapter(stmt)) continue;
+
     const leading = ts.getLeadingCommentRanges(text, stmt.pos) ?? [];
     const commentText = leading.map((r) => text.slice(r.pos, r.end)).join("\n");
     // stmt.getStart(sf) skips leading trivia (comments/whitespace) so we don't
@@ -212,6 +226,115 @@ function extract(srcPath) {
 
   return chunks.join("\n\n") + "\n";
 }
+
+const SDK_MANIFEST_COMPAT_ADAPTER = `
+export type LegacyToolSchema = {
+  description?: string;
+  pathFields?: string[];
+  inputSchema?: Tool["inputSchema"];
+  category?: unknown;
+  workerId?: unknown;
+  writesToOwnSandbox?: unknown;
+  version?: unknown;
+  deprecatedSince?: unknown;
+  replacedBy?: unknown;
+};
+
+export type RawPluginManifest = Omit<PluginManifest, "tools"> & {
+  tools: string[] | Tool[];
+  uiActions?: Record<string, { description?: string }>;
+  toolSchemas?: Record<string, LegacyToolSchema>;
+};
+
+export type NormalizedManifest = Omit<
+  RawPluginManifest,
+  "tools" | "toolSchemas" | "uiActions"
+> & {
+  tools: Tool[];
+};
+
+export interface NormalizeNotice {
+  pluginId: string;
+  kind: "legacy-shape";
+  droppedFields: Array<
+    "category" | "workerId" | "writesToOwnSandbox" | "version" | "deprecatedSince" | "replacedBy"
+  >;
+}
+
+export type NormalizeReporter = (notice: NormalizeNotice) => void;
+
+export const normalizeManifest = (
+  raw: RawPluginManifest,
+  report?: NormalizeReporter,
+): NormalizedManifest => {
+  const DUAL: Array<"model" | "app"> = ["model", "app"];
+  const stripLegacyMaps = (manifest: RawPluginManifest) => {
+    const { toolSchemas: _schemas, uiActions: _actions, tools: _tools, ...rest } = manifest;
+    return rest;
+  };
+
+  const isLegacy = raw.tools.length === 0 || typeof raw.tools[0] === "string";
+  if (!isLegacy) {
+    const tools = (raw.tools as Tool[]).map((tool): Tool => {
+      const visibility = tool._meta?.ui?.visibility;
+      if (visibility === undefined) {
+        return {
+          ...tool,
+          _meta: { ...tool._meta, ui: { ...tool._meta?.ui, visibility: [...DUAL] } },
+        };
+      }
+      if (visibility.length === 0) {
+        throw new Error(
+          \`[normalizeManifest] plugin '\${raw.id}' tool '\${tool.name}': _meta.ui.visibility is [] — \` +
+            "a tool must be reachable by ≥1 surface (SoT §2.2/§2.3)",
+        );
+      }
+      return tool;
+    });
+    return { ...stripLegacyMaps(raw), tools };
+  }
+
+  const names = raw.tools as string[];
+  const uiNames = Object.keys(raw.uiActions ?? {});
+  const schemas = raw.toolSchemas ?? {};
+  const removed = [
+    "category", "workerId", "writesToOwnSandbox", "version", "deprecatedSince", "replacedBy",
+  ] as const;
+  const dropped = new Set<NormalizeNotice["droppedFields"][number]>();
+  const deriveVisibility = (inModel: boolean, inApp: boolean): Array<"model" | "app"> => {
+    if (inModel && inApp) return ["model", "app"];
+    if (inModel) return ["model"];
+    if (inApp) return ["app"];
+    throw new Error(
+      \`[normalizeManifest] plugin '\${raw.id}': a tool is reachable by neither surface \` +
+        "(not in tools[] nor uiActions) — every tool needs ≥1 surface (SoT §2.3)",
+    );
+  };
+
+  const allNames = [...names, ...uiNames.filter((name) => !names.includes(name))];
+  const tools = allNames.map((name): Tool => {
+    const schema = schemas[name];
+    const meta: McpToolMeta = {
+      ui: { visibility: deriveVisibility(names.includes(name), uiNames.includes(name)) },
+    };
+    if (schema?.pathFields && schema.pathFields.length > 0) {
+      meta["xyz.lvis/pathFields"] = schema.pathFields;
+    }
+    for (const field of removed) {
+      if (schema?.[field] !== undefined) dropped.add(field);
+    }
+    return {
+      name,
+      ...(schema?.description === undefined ? {} : { description: schema.description }),
+      inputSchema: schema?.inputSchema ?? { type: "object", properties: {} },
+      _meta: meta,
+    };
+  });
+
+  report?.({ pluginId: raw.id, kind: "legacy-shape", droppedFields: [...dropped] });
+  return { ...stripLegacyMaps(raw), tools };
+};
+`;
 
 function render(body) {
   return `// AUTO-GENERATED — DO NOT EDIT. Regenerate via: bun run sync:from-host
@@ -255,7 +378,8 @@ export function compileManifestValidator(): ValidateFunction {
   return ajv.compile(requireFromSdk("../schemas/plugin-manifest.schema.json"));
 }
 
-${body}`;
+${body}
+${SDK_MANIFEST_COMPAT_ADAPTER}`;
 }
 
 function renderTokenContract(body) {
@@ -317,21 +441,17 @@ const JSDOC_CATALOG = {
  * signed-in surface in Settings → 플러그인 설정. See lvis-app
  * \`architecture.md\` §9.4a "Plugin-Owned OAuth — Host UI Surface".
  *
- * The three referenced tool names (\`statusTool\`, \`loginTool\`,
- * \`logoutTool\`) MUST appear in \`PluginManifest.uiActions\` and MUST
- * NOT appear in \`PluginManifest.tools[]\`. Auth is a HOST-managed
- * lifecycle, not an LLM capability: \`tools[]\` is the LLM-facing surface
- * (projected verbatim to the model), so listing an auth tool there would
- * expose sign-in/sign-out as an agent-callable tool. The host validates
- * both rules at load time and REJECTS a manifest that lists an auth tool
- * in \`tools[]\`. On state transitions the plugin SHOULD emit
+ * The referenced tool names (\`statusTool\`, \`loginTool\`, \`logoutTool\`)
+ * identify pure MCP Tool entries. Auth tools are host-initiated UI actions,
+ * so declare them with \`_meta.ui.visibility: ["app"]\`, not the model
+ * surface. On state transitions the plugin SHOULD emit
  * \`<pluginId>.auth.changed\` so the host UI refreshes without polling.
  */`,
     fields: {
       label: `/** Human-readable label shown next to the badge (defaults to plugin \`name\`). @optional */`,
-      statusTool: `/** Name of a uiActions tool returning {@link PluginAuthStatus}. */`,
-      loginTool: `/** Name of a uiActions tool the host invokes when the user clicks "로그인". The plugin owns the actual auth flow (e.g. MSAL interactive, openAuthWindow). */`,
-      logoutTool: `/** Optional uiActions tool the host invokes when the user clicks "로그아웃". Omit when the plugin has no programmatic sign-out path. @optional */`,
+      statusTool: `/** Name of an app-visible Tool returning {@link PluginAuthStatus}. */`,
+      loginTool: `/** Name of an app-visible Tool the host invokes when the user clicks "로그인". The plugin owns the actual auth flow (e.g. MSAL interactive, openAuthWindow). */`,
+      logoutTool: `/** Optional app-visible Tool the host invokes when the user clicks "로그아웃". Omit when the plugin has no programmatic sign-out path. @optional */`,
       partitionDomains: `/** Hostnames the plugin may open in its \`persist:plugin-auth:<pluginId>\` partition via {@link PluginHostApi.openAuthPartitionViewer}. Dot-boundary suffix-match — \`outlook.office.com\` matches \`mail.outlook.office.com\` but not \`outlook.office.com.attacker.com\`. Wildcards, single-label hosts, public suffixes (\`com\`, \`co.kr\`), URL-paste, and IDN-punycode are rejected at load time. Max 16 entries. @optional */`,
     },
   },
@@ -373,7 +493,7 @@ const JSDOC_CATALOG = {
  *   name: "My Plugin",
  *   version: "1.0.0",
  *   entry: "dist/index.js",
- *   tools: ["my_plugin_ping"],
+ *   tools: [{ name: "my_plugin_ping", inputSchema: { type: "object", properties: {} } }],
  *   description: "One-line summary shown to the host LLM and in plugin catalogues.",
  * };
  */`,
@@ -382,7 +502,7 @@ const JSDOC_CATALOG = {
       name: `/** Human-readable display name shown in the host UI and plugin pickers. */`,
       version: `/** SemVer version string (for example \`1.2.3\`). Used by the host to detect updates and enforce compatibility. */`,
       entry: `/** Path (relative to the plugin root) to the JavaScript module whose default export is a \`RuntimePluginFactory\`. */`,
-      tools: `/** Tool names exposed to the host LLM. UI-only runtime methods belong in \`uiActions\`, not \`tools[]\`. Each name must match \`^[a-zA-Z_][a-zA-Z0-9_]*$\` — dots and hyphens are not allowed. */`,
+      tools: `/** Pure MCP Tool objects exposed to the host. Each \`tool.name\` must match \`^[a-zA-Z_][a-zA-Z0-9_]*$\`; use \`_meta.ui.visibility\` to declare model and/or app reachability. */`,
       description: `/** One-line summary (1-280 chars) of what the plugin does. **Required** since v3.0.0 — the LLM uses this in the inactive-plugin catalogue to decide whether to surface the plugin to the user. */`,
       config: `/** Arbitrary JSON configuration merged into \`PluginRuntimeContext.config\` at startup. Treat as untrusted user data. @optional */`,
       ui: `/** Sidebar / panel UI extensions contributed by this plugin. @optional */`,
@@ -396,7 +516,6 @@ const JSDOC_CATALOG = {
       packageName: `/** npm package name persisted by the host marketplace service for rollback support. Authored by the marketplace publish pipeline — plugin authors should not set this manually. @optional */`,
       python: `/** Optional Python runtime co-deployment metadata. When \`managedBy\` is \`"lvis-app"\` the host installs the locked requirements file at install time; \`"self"\` lets the plugin manage its own venv. @optional */`,
       startupTimeoutMs: `/** Maximum time in milliseconds the host will wait for \`RuntimePlugin.start\` to resolve. Plugins exceeding this are considered failed. @optional */`,
-      toolSchemas: `/** JSON Schema descriptions of each LLM-callable tool's input. UI-only runtime methods should not be declared here. Keys must appear in \`tools\`. @optional */`,
     },
   },
   PluginUiExtension: {
@@ -494,6 +613,7 @@ const JSDOC_CATALOG = {
       packageSpec: `/** Installable package specifier (for example an npm spec or tarball URL) used to acquire the plugin artifact. */`,
       packageName: `/** Canonical package name (for example the npm package name) used to identify updates. */`,
       tools: `/** Tools the plugin will expose — mirrors \`PluginManifest.tools\` for preview purposes. */`,
+      version: `/** Marketplace plugin version represented by this catalog entry. @optional */`,
       defaultConfig: `/** Default configuration seeded into the plugin on first install. Users may override this. @optional */`,
       ui: `/** UI extensions the plugin will contribute once installed. @optional */`,
       publisher: `/** Display string identifying the publisher. @optional */`,
@@ -983,6 +1103,10 @@ export type StorageEncoding =
  * those nested members. Idempotent.
  */
 function annotateToolSchemaInner(text) {
+  // The v6 host contract removed the legacy toolSchemas map. Avoid matching an
+  // unrelated top-level `version` field when the nested legacy block is absent.
+  if (!/toolSchemas\?: Record<\s*\r?\n\s*string,\s*\r?\n\s*\{/.test(text)) return text;
+
   const innerDescDoc =
     "      /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */";
   const innerVersionDoc =
