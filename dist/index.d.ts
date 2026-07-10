@@ -12,7 +12,6 @@ export type MarketplacePackageAsset = ({
 } & Record<string, unknown>);
 export declare function compileManifestValidator(): ValidateFunction;
 export type InstallPolicy = "admin" | "user";
-export type PluginToolCategory = "read" | "write" | "shell" | "network";
 export type AuthWindowCookie = {
     name: string;
     value: string;
