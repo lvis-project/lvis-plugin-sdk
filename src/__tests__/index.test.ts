@@ -1469,22 +1469,19 @@ describe("PluginManifest.emittedEvents JSDoc — no eventPublishes alias text (H
   });
 });
 
-// ─── tool description JSDoc — LLM-facing, not catalogue (M10) ─────────────
-describe("toolSchemas[].description JSDoc — LLM-facing (M10)", () => {
-  it("source surface describes inner tool description as LLM-facing with min length 10", async () => {
+// ─── MCP Tool surface replaces legacy tool maps (v6) ───────────────────────
+describe("Tool surface — v6 MCP contract", () => {
+  it("exports the MCP Tool description and removes the legacy tool maps", async () => {
     const { readFileSync } = await import("node:fs");
     const { fileURLToPath } = await import("node:url");
     const here = dirname(fileURLToPath(import.meta.url));
     const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
-    // Locate the toolSchemas Record block and its inner description JSDoc.
-    const block = indexSrc.match(
-      /toolSchemas\?:\s*Record<\s*\n\s*string,\s*\n\s*\{[\s\S]*?\}\s*\n\s*>/,
-    );
-    expect(block, "toolSchemas block not found").not.toBeNull();
-    expect(block![0]).toMatch(/LLM-facing/);
-    expect(block![0]).toMatch(/Minimum 10/);
-    // The wrong text from the parent PluginManifest catalogue must NOT leak.
-    expect(block![0]).not.toMatch(/plugin catalogues and tool pickers/);
+    const toolBlock = indexSrc.match(/export interface Tool \{[\s\S]*?\n\}/);
+    expect(toolBlock, "MCP Tool interface not found").not.toBeNull();
+    expect(toolBlock![0]).toMatch(/description\?: string;/);
+    expect(toolBlock![0]).toMatch(/inputSchema:/);
+    expect(indexSrc).not.toMatch(/\n\s*toolSchemas\?:/);
+    expect(indexSrc).not.toMatch(/\n\s*uiActions\?:/);
   });
 });
 

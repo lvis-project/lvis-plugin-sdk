@@ -15,71 +15,21 @@ function compileManifestValidator() {
   addFormats(ajv);
   return ajv.compile(requireFromSdk("../schemas/plugin-manifest.schema.json"));
 }
-var normalizeManifest = (raw, report) => {
+var normalizeManifest = (manifest) => {
   const DUAL = ["model", "app"];
-  const stripLegacyMaps = (m) => {
-    const { toolSchemas: _s, uiActions: _u, tools: _t, ...rest } = m;
-    return rest;
-  };
-  const isLegacy = raw.tools.length === 0 || typeof raw.tools[0] === "string";
-  if (!isLegacy) {
-    const tools2 = raw.tools.map((t) => {
-      const vis = t._meta?.ui?.visibility;
-      if (vis === void 0) {
-        return { ...t, _meta: { ...t._meta, ui: { ...t._meta?.ui, visibility: DUAL } } };
-      }
-      if (vis.length === 0) {
-        throw new Error(
-          `[normalizeManifest] plugin '${raw.id}' tool '${t.name}': _meta.ui.visibility is [] \u2014 a tool must be reachable by \u22651 surface; empty is rejected (SoT \xA72.2/\xA72.3)`
-        );
-      }
-      return t;
-    });
-    return { ...stripLegacyMaps(raw), tools: tools2 };
-  }
-  const names = raw.tools;
-  const uiNames = Object.keys(raw.uiActions ?? {});
-  const schemas = raw.toolSchemas ?? {};
-  const removed = [
-    "category",
-    "workerId",
-    "writesToOwnSandbox",
-    "version",
-    "deprecatedSince",
-    "replacedBy"
-  ];
-  const dropped = /* @__PURE__ */ new Set();
-  const deriveVisibility = (inModel, inApp) => {
-    if (inModel && inApp) return ["model", "app"];
-    if (inModel) return ["model"];
-    if (inApp) return ["app"];
-    throw new Error(
-      `[normalizeManifest] plugin '${raw.id}': a tool is reachable by neither surface (not in tools[] nor uiActions) \u2014 every tool needs \u22651 surface (SoT \xA72.3)`
-    );
-  };
-  const allNames = [...names, ...uiNames.filter((n) => !names.includes(n))];
-  const tools = allNames.map((name) => {
-    const schema = schemas[name];
-    const meta = {
-      ui: { visibility: deriveVisibility(names.includes(name), uiNames.includes(name)) }
-    };
-    if (schema?.pathFields && schema.pathFields.length > 0) {
-      meta["xyz.lvis/pathFields"] = schema.pathFields;
+  const tools = manifest.tools.map((t) => {
+    const vis = t._meta?.ui?.visibility;
+    if (vis === void 0) {
+      return { ...t, _meta: { ...t._meta, ui: { ...t._meta?.ui, visibility: DUAL } } };
     }
-    if (schema) {
-      for (const f of removed) {
-        if (schema[f] !== void 0) dropped.add(f);
-      }
+    if (vis.length === 0) {
+      throw new Error(
+        `[normalizeManifest] plugin '${manifest.id}' tool '${t.name}': _meta.ui.visibility is [] \u2014 a tool must be reachable by \u22651 surface; empty is rejected (SoT \xA72.2/\xA72.3)`
+      );
     }
-    return {
-      name,
-      ...schema?.description !== void 0 ? { description: schema.description } : {},
-      inputSchema: schema?.inputSchema ?? { type: "object", properties: {} },
-      _meta: meta
-    };
+    return t;
   });
-  report?.({ pluginId: raw.id, kind: "legacy-shape", droppedFields: [...dropped] });
-  return { ...stripLegacyMaps(raw), tools };
+  return { ...manifest, tools };
 };
 var MissingDependenciesError = class extends Error {
   missing;

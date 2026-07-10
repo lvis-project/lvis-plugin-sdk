@@ -96,9 +96,6 @@ export interface PluginAuthStatus {
     /** Optional human-readable identity (email, login id) shown next to the green badge. Display only — not a stable id. @optional */
     account?: string;
 }
-export interface PluginUiActionSpec {
-    description?: string;
-}
 /**
  * Optional structured hint attached to an event subscription. Allows the host
  * to surface contextual metadata alongside the subscription.
@@ -181,7 +178,7 @@ export interface PluginManifest {
     /** Path (relative to the plugin root) to the JavaScript module whose default export is a `RuntimePluginFactory`. */
     entry: string;
     /** Tool names exposed to the host LLM. UI-only runtime methods belong in `uiActions`, not `tools[]`. Each name must match `^[a-zA-Z_][a-zA-Z0-9_]*$` — dots and hyphens are not allowed. */
-    tools: string[];
+    tools: Tool[];
     /** One-line summary (1-280 chars) of what the plugin does. **Required** since v3.0.0 — the LLM uses this in the inactive-plugin catalogue to decide whether to surface the plugin to the user. */
     description: string;
     /** Arbitrary JSON configuration merged into `PluginRuntimeContext.config` at startup. Treat as untrusted user data. @optional */
@@ -202,7 +199,6 @@ export interface PluginManifest {
     };
     /** Event type names this plugin subscribes to. The host delivers matching events via `PluginHostApi.onEvent`. @optional */
     eventSubscriptions?: string[] | EventSubscription[];
-    uiActions?: Record<string, PluginUiActionSpec>;
     /** Declarative auth contract — see {@link PluginAuthSpec}. When present, the host renders a generic 미인증 / signed-in badge + login/logout button in Settings. @optional */
     auth?: PluginAuthSpec;
     /** Event type names this plugin may emit on the host event bus. Used by the host for validation and ownership checks. @optional */
@@ -222,28 +218,6 @@ export interface PluginManifest {
     publisher?: string;
     /** Maximum time in milliseconds the host will wait for `RuntimePlugin.start` to resolve. Plugins exceeding this are considered failed. @optional */
     startupTimeoutMs?: number;
-    /** JSON Schema descriptions of each LLM-callable tool's input. UI-only runtime methods should not be declared here. Keys must appear in `tools`. @optional */
-    toolSchemas?: Record<string, {
-        /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */
-        description: string;
-        category?: PluginToolCategory;
-        pathFields?: string[];
-        workerId?: string;
-        writesToOwnSandbox?: boolean;
-        /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
-        version?: string;
-        /** Stable SemVer marking the manifest version that deprecated this tool. Triggers a runtime warn on call. @optional */
-        deprecatedSince?: string;
-        /** Tool name that supersedes this deprecated tool — host transparently redirects calls. @optional */
-        replacedBy?: string;
-        inputSchema: {
-            $schema?: string;
-            type: "object";
-            properties: Record<string, unknown>;
-            required?: string[];
-            additionalProperties?: boolean;
-        };
-    }>;
     configSchema?: PluginConfigSchema;
     icon?: string;
     iconText?: string;
@@ -261,19 +235,10 @@ export interface PluginManifest {
     /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */
     uiSlots?: string[];
 }
-export type RawPluginManifest = Omit<PluginManifest, "tools"> & {
-    tools: string[] | Tool[];
-};
-export type NormalizedManifest = Omit<PluginManifest, "tools" | "toolSchemas" | "uiActions"> & {
+export type NormalizedManifest = Omit<PluginManifest, "tools"> & {
     tools: Tool[];
 };
-export interface NormalizeNotice {
-    pluginId: string;
-    kind: "legacy-shape";
-    droppedFields: Array<"category" | "workerId" | "writesToOwnSandbox" | "version" | "deprecatedSince" | "replacedBy">;
-}
-export type NormalizeReporter = (notice: NormalizeNotice) => void;
-export declare const normalizeManifest: (raw: RawPluginManifest, report?: NormalizeReporter) => NormalizedManifest;
+export declare const normalizeManifest: (manifest: PluginManifest) => NormalizedManifest;
 /**
  * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
  * rendered as a typed form in the host's `PluginConfigTab`.
@@ -473,6 +438,7 @@ export interface PluginMarketplaceItem {
     packageName: string;
     /** Tools the plugin will expose — mirrors `PluginManifest.tools` for preview purposes. */
     tools: string[];
+    /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
     version?: string;
     artifactSha256?: string;
     channel?: "stable";
@@ -485,7 +451,6 @@ export interface PluginMarketplaceItem {
         keyword: string;
         skillId: string;
     }>;
-    uiActions?: Record<string, PluginUiActionSpec>;
     auth?: PluginAuthSpec;
     networkAccess?: PluginManifest["networkAccess"];
     emittedEvents?: string[];
@@ -500,7 +465,6 @@ export interface PluginMarketplaceItem {
     pluginAccess?: PluginAccessSpec;
     /** Display string identifying the publisher. @optional */
     publisher?: string;
-    toolSchemas?: PluginManifest["toolSchemas"];
     requires?: RequiresSpec;
     pluginType?: MarketplacePackageType;
     packageAsset?: MarketplacePackageAsset;

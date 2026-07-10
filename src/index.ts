@@ -144,11 +144,6 @@ export interface PluginAuthStatus {
   account?: string;
 }
 
-export interface PluginUiActionSpec {
-
-  description?: string;
-}
-
 /**
  * Optional structured hint attached to an event subscription. Allows the host
  * to surface contextual metadata alongside the subscription.
@@ -176,11 +171,13 @@ export interface EventSubscription {
 /* ============================================================================
  * Plugin Contract v6 (#885) — pure MCP `Tool` object surface.
  *
- * These types define the v6 "manifest == wire" tool contract that supersedes the
- * legacy `tools: string[]` + `toolSchemas` + `uiActions` triple. In phase a2 they
- * are ADDITIVE: `PluginManifest.tools` stays `string[]` and host consumers keep
- * reading the legacy shape until a4 rewires them through `normalizeManifest`.
- * The SDK public surface (`@lvis/plugin-sdk`) mirrors these via `sync-from-host`.
+ * These types define the v6 "manifest == wire" tool contract. Phase R removed the
+ * legacy triple — a `string[]` tool list plus separate `toolSchemas` and per-tool
+ * app-action maps — entirely:
+ * `PluginManifest.tools` is now `Tool[]` and every host consumer reads surface
+ * visibility off each tool's `_meta.ui.visibility` (materialized once by
+ * `normalizeManifest`). The SDK public surface (`@lvis/plugin-sdk`) mirrors these
+ * via `sync-from-host`.
  * ==========================================================================*/
 
 export interface McpToolUiMeta {
@@ -253,7 +250,7 @@ export interface PluginManifest {
   entry: string;
 
   /** Tool names exposed to the host LLM. UI-only runtime methods belong in `uiActions`, not `tools[]`. Each name must match `^[a-zA-Z_][a-zA-Z0-9_]*$` — dots and hyphens are not allowed. */
-  tools: string[];
+  tools: Tool[];
 
   /** One-line summary (1-280 chars) of what the plugin does. **Required** since v3.0.0 — the LLM uses this in the inactive-plugin catalogue to decide whether to surface the plugin to the user. */
   description: string;
@@ -276,8 +273,6 @@ export interface PluginManifest {
 
   /** Event type names this plugin subscribes to. The host delivers matching events via `PluginHostApi.onEvent`. @optional */
   eventSubscriptions?: string[] | EventSubscription[];
-
-  uiActions?: Record<string, PluginUiActionSpec>;
 
   /** Declarative auth contract — see {@link PluginAuthSpec}. When present, the host renders a generic 미인증 / signed-in badge + login/logout button in Settings. @optional */
   auth?: PluginAuthSpec;
@@ -302,39 +297,6 @@ export interface PluginManifest {
   /** Maximum time in milliseconds the host will wait for `RuntimePlugin.start` to resolve. Plugins exceeding this are considered failed. @optional */
   startupTimeoutMs?: number;
 
-  /** JSON Schema descriptions of each LLM-callable tool's input. UI-only runtime methods should not be declared here. Keys must appear in `tools`. @optional */
-  toolSchemas?: Record<
-    string,
-    {
-      /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */
-      description: string;
-
-      category?: PluginToolCategory;
-
-      pathFields?: string[];
-
-      workerId?: string;
-
-      writesToOwnSandbox?: boolean;
-
-      /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
-      version?: string;
-
-      /** Stable SemVer marking the manifest version that deprecated this tool. Triggers a runtime warn on call. @optional */
-      deprecatedSince?: string;
-
-      /** Tool name that supersedes this deprecated tool — host transparently redirects calls. @optional */
-      replacedBy?: string;
-      inputSchema: {
-        $schema?: string;
-        type: "object";
-        properties: Record<string, unknown>;
-        required?: string[];
-        additionalProperties?: boolean;
-      };
-    }
-  >;
-
   configSchema?: PluginConfigSchema;
 
   icon?: string;
@@ -357,102 +319,26 @@ export interface PluginManifest {
   uiSlots?: string[];
 }
 
-export type RawPluginManifest = Omit<PluginManifest, "tools"> & {
-  tools: string[] | Tool[];
-};
-
-export type NormalizedManifest = Omit<
-  PluginManifest,
-  "tools" | "toolSchemas" | "uiActions"
-> & {
+export type NormalizedManifest = Omit<PluginManifest, "tools"> & {
   tools: Tool[];
 };
 
-export interface NormalizeNotice {
-  pluginId: string;
-
-  kind: "legacy-shape";
-
-  droppedFields: Array<
-    "category" | "workerId" | "writesToOwnSandbox" | "version" | "deprecatedSince" | "replacedBy"
-  >;
-}
-
-export type NormalizeReporter = (notice: NormalizeNotice) => void;
-
-export const normalizeManifest = (
-  raw: RawPluginManifest,
-  report?: NormalizeReporter,
-): NormalizedManifest => {
+export const normalizeManifest = (manifest: PluginManifest): NormalizedManifest => {
   const DUAL: Array<"model" | "app"> = ["model", "app"];
-
-  const stripLegacyMaps = (m: RawPluginManifest) => {
-
-    const { toolSchemas: _s, uiActions: _u, tools: _t, ...rest } = m;
-    return rest;
-  };
-
-  const isLegacy = raw.tools.length === 0 || typeof raw.tools[0] === "string";
-  if (!isLegacy) {
-    const tools = (raw.tools as Tool[]).map((t): Tool => {
-      const vis = t._meta?.ui?.visibility;
-      if (vis === undefined) {
-        return { ...t, _meta: { ...t._meta, ui: { ...t._meta?.ui, visibility: DUAL } } };
-      }
-      if (vis.length === 0) {
-        throw new Error(
-          `[normalizeManifest] plugin '${raw.id}' tool '${t.name}': _meta.ui.visibility is [] — ` +
-            "a tool must be reachable by ≥1 surface; empty is rejected (SoT §2.2/§2.3)",
-        );
-      }
-      return t;
-    });
-    return { ...stripLegacyMaps(raw), tools };
-  }
-
-  const names = raw.tools as string[];
-  const uiNames = Object.keys(raw.uiActions ?? {});
-  const schemas = raw.toolSchemas ?? {};
-  const removed = [
-    "category", "workerId", "writesToOwnSandbox", "version", "deprecatedSince", "replacedBy",
-  ] as const;
-  const dropped = new Set<NormalizeNotice["droppedFields"][number]>();
-
-  const deriveVisibility = (inModel: boolean, inApp: boolean): Array<"model" | "app"> => {
-    if (inModel && inApp) return ["model", "app"];
-    if (inModel) return ["model"];
-    if (inApp) return ["app"];
-
-    throw new Error(
-      `[normalizeManifest] plugin '${raw.id}': a tool is reachable by neither surface ` +
-        "(not in tools[] nor uiActions) — every tool needs ≥1 surface (SoT §2.3)",
-    );
-  };
-
-  const allNames = [...names, ...uiNames.filter((n) => !names.includes(n))];
-  const tools: Tool[] = allNames.map((name): Tool => {
-    const schema = schemas[name];
-    const meta: McpToolMeta = {
-      ui: { visibility: deriveVisibility(names.includes(name), uiNames.includes(name)) },
-    };
-    if (schema?.pathFields && schema.pathFields.length > 0) {
-      meta["xyz.lvis/pathFields"] = schema.pathFields;
+  const tools = manifest.tools.map((t): Tool => {
+    const vis = t._meta?.ui?.visibility;
+    if (vis === undefined) {
+      return { ...t, _meta: { ...t._meta, ui: { ...t._meta?.ui, visibility: DUAL } } };
     }
-    if (schema) {
-      for (const f of removed) {
-        if ((schema as Record<string, unknown>)[f] !== undefined) dropped.add(f);
-      }
+    if (vis.length === 0) {
+      throw new Error(
+        `[normalizeManifest] plugin '${manifest.id}' tool '${t.name}': _meta.ui.visibility is [] — ` +
+          "a tool must be reachable by ≥1 surface; empty is rejected (SoT §2.2/§2.3)",
+      );
     }
-    return {
-      name,
-      ...(schema?.description !== undefined ? { description: schema.description } : {}),
-      inputSchema: schema?.inputSchema ?? { type: "object" as const, properties: {} },
-      _meta: meta,
-    };
+    return t;
   });
-
-  report?.({ pluginId: raw.id, kind: "legacy-shape", droppedFields: [...dropped] });
-  return { ...stripLegacyMaps(raw), tools };
+  return { ...manifest, tools };
 };
 
 /**
@@ -710,9 +596,11 @@ export interface PluginMarketplaceItem {
   packageSpec: string;
   /** Canonical package name (for example the npm package name) used to identify updates. */
   packageName: string;
+
   /** Tools the plugin will expose — mirrors `PluginManifest.tools` for preview purposes. */
   tools: string[];
 
+      /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
   version?: string;
 
   artifactSha256?: string;
@@ -724,7 +612,6 @@ export interface PluginMarketplaceItem {
   ui?: PluginUiExtension[];
   capabilities?: string[];
   keywords?: Array<{ keyword: string; skillId: string }>;
-  uiActions?: Record<string, PluginUiActionSpec>;
   auth?: PluginAuthSpec;
   networkAccess?: PluginManifest["networkAccess"];
   emittedEvents?: string[];
@@ -740,7 +627,6 @@ export interface PluginMarketplaceItem {
   pluginAccess?: PluginAccessSpec;
   /** Display string identifying the publisher. @optional */
   publisher?: string;
-  toolSchemas?: PluginManifest["toolSchemas"];
 
   requires?: RequiresSpec;
 
