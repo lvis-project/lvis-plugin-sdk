@@ -273,7 +273,7 @@ export const normalizeManifest = (
     return rest;
   };
 
-  const isLegacy = raw.tools.length === 0 || typeof raw.tools[0] === "string";
+  const isLegacy = typeof raw.tools[0] === "string";
   if (!isLegacy) {
     const tools = (raw.tools as Tool[]).map((tool): Tool => {
       const visibility = tool._meta?.ui?.visibility;

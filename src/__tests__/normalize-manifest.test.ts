@@ -1,9 +1,9 @@
 /**
  * normalizeManifest — Plugin Contract v6 pure Tool[] unit tests.
  *
- * The host SoT accepts only MCP Tool objects. Visibility is materialized when
- * omitted and explicit empty visibility fails closed; legacy string-tool maps
- * are intentionally not normalized for compatibility.
+ * The SDK exposes MCP Tool objects. Visibility is materialized when omitted
+ * and explicit empty visibility fails closed; published legacy string-tool maps
+ * are normalized at the SDK boundary before consumers receive the contract.
  */
 import { describe, expect, it } from "vitest";
 import { normalizeManifest } from "../index.js";
@@ -120,7 +120,10 @@ describe("normalizeManifest — v6 pure Tool[] contract", () => {
     expect(() => normalizeManifest(manifest)).toThrow(/visibility is \[\]/);
   });
 
-  it("keeps an empty pure Tool list empty", () => {
-    expect(normalizeManifest({ ...BASE, tools: [] }).tools).toEqual([]);
+  it("keeps an empty pure Tool list empty without reporting a legacy conversion", () => {
+    const notices: NormalizeNotice[] = [];
+
+    expect(normalizeManifest({ ...BASE, tools: [] }, (notice) => notices.push(notice)).tools).toEqual([]);
+    expect(notices).toEqual([]);
   });
 });

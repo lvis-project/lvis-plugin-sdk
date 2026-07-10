@@ -52,7 +52,7 @@ var normalizeManifest = (raw, report) => {
     const { toolSchemas: _schemas, uiActions: _actions, tools: _tools, ...rest } = manifest;
     return rest;
   };
-  const isLegacy = raw.tools.length === 0 || typeof raw.tools[0] === "string";
+  const isLegacy = typeof raw.tools[0] === "string";
   if (!isLegacy) {
     const tools2 = raw.tools.map((tool) => {
       const visibility = tool._meta?.ui?.visibility;
