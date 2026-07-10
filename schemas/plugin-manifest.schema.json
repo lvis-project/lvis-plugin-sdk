@@ -6,7 +6,6 @@
   "type": "object",
   "required": [
     "id",
-    "name",
     "version",
     "entry",
     "tools",
@@ -46,24 +45,10 @@
       "minLength": 1
     },
     "tools": {
-      "description": "LLM-visible tool surface. Legacy arm (compat window) = underscore name list paired with toolSchemas/uiActions; pure v6 arm = MCP Tool objects (manifest == wire). An empty [] resolves to the legacy arm (the pure arm carries minItems:1).",
-      "oneOf": [
-        {
-          "$comment": "LEGACY (compat window only) — underscore name list; paired with toolSchemas/uiActions.",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-            "maxLength": 64
-          }
-        },
-        {
-          "$comment": "PURE (v6) — MCP Tool objects; manifest == wire. minItems:1 disambiguates empty [] to legacy.",
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/definitions/tool" }
-        }
-      ]
+      "description": "LLM- and app-visible tool surface: an array of pure MCP Tool objects (manifest == wire, #885). Each tool's `_meta.ui.visibility` declares model and/or app reachability. An empty `[]` is valid for template / MCP-server manifests that expose no plugin-authored tools.",
+      "type": "array",
+      "minItems": 0,
+      "items": { "$ref": "#/definitions/tool" }
     },
     "config": {
       "type": "object"
@@ -78,38 +63,6 @@
           "kind",
           "title"
         ],
-        "allOf": [
-          {
-            "$comment": "kind=\"action\" requires a tool field and forbids entry/exportName/page/window.",
-            "if": {
-              "properties": { "kind": { "const": "action" } },
-              "required": ["kind"]
-            },
-            "then": {
-              "required": ["tool"],
-              "not": {
-                "anyOf": [
-                  { "required": ["entry"] },
-                  { "required": ["exportName"] },
-                  { "required": ["page"] },
-                  { "required": ["window"] }
-                ]
-              }
-            }
-          },
-          {
-            "$comment": "tool field is only allowed when kind=\"action\".",
-            "if": {
-              "not": {
-                "properties": { "kind": { "const": "action" } },
-                "required": ["kind"]
-              }
-            },
-            "then": {
-              "not": { "required": ["tool"] }
-            }
-          }
-        ],
         "properties": {
           "id": {
             "type": "string"
@@ -123,8 +76,7 @@
             "enum": [
               "embedded-module",
               "embedded-page",
-              "info-card",
-              "action"
+              "info-card"
             ]
           },
           "displayName": {
@@ -148,15 +100,9 @@
           "page": {
             "type": "string"
           },
-          "tool": {
-            "type": "string",
-            "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-            "maxLength": 64,
-            "description": "kind=\"action\" 전용. 사이드바 아이콘 클릭 시 host 가 직접 디스패치하는 plugin tool 이름. 해당 tool 은 manifest.uiActions 에 등록되어야 한다 — host 의 UI action 게이트가 그대로 enforce 됨. action 은 panel webview 를 *생성하지 않는다*."
-          },
           "window": {
             "type": "object",
-            "description": "Optional detachable-window defaults for this UI extension. When present the host creates a detached BrowserWindow for this view using these dimensions / snap hints. Not applicable to kind=\"action\" (no window/panel is created).",
+            "description": "Optional detachable-window defaults for this UI extension. When present the host creates a detached BrowserWindow for this view using these dimensions / snap hints.",
             "additionalProperties": false,
             "properties": {
               "width": {
@@ -189,7 +135,7 @@
           }
         }
       },
-      "description": "UI extensions. Kind-specific required fields (embedded-module: entry+exportName; embedded-page: page; action: tool) are enforced at runtime with hard-fail — invalid entries fail manifest load, the plugin does NOT register. kind=\"action\" entries never create a panel/window; the host directly dispatches the declared tool via api.callPluginMethod when the sidebar icon is clicked. The tool must be in manifest.uiActions; runtime/index.ts:callFromUi enforces this gate. Cross-field validation (action ⇒ tool required + entry/exportName/page prohibited; non-action ⇒ tool prohibited) is encoded in the allOf block on each ui[] item."
+      "description": "UI extensions. Kind-specific required fields (embedded-module: entry+exportName; embedded-page: page) are enforced at runtime with hard-fail — invalid entries fail manifest load, the plugin does NOT register."
     },
     "keywords": {
       "type": "array",
@@ -365,28 +311,9 @@
       "maximum": 60000,
       "description": "Hard startup() timeout (ms). Exceeding plugins are fail-soft dropped. Default slow warning threshold is 5000ms."
     },
-    "uiActions": {
-      "type": "object",
-      "description": "Plugin panel/user-interface action surface. Keys are runtime method names the renderer may invoke directly as user-initiated UI actions. This is separate from tools[], which is the LLM-facing surface.",
-      "propertyNames": {
-        "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
-        "maxLength": 64
-      },
-      "additionalProperties": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "description": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 280
-          }
-        }
-      }
-    },
     "auth": {
       "type": "object",
-      "description": "Optional declarative auth contract. Lets the host render a generic 'authentication required / signed in' badge + login/logout button in Settings → 플러그인 설정 without baking plugin-specific auth code into the host. The plugin still owns its OAuth/cookie flow (see architecture.md §9.4a 'Plugin-Owned OAuth Authentication'); the host only invokes the named tools and listens for the auth-changed event. The three tool names referenced here MUST also appear in `uiActions` (cross-field validated in manifest-validation.ts). On state transitions (login success, logout, token refresh failure) the plugin SHOULD emit an event named `<pluginId>.auth.changed` so the host UI can refresh without polling.",
+      "description": "Optional declarative auth contract. Lets the host render a generic 'authentication required / signed in' badge + login/logout button in Settings → 플러그인 설정 without baking plugin-specific auth code into the host. The plugin still owns its OAuth/cookie flow (see architecture.md §9.4a 'Plugin-Owned OAuth Authentication'); the host only invokes the named tools and listens for the auth-changed event. Each of the tool names referenced here MUST be the `name` of an app-visible tool in `tools[]` (its `_meta.ui.visibility` includes `\"app\"`); the host value-validates this against the normalized Tool[]. On state transitions (login success, logout, token refresh failure) the plugin SHOULD emit an event named `<pluginId>.auth.changed` so the host UI can refresh without polling.",
       "additionalProperties": false,
       "required": [
         "statusTool",
@@ -400,19 +327,19 @@
         },
         "statusTool": {
           "type": "string",
-          "description": "Tool name (must be in `uiActions`) returning `{ authenticated: boolean, account?: string }`. Host invokes on Settings tab mount and after every `<pluginId>.auth.changed` event.",
+          "description": "Name of an app-visible tool in `tools[]` (its `_meta.ui.visibility` includes `\"app\"`) returning `{ authenticated: boolean, account?: string }`. Host invokes on Settings tab mount and after every `<pluginId>.auth.changed` event.",
           "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
           "maxLength": 64
         },
         "loginTool": {
           "type": "string",
-          "description": "Tool name (must be in `uiActions`) the host invokes when the user clicks the '로그인' button. The plugin owns the actual auth flow (e.g. MSAL interactive, openAuthWindow); the host only triggers it.",
+          "description": "Name of an app-visible tool in `tools[]` (its `_meta.ui.visibility` includes `\"app\"`) the host invokes when the user clicks the '로그인' button. The plugin owns the actual auth flow (e.g. MSAL interactive, openAuthWindow); the host only triggers it.",
           "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
           "maxLength": 64
         },
         "logoutTool": {
           "type": "string",
-          "description": "Optional tool name (must be in `uiActions` if present) the host invokes when the user clicks the '로그아웃' button. Omit to render a sign-in-only surface (e.g. plugins that don't support runtime sign-out).",
+          "description": "Optional name of an app-visible tool in `tools[]` (its `_meta.ui.visibility` includes `\"app\"`) the host invokes when the user clicks the '로그아웃' button. Omit to render a sign-in-only surface (e.g. plugins that don't support runtime sign-out).",
           "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
           "maxLength": 64
         },
@@ -625,99 +552,6 @@
         },
         "interpreter": {
           "type": "string"
-        }
-      }
-    },
-    "toolSchemas": {
-      "type": "object",
-      "description": "LLM이 메서드를 호출할 때 사용하는 JSON Schema (draft-07)와 권한 정책 메타데이터. 키: method 이름, 값: { description, category, pathFields?, inputSchema }",
-      "additionalProperties": {
-        "type": "object",
-        "required": [
-          "description",
-          "inputSchema"
-        ],
-        "additionalProperties": false,
-        "properties": {
-          "description": {
-            "type": "string",
-            "minLength": 10,
-            "description": "LLM이 이해할 메서드 설명 (when/what/returns)"
-          },
-          "category": {
-            "type": "string",
-            "deprecated": true,
-            "enum": [
-              "read",
-              "write",
-              "shell",
-              "network"
-            ],
-            "description": "Deprecated and ignored. The host classifies each tool's permission risk from host-owned signals at invocation time (host-classifies-risk); a plugin-declared category is not trusted as the authority. Still accepted for backward compatibility, but slated for removal in a future SDK release — new manifests should omit it. 'meta' is host-only and cannot be declared by plugins."
-          },
-          "pathFields": {
-            "type": "array",
-            "description": "Input field names whose values are filesystem paths and must be checked against allowed directories. Dotted paths address nested object fields.",
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$"
-            },
-            "uniqueItems": true
-          },
-          "workerId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 128,
-            "pattern": "^[A-Za-z0-9._-]+$",
-            "description": "Host-spawned plugin worker id. Paired with plugin id so the host reviewer can resolve the specific ASRT-wrapped worker substrate."
-          },
-          "writesToOwnSandbox": {
-            "type": "boolean",
-            "description": "Issue #664 P1 (lvis-app PR #860) — sandbox-write auto-LOW self-attestation. When true, every value resolved through pathFields must stay inside ~/.lvis/plugins/<pluginId>/. The host reviewer treats sandbox-local writes as LOW risk. The runtime canonicalizes and verifies the containment claim at invocation time — a tool that emits a path outside its own sandbox falls back to the standard write rules. Use for plugins that persist sandbox-local caches (e.g. MSAL token cache) without round-tripping the user."
-          },
-          "inputSchema": {
-            "type": "object",
-            "required": [
-              "type",
-              "properties"
-            ],
-            "description": "JSON Schema draft-07 입력 스키마",
-            "properties": {
-              "$schema": {
-                "type": "string"
-              },
-              "type": {
-                "const": "object"
-              },
-              "properties": {
-                "type": "object"
-              },
-              "required": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": {
-                "type": "boolean"
-              }
-            }
-          },
-          "version": {
-            "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
-            "description": "§6.4 Tool versioning — optional stable SemVer (MAJOR.MINOR.PATCH, no leading zeros) for this tool. When omitted, the plugin manifest's top-level version is used. Same strictness as the top-level version field."
-          },
-          "deprecatedSince": {
-            "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
-            "description": "Stable SemVer (MAJOR.MINOR.PATCH) of the manifest version that deprecated this tool."
-          },
-          "replacedBy": {
-            "type": "string",
-            "description": "Tool name that replaces this deprecated tool."
-          }
         }
       }
     },
@@ -964,53 +798,5 @@
         }
       }
     }
-  },
-  "allOf": [
-    {
-      "$comment": "auth contract requires a UI invocation allowlist — the three referenced tool names MUST also be in uiActions; value-level cross-check is enforced in lvis-app's manifest-validation.ts. Guarded to the LEGACY arm: a pure-form (v6) manifest carries no uiActions (auth-tool visibility is a host cross-field check on the normalized Tool[], not AJV-expressible).",
-      "if": {
-        "type": "object",
-        "allOf": [
-          { "required": ["auth"] },
-          {
-            "not": {
-              "type": "object",
-              "properties": {
-                "tools": { "type": "array", "minItems": 1, "items": { "type": "object" } }
-              }
-            }
-          }
-        ]
-      },
-      "then": {
-        "required": [
-          "uiActions"
-        ],
-        "properties": {
-          "uiActions": {
-            "type": "object",
-            "minProperties": 1
-          }
-        }
-      }
-    },
-    {
-      "$comment": "Pure-form (v6) manifests must not carry the legacy toolSchemas/uiActions maps.",
-      "if": {
-        "type": "object",
-        "properties": {
-          "tools": { "type": "array", "minItems": 1, "items": { "type": "object" } }
-        }
-      },
-      "then": {
-        "type": "object",
-        "not": {
-          "anyOf": [
-            { "required": ["toolSchemas"] },
-            { "required": ["uiActions"] }
-          ]
-        }
-      }
-    }
-  ]
+  }
 }
