@@ -1056,11 +1056,7 @@ function normalizeSdkTypeOnlySurface(text) {
     .replace(
       /^\s*deliveryMode\?: PluginDeliveryMode;\r?\n/gm,
       "",
-    )
-    // PluginMethodHandler was a backward-compat alias for PluginToolHandler.
-    // The plugins-no-longer-submodules milestone removed all consumers; drop
-    // it from the SDK public surface while keeping the host source unchanged.
-    .replace(/^export type PluginMethodHandler = PluginToolHandler;\r?\n+/m, "");
+    );
 
   out = out.replace(
     /^export class PluginStorageError extends Error \{\r?\n(?:.*\r?\n)*?^\}\r?\n+/m,
@@ -1090,7 +1086,6 @@ export type StorageEncoding =
   }
 
   out = stripHostInternalRegistryFields(out);
-  out = dropPluginLifecycleEventPayload(out);
   out = restrictMarketplaceChannelToStable(out);
   out = ensurePluginManifestPython(out);
   out = ensurePluginManifestPackageName(out);
@@ -1176,19 +1171,6 @@ function stripHostInternalRegistryFields(text) {
       /^export type PluginRegistryEntryInstallSource = [^;]+;\r?\n+/m,
       "",
     );
-}
-
-/**
- * M12 — `PluginLifecycleEventPayload` is the host's internal event-bus
- * mirror of `PluginLifecycleEvent` minus `type`; no SDK consumer ever
- * references it and it conflicts with the canonical
- * `PluginLifecycleEvent`. Drop it from the public surface.
- */
-function dropPluginLifecycleEventPayload(text) {
-  return text.replace(
-    /^export type PluginLifecycleEventPayload =[\s\S]*?\| \{ pluginId: string \};\r?\n+/m,
-    "",
-  );
 }
 
 /**
