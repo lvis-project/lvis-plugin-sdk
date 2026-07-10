@@ -1,9 +1,12 @@
 # @lvis/plugin-sdk
 
-**Version: 5.22.0** — Source/type-only SDK for LVIS plugin authors. Provides
-the complete plugin contract surface: `PluginManifest`, `PluginHostApi`,
-`PluginRuntimeContext`, `RuntimePlugin`. Does not ship runtime code, build
-output, lifecycle hooks, or marketplace trust keys.
+Source SDK for LVIS plugin authors. Provides the complete plugin contract
+surface — `PluginManifest`, `PluginHostApi`, `PluginRuntimeContext`,
+`RuntimePlugin` — plus thin runtime utilities (the `tsup` build helper and
+host-context shims for `safeStorage` / `shell.openExternal`). It does **not**
+ship UI components, design tokens, or theme helpers: plugins own their UI
+freely (see [Plugin UI](#plugin-ui)). Marketplace trust keys are also
+intentionally excluded.
 
 ```ts
 import type {
@@ -41,12 +44,10 @@ No submodule is required.
 | Subpath | Contents |
 |---|---|
 | `@lvis/plugin-sdk` | All type contracts (`PluginManifest`, `PluginHostApi`, `PluginRuntimeContext`, `RuntimePlugin`, …) |
-| `@lvis/plugin-sdk/ui` | UI primitives barrel (legacy/prototyping) |
-| `@lvis/plugin-sdk/ui/components/<Name>` | Per-component subpath (canonical — see below) |
-| `@lvis/plugin-sdk/ui/hooks/useTheme` | React hook for live theme |
-| `@lvis/plugin-sdk/ui/hooks/primeTheme` | Vanilla theme subscriber |
-| `@lvis/plugin-sdk/ui/tokens/inject` | `injectTokenCss` / `applyThemeTokens` / `applyThemeFromHostEvent` |
-| `@lvis/plugin-sdk/ui/tokens/validate` | CSS namespace + token allowlist validators |
+| `@lvis/plugin-sdk/build` | `defineLvisPluginConfig` — tsup build helper enforcing the self-contained plugin bundle contract |
+| `@lvis/plugin-sdk/runtime/electron` | Host-context shims (`getSafeStorage` / `getShell`) |
+| `@lvis/plugin-sdk/runtime/network` | Private-network egress guard helpers |
+| `@lvis/plugin-sdk/schemas/plugin-manifest.schema.json` | Manifest JSON Schema (byte-equal copy of the host schema) |
 
 ## Plugin anatomy
 
@@ -237,139 +238,33 @@ pass host validation and vice versa.
 Both schemas use JSON Schema **draft-07** (the dialect AJV strict-mode enforces
 in the host's runtime validator).
 
-## Plugin CSS namespace validator
+## Plugin UI
 
-Every plugin-local CSS custom property must carry a 2-3 lowercase-letter
-namespace prefix (e.g. `--pm-accent-bg` for a `pm`-prefixed plugin). The
-`--lvis-*` namespace is owned by the host — plugins must not define tokens in
-that namespace.
+The SDK does **not** ship UI components, design tokens, theme subscribers, or a
+CSS-namespace validator. Plugins own their UI completely — pick whatever
+rendering approach fits (vanilla DOM, React, or any framework you bundle
+yourself) and style it however you like.
 
-### CI enforcement
+The design **philosophy** — how a plugin panel should look and behave so it
+feels native inside the host shell — is documented, not enforced. It lives in
+the host's design guide:
 
-```json
-{
-  "scripts": {
-    "check:plugin-css": "node node_modules/@lvis/plugin-sdk/scripts/check-plugin-css.mjs"
-  }
-}
-```
+**[lvis-app / DESIGN.md](https://github.com/lvis-project/lvis-app/blob/main/DESIGN.md)**
 
-```yaml
-- name: Check CSS namespace
-  run: bun run check:plugin-css
-```
+That guide covers the support boundaries the host commits to, including the
+responsive width tiers and the 448px sidebar-panel floor. Treat it as guidance
+for building a panel that reads well across those tiers; it is not a contract
+the SDK checks at build time.
 
-### Programmatic API
+Practical notes for plugin authors:
 
-```ts
-import { validatePluginCssNamespace } from "@lvis/plugin-sdk/ui/tokens/validate";
-
-const result = validatePluginCssNamespace(css, {
-  vendorAllowlist: ["tw", "radix", "shiki"], // default list; extend as needed
-  validPrefixes: ["pm"],   // flag any other 2-3-char prefix not in this list
-  mode: "warn",            // "error" (default) | "warn"
-});
-```
-
-### What counts as a violation
-
-| Example | Result |
-|---|---|
-| `--pm-accent-bg` | OK — valid 2-char prefix |
-| `--ah-danger` | OK — valid 2-char prefix |
-| `--accent-bg` | Violation — no prefix |
-| `--x-color` | Violation — single-char prefix |
-| `--pm` | Violation — prefix-only, no suffix |
-| `--tw-ring-color` | OK — vendor-allowlisted (`tw`) |
-| `--radix-popper-anchor-width` | OK — vendor-allowlisted (`radix`) |
-
-### Environment variables (CI script)
-
-| Variable | Default | Description |
-|---|---|---|
-| `LVIS_CSS_MODE` | `error` | Set to `warn` for soft mode |
-| `LVIS_CSS_FAIL_ON_WARN` | — | Set to `1` to exit 1 even in warn mode |
-| `LVIS_CSS_ROOTS` | `dist,src` | Comma-separated scan roots |
-| `LVIS_CSS_VENDOR` | (default list) | Override vendor allowlist (comma-separated) |
-| `LVIS_CSS_PREFIXES` | (default list) | Override valid plugin prefix list |
-
-## UI token allowlist (build-time validator)
-
-Plugins may only reference the 17 `--lvis-*` design tokens in `LVIS_TOKEN_NAMES`.
-Any other `var(--lvis-*)` reference silently renders as the CSS `initial` keyword.
-
-```ts
-import { validateTokenUsage, validateTokenDefinitions } from "@lvis/plugin-sdk/ui/tokens/validate";
-
-const css = readFileSync("dist/plugin-ui.css", "utf8");
-
-const usage = validateTokenUsage(css);
-if (!usage.ok) {
-  console.error("Unknown --lvis-* tokens referenced:", usage.unknown);
-  process.exit(1);
-}
-
-const defs = validateTokenDefinitions(css); // plugins must not redefine --lvis-* tokens
-if (!defs.ok) {
-  console.error("Forbidden redefinitions:", defs.forbiddenRedefinitions);
-  process.exit(1);
-}
-```
-
-## UI imports — canonical pattern (5.4.0+)
-
-Use per-component subpath imports. The `./ui` barrel re-exports every component
-and each carries an `injectTokenCss()` side effect that bundlers cannot tree-shake.
-
-```ts
-// canonical — only the imported components ship in the bundle
-import { Stack, Inline } from "@lvis/plugin-sdk/ui/components/Stack";
-import { Toggle } from "@lvis/plugin-sdk/ui/components/Toggle";
-import { Card } from "@lvis/plugin-sdk/ui/components/Card";
-
-// legacy / prototyping — pulls every component into the bundle
-import { Stack, Toggle, Card } from "@lvis/plugin-sdk/ui";
-```
-
-Available subpaths (5.4.0+):
-
-- `@lvis/plugin-sdk/ui/components/<Name>` — Badge / Button / Card / Checkbox / Input / Select / Spinner / Stack / Text / Toggle
-- `@lvis/plugin-sdk/ui/hooks/useTheme` — React hook wrapping `primeTheme`
-- `@lvis/plugin-sdk/ui/hooks/primeTheme` — vanilla theme subscriber (pull + subscribe + paint, multi-document aware)
-- `@lvis/plugin-sdk/ui/tokens/inject` — `injectTokenCss` / `applyThemeTokens` / `applyThemeFromHostEvent`
-
-`injectTokenCss` is keyed by stable id — importing from multiple component bundles in the same plugin is safe; the `<style>` element is upserted once.
-
-## Theme events
-
-Subscribe to host theme changes:
-
-```ts
-import { applyThemeFromHostEvent } from "@lvis/plugin-sdk/ui/tokens/inject";
-
-hostApi.onEvent("host.theme.changed", (data) => {
-  applyThemeFromHostEvent(data as LvisHostThemeEvent);
-});
-```
-
-`LvisHostThemeEvent` shape (v2, introduced in v5.0.0):
-
-```ts
-interface LvisHostThemeEvent {
-  bundleId: "tokyo-night" | "midnight" | "forest" | "violet-light" | "violet-dark" | "high-contrast";
-  shell: "light" | "dark";
-  tokens: LvisTokenMap; // keys are already "--lvis-bg" form — do NOT add prefix
-}
-```
-
-| bundleId | shell |
-|---|---|
-| `"tokyo-night"` | `"dark"` |
-| `"midnight"` | `"dark"` |
-| `"forest"` | `"dark"` |
-| `"violet-light"` | `"light"` |
-| `"violet-dark"` | `"dark"` |
-| `"high-contrast"` | `"dark"` |
+- Bundle your own UI runtime. The `@lvis/plugin-sdk/build` helper
+  (`defineLvisPluginConfig`) already bundles every dependency into `dist/` so a
+  React (or other) UI ships self-contained.
+- The host paints its theme onto the plugin surface via CSS custom properties;
+  read them (e.g. `var(--lvis-bg)`) from your own styles if you want to track
+  the active theme. Namespacing and token discipline are now the plugin's own
+  responsibility.
 
 ## Trust model
 

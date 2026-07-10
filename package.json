@@ -10,82 +10,6 @@
       "types": "./src/index.ts",
       "import": "./dist/index.js"
     },
-    "./ui": {
-      "types": "./src/ui/index.ts",
-      "import": "./dist/ui/index.js"
-    },
-    "./ui/tokens": {
-      "types": "./src/ui/tokens/index.ts",
-      "import": "./dist/ui/tokens/index.js"
-    },
-    "./ui/tokens/validate": {
-      "types": "./src/ui/tokens/validate.ts",
-      "import": "./dist/ui/tokens/validate.js"
-    },
-    "./ui/tokens/inject": {
-      "types": "./src/ui/tokens/inject.ts",
-      "import": "./dist/ui/tokens/inject.js"
-    },
-    "./ui/hooks/useTheme": {
-      "types": "./src/ui/hooks/useTheme.ts",
-      "import": "./dist/ui/hooks/useTheme.js"
-    },
-    "./ui/hooks/primeTheme": {
-      "types": "./src/ui/hooks/primeTheme.ts",
-      "import": "./dist/ui/hooks/primeTheme.js"
-    },
-    "./ui/hooks/useFocusTrap": {
-      "types": "./src/ui/hooks/useFocusTrap.ts",
-      "import": "./dist/ui/hooks/useFocusTrap.js"
-    },
-    "./ui/components/Badge": {
-      "types": "./src/ui/components/Badge.tsx",
-      "import": "./dist/ui/components/Badge.js"
-    },
-    "./ui/components/Button": {
-      "types": "./src/ui/components/Button.tsx",
-      "import": "./dist/ui/components/Button.js"
-    },
-    "./ui/components/Card": {
-      "types": "./src/ui/components/Card.tsx",
-      "import": "./dist/ui/components/Card.js"
-    },
-    "./ui/components/Checkbox": {
-      "types": "./src/ui/components/Checkbox.tsx",
-      "import": "./dist/ui/components/Checkbox.js"
-    },
-    "./ui/components/Icon": {
-      "types": "./src/ui/components/Icon.tsx",
-      "import": "./dist/ui/components/Icon.js"
-    },
-    "./ui/components/Input": {
-      "types": "./src/ui/components/Input.tsx",
-      "import": "./dist/ui/components/Input.js"
-    },
-    "./ui/components/Modal": {
-      "types": "./src/ui/components/Modal.tsx",
-      "import": "./dist/ui/components/Modal.js"
-    },
-    "./ui/components/Select": {
-      "types": "./src/ui/components/Select.tsx",
-      "import": "./dist/ui/components/Select.js"
-    },
-    "./ui/components/Spinner": {
-      "types": "./src/ui/components/Spinner.tsx",
-      "import": "./dist/ui/components/Spinner.js"
-    },
-    "./ui/components/Stack": {
-      "types": "./src/ui/components/Stack.tsx",
-      "import": "./dist/ui/components/Stack.js"
-    },
-    "./ui/components/Text": {
-      "types": "./src/ui/components/Text.tsx",
-      "import": "./dist/ui/components/Text.js"
-    },
-    "./ui/components/Toggle": {
-      "types": "./src/ui/components/Toggle.tsx",
-      "import": "./dist/ui/components/Toggle.js"
-    },
     "./build": {
       "types": "./src/build/tsup.ts",
       "import": "./dist/build/tsup.js"
@@ -106,55 +30,29 @@
     "schemas",
     "dist"
   ],
-  "sideEffects": [
-    "**/components/*.js",
-    "**/components/*.tsx",
-    "**/tokens/inject.js",
-    "**/tokens/inject.ts"
-  ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json",
     "prepublishOnly": "bun run build",
-    "dev:storybook": "storybook dev -p 6006",
-    "build:storybook": "storybook build",
     "sync:from-host": "node scripts/sync-from-host.mjs",
     "sync:schema-from-host": "node scripts/sync-schema-from-host.mjs",
     "check:drift": "node scripts/sync-from-host.mjs --check",
     "check:schema-drift": "node scripts/sync-schema-from-host.mjs --check",
     "check:dist-drift": "node scripts/check-dist-drift.mjs",
-    "check:plugin-css": "node scripts/check-plugin-css.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "packageManager": "bun@1.1.38",
   "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0",
     "tsup": ">=8.0.0"
   },
   "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    },
-    "react-dom": {
-      "optional": true
-    },
     "tsup": {
       "optional": true
     }
   },
   "devDependencies": {
-    "@storybook/addon-toolbars": "9.0.8",
-    "@storybook/react": "10.4.6",
-    "@storybook/react-vite": "10.4.6",
-    "@testing-library/react": "^16.3.2",
     "@types/node": "^26.1.0",
-    "@types/react": "19.2.17",
-    "@types/react-dom": "19.2.3",
-    "jsdom": "^29.1.1",
-    "react": "19.2.7",
-    "react-dom": "19.2.7",
-    "storybook": "10.4.2",
     "tsup": "^8.0.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.13",
@@ -162,8 +60,6 @@
   },
   "dependencies": {
     "ajv": "^8.20.0",
-    "ajv-formats": "^3.0.1",
-    "focus-trap": "^8.2.0",
-    "lucide-react": "^1.14.0"
+    "ajv-formats": "^3.0.1"
   }
 }
