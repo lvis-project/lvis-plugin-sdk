@@ -77,6 +77,33 @@ describe("normalizeManifest — v6 pure Tool[] contract", () => {
     ]);
   });
 
+  it("converts a schema-valid UI-only legacy manifest", () => {
+    const legacy: RawPluginManifest = {
+      ...BASE,
+      tools: [],
+      uiActions: { legacy_status: {} },
+      toolSchemas: {
+        legacy_status: {
+          description: "Read legacy status.",
+          inputSchema: { type: "object", properties: {} },
+        },
+      },
+    };
+    const notices: NormalizeNotice[] = [];
+
+    const result = normalizeManifest(legacy, (notice) => notices.push(notice));
+
+    expect(result.tools).toEqual([
+      {
+        name: "legacy_status",
+        description: "Read legacy status.",
+        inputSchema: { type: "object", properties: {} },
+        _meta: { ui: { visibility: ["app"] } },
+      },
+    ]);
+    expect(notices).toEqual([{ pluginId: "ms-graph", kind: "legacy-shape", droppedFields: [] }]);
+  });
+
   it("preserves explicit model, dual, and app visibility", () => {
     const manifest: PluginManifest = {
       ...BASE,

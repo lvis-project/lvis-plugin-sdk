@@ -596,6 +596,27 @@ export interface PluginMarketplaceItem {
   mcpRuntime?: McpRuntimeSpec;
 
   mcpAuth?: McpAuthMetadata;
+  /** Preview list of legacy tool names from the marketplace catalog. This is distinct from the installed manifest MCP Tool array. */
+  tools: string[];
+  /** Default configuration seeded into the plugin on first install. Users may override this. @optional */
+  defaultConfig?: Record<string, unknown>;
+  /** UI extensions the plugin will contribute once installed. @optional */
+  ui?: PluginUiExtension[];
+  /** Skill keywords published by the catalog entry. @optional */
+  keywords?: Array<{ keyword: string; skillId: string }>;
+  /** Legacy UI-action metadata retained for catalog compatibility. @optional */
+  uiActions?: Record<string, PluginUiActionSpec>;
+  /** Event names this catalog entry may emit. @optional */
+  emittedEvents?: string[];
+  /** Notification metadata mirrored from the installable manifest. @optional */
+  notificationEvents?: Array<{
+    event: string;
+    titleField?: string;
+    bodyField?: string;
+    bypassFocusGate?: boolean;
+  }>;
+  /** Legacy tool-schema metadata retained for catalog compatibility. @optional */
+  toolSchemas?: RawPluginManifest["toolSchemas"];
 }
 
 export type StorageEncoding =
@@ -1066,6 +1087,10 @@ export interface RuntimePlugin {
  */
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
 
+export interface PluginUiActionSpec {
+  description?: string;
+}
+
 export type LegacyToolSchema = {
   description?: string;
   pathFields?: string[];
@@ -1111,7 +1136,11 @@ export const normalizeManifest = (
     return rest;
   };
 
-  const isLegacy = typeof raw.tools[0] === "string";
+  const uiNames = Object.keys(raw.uiActions ?? {});
+  const schemas = raw.toolSchemas ?? {};
+  const isLegacy =
+    typeof raw.tools[0] === "string" ||
+    (raw.tools.length === 0 && (uiNames.length > 0 || Object.keys(schemas).length > 0));
   if (!isLegacy) {
     const tools = (raw.tools as Tool[]).map((tool): Tool => {
       const visibility = tool._meta?.ui?.visibility;
@@ -1133,8 +1162,6 @@ export const normalizeManifest = (
   }
 
   const names = raw.tools as string[];
-  const uiNames = Object.keys(raw.uiActions ?? {});
-  const schemas = raw.toolSchemas ?? {};
   const removed = [
     "category", "workerId", "writesToOwnSandbox", "version", "deprecatedSince", "replacedBy",
   ] as const;

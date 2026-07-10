@@ -46,9 +46,33 @@ import type {
   ConversationTriggerResult,
   MissingDependenciesError as MissingDepsErrorType,
   PluginLifecycleEvent,
+  PluginMarketplaceItem,
 } from "../index.js";
 
 import { MissingDependenciesError } from "../index.js";
+
+describe("PluginMarketplaceItem — host catalog compatibility", () => {
+  it("retains host catalog fields that are independent of the pure manifest wire contract", () => {
+    const item: PluginMarketplaceItem = {
+      id: "marketplace-fixture",
+      name: "Marketplace Fixture",
+      description: "A fixture that locks the marketplace type surface.",
+      packageSpec: "@lvis/marketplace-fixture",
+      packageName: "@lvis/marketplace-fixture",
+      tools: ["fixture_ping"],
+      defaultConfig: { enabled: true },
+      ui: [],
+      keywords: [{ keyword: "fixture", skillId: "fixture-skill" }],
+      uiActions: { fixture_status: {} },
+      emittedEvents: ["fixture.ready"],
+      notificationEvents: [{ event: "fixture.ready", titleField: "title" }],
+      toolSchemas: {},
+    };
+
+    expect(item.tools).toEqual(["fixture_ping"]);
+    expect(item.defaultConfig).toEqual({ enabled: true });
+  });
+});
 
 // ─── PluginManifest schema validation ─────────────────────────────────────────
 describe("PluginManifest — schema validation", () => {

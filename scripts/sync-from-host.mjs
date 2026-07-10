@@ -228,6 +228,11 @@ function extract(srcPath) {
 }
 
 const SDK_MANIFEST_COMPAT_ADAPTER = `
+/** Legacy UI-action metadata retained for published marketplace catalog entries. */
+export interface PluginUiActionSpec {
+  description?: string;
+}
+
 export type LegacyToolSchema = {
   description?: string;
   pathFields?: string[];
@@ -273,7 +278,11 @@ export const normalizeManifest = (
     return rest;
   };
 
-  const isLegacy = typeof raw.tools[0] === "string";
+  const uiNames = Object.keys(raw.uiActions ?? {});
+  const schemas = raw.toolSchemas ?? {};
+  const isLegacy =
+    typeof raw.tools[0] === "string" ||
+    (raw.tools.length === 0 && (uiNames.length > 0 || Object.keys(schemas).length > 0));
   if (!isLegacy) {
     const tools = (raw.tools as Tool[]).map((tool): Tool => {
       const visibility = tool._meta?.ui?.visibility;
@@ -295,8 +304,6 @@ export const normalizeManifest = (
   }
 
   const names = raw.tools as string[];
-  const uiNames = Object.keys(raw.uiActions ?? {});
-  const schemas = raw.toolSchemas ?? {};
   const removed = [
     "category", "workerId", "writesToOwnSandbox", "version", "deprecatedSince", "replacedBy",
   ] as const;
@@ -612,7 +619,7 @@ const JSDOC_CATALOG = {
       description: `/** Marketing description shown in the marketplace UI. */`,
       packageSpec: `/** Installable package specifier (for example an npm spec or tarball URL) used to acquire the plugin artifact. */`,
       packageName: `/** Canonical package name (for example the npm package name) used to identify updates. */`,
-      tools: `/** Tools the plugin will expose — mirrors \`PluginManifest.tools\` for preview purposes. */`,
+      tools: `/** Preview list of legacy tool names from the marketplace catalog. This is distinct from the installed manifest's MCP \`Tool[]\` wire contract. */`,
       version: `/** Marketplace plugin version represented by this catalog entry. @optional */`,
       defaultConfig: `/** Default configuration seeded into the plugin on first install. Users may override this. @optional */`,
       ui: `/** UI extensions the plugin will contribute once installed. @optional */`,
@@ -1090,6 +1097,7 @@ export type StorageEncoding =
   out = ensurePluginManifestAuthor(out);
   out = ensurePluginManifestUiSlots(out);
   out = annotateToolSchemaInner(out);
+  out = ensurePluginMarketplaceCatalogFields(out);
 
   return out;
 }
@@ -1207,10 +1215,9 @@ function restrictMarketplaceChannelToStable(text) {
  */
 function ensurePluginManifestPython(text) {
   if (/python\?:\s*\{/m.test(text)) return text;
-  return text.replace(
-    /(^export interface PluginManifest \{[\s\S]*?)\n\}\n/m,
-    (_match, body) =>
-      `${body}\n  python?: {\n    managedBy?: "lvis-app" | "self";\n    requirementsLock?: string;\n    interpreter?: string;\n  };\n}\n`,
+  return insertPluginManifestField(
+    text,
+    `  python?: {\n    managedBy?: "lvis-app" | "self";\n    requirementsLock?: string;\n    interpreter?: string;\n  };`,
   );
 }
 
@@ -1223,10 +1230,7 @@ function ensurePluginManifestPython(text) {
  */
 function ensurePluginManifestPackageName(text) {
   if (/^\s*packageName\?:\s*string;/m.test(text)) return text;
-  return text.replace(
-    /(^export interface PluginManifest \{[\s\S]*?)\n\}\n/m,
-    (_match, body) => `${body}\n  packageName?: string;\n}\n`,
-  );
+  return insertPluginManifestField(text, "  packageName?: string;");
 }
 
 /**
@@ -1245,18 +1249,74 @@ function ensurePluginManifestPackageName(text) {
  */
 function ensurePluginManifestAuthor(text) {
   if (/^\s*author\?:\s*string;/m.test(text)) return text;
-  return text.replace(
-    /(^export interface PluginManifest \{[\s\S]*?)\n\}\n/m,
-    (_match, body) => `${body}\n  /** Plugin author — individual maintainer name or contact (distinct from \`publisher\`). */\n  author?: string;\n}\n`,
+  return insertPluginManifestField(
+    text,
+    "  /** Plugin author — individual maintainer name or contact (distinct from `publisher`). */\n  author?: string;",
   );
 }
 
 function ensurePluginManifestUiSlots(text) {
   if (/^\s*uiSlots\?:\s*string\[\];/m.test(text)) return text;
-  return text.replace(
-    /(^export interface PluginManifest \{[\s\S]*?)\n\}\n/m,
-    (_match, body) => `${body}\n  /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in \`ui[].slot\`. */\n  uiSlots?: string[];\n}\n`,
+  return insertPluginManifestField(
+    text,
+    "  /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */\n  uiSlots?: string[];",
   );
+}
+
+function insertPluginManifestField(text, field) {
+  return insertInterfaceFields(text, "PluginManifest", [field]);
+}
+
+function findInterfaceBounds(text, interfaceName) {
+  const declaration = `export interface ${interfaceName} {`;
+  const declarationStart = text.indexOf(declaration);
+  if (declarationStart < 0) {
+    throw new Error(`${interfaceName} declaration is missing from the generated SDK surface.`);
+  }
+
+  const braceStart = text.indexOf("{", declarationStart);
+  let depth = 0;
+  for (let index = braceStart; index < text.length; index++) {
+    if (text[index] === "{") depth++;
+    if (text[index] === "}") depth--;
+    if (depth === 0) {
+      return { braceStart, braceEnd: index };
+    }
+  }
+
+  throw new Error(`${interfaceName} declaration is not structurally balanced in the generated SDK surface.`);
+}
+
+function insertInterfaceFields(text, interfaceName, fields) {
+  const { braceEnd } = findInterfaceBounds(text, interfaceName);
+  return `${text.slice(0, braceEnd)}${fields.join("\n")}\n${text.slice(braceEnd)}`;
+}
+
+function interfaceHasField(text, interfaceName, fieldName) {
+  const { braceStart, braceEnd } = findInterfaceBounds(text, interfaceName);
+  const body = text.slice(braceStart + 1, braceEnd);
+  const escaped = fieldName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^\\s*${escaped}(?:\\?)?\\s*:`, "m").test(body);
+}
+
+function ensurePluginMarketplaceCatalogFields(text) {
+  const fields = [
+    ["tools", "  /** Preview list of legacy tool names from the marketplace catalog. This is distinct from the installed manifest MCP Tool array. */\n  tools: string[];"],
+    ["defaultConfig", "  /** Default configuration seeded into the plugin on first install. Users may override this. @optional */\n  defaultConfig?: Record<string, unknown>;"],
+    ["ui", "  /** UI extensions the plugin will contribute once installed. @optional */\n  ui?: PluginUiExtension[];"],
+    ["keywords", "  /** Skill keywords published by the catalog entry. @optional */\n  keywords?: Array<{ keyword: string; skillId: string }>;"],
+    ["uiActions", "  /** Legacy UI-action metadata retained for catalog compatibility. @optional */\n  uiActions?: Record<string, PluginUiActionSpec>;"],
+    ["emittedEvents", "  /** Event names this catalog entry may emit. @optional */\n  emittedEvents?: string[];"],
+    ["notificationEvents", "  /** Notification metadata mirrored from the installable manifest. @optional */\n  notificationEvents?: Array<{\n    event: string;\n    titleField?: string;\n    bodyField?: string;\n    bypassFocusGate?: boolean;\n  }>;"],
+    ["toolSchemas", "  /** Legacy tool-schema metadata retained for catalog compatibility. @optional */\n  toolSchemas?: RawPluginManifest[\"toolSchemas\"];"],
+  ];
+  const missing = fields
+    .filter(([name]) => !interfaceHasField(text, "PluginMarketplaceItem", name))
+    .map(([, declaration]) => declaration);
+
+  return missing.length === 0
+    ? text
+    : insertInterfaceFields(text, "PluginMarketplaceItem", missing);
 }
 
 try {

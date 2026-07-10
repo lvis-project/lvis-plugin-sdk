@@ -52,7 +52,9 @@ var normalizeManifest = (raw, report) => {
     const { toolSchemas: _schemas, uiActions: _actions, tools: _tools, ...rest } = manifest;
     return rest;
   };
-  const isLegacy = typeof raw.tools[0] === "string";
+  const uiNames = Object.keys(raw.uiActions ?? {});
+  const schemas = raw.toolSchemas ?? {};
+  const isLegacy = typeof raw.tools[0] === "string" || raw.tools.length === 0 && (uiNames.length > 0 || Object.keys(schemas).length > 0);
   if (!isLegacy) {
     const tools2 = raw.tools.map((tool) => {
       const visibility = tool._meta?.ui?.visibility;
@@ -72,8 +74,6 @@ var normalizeManifest = (raw, report) => {
     return { ...stripLegacyMaps(raw), tools: tools2 };
   }
   const names = raw.tools;
-  const uiNames = Object.keys(raw.uiActions ?? {});
-  const schemas = raw.toolSchemas ?? {};
   const removed = [
     "category",
     "workerId",

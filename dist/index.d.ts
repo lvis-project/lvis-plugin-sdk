@@ -445,6 +445,30 @@ export interface PluginMarketplaceItem {
     packageAsset?: MarketplacePackageAsset;
     mcpRuntime?: McpRuntimeSpec;
     mcpAuth?: McpAuthMetadata;
+    /** Preview list of legacy tool names from the marketplace catalog. This is distinct from the installed manifest MCP Tool array. */
+    tools: string[];
+    /** Default configuration seeded into the plugin on first install. Users may override this. @optional */
+    defaultConfig?: Record<string, unknown>;
+    /** UI extensions the plugin will contribute once installed. @optional */
+    ui?: PluginUiExtension[];
+    /** Skill keywords published by the catalog entry. @optional */
+    keywords?: Array<{
+        keyword: string;
+        skillId: string;
+    }>;
+    /** Legacy UI-action metadata retained for catalog compatibility. @optional */
+    uiActions?: Record<string, PluginUiActionSpec>;
+    /** Event names this catalog entry may emit. @optional */
+    emittedEvents?: string[];
+    /** Notification metadata mirrored from the installable manifest. @optional */
+    notificationEvents?: Array<{
+        event: string;
+        titleField?: string;
+        bodyField?: string;
+        bypassFocusGate?: boolean;
+    }>;
+    /** Legacy tool-schema metadata retained for catalog compatibility. @optional */
+    toolSchemas?: RawPluginManifest["toolSchemas"];
 }
 export type StorageEncoding = "utf-8" | "utf8" | "ascii" | "base64" | "base64url" | "hex" | "latin1" | "binary";
 export interface PluginStorage {
@@ -836,6 +860,9 @@ export interface RuntimePlugin {
  * export default factory;
  */
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
+export interface PluginUiActionSpec {
+    description?: string;
+}
 export type LegacyToolSchema = {
     description?: string;
     pathFields?: string[];
