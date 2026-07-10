@@ -236,8 +236,9 @@ export interface PluginManifest {
 
   /** Globally unique identifier. Reverse-DNS style recommended (for example `com.example.my-plugin`). Must be stable across versions. */
   id: string;
+
   /** Human-readable display name shown in the host UI and plugin pickers. */
-  name: string;
+  name?: string;
   /** SemVer version string (for example `1.2.3`). Used by the host to detect updates and enforce compatibility. */
   version: string;
   /** Path (relative to the plugin root) to the JavaScript module whose default export is a `RuntimePluginFactory`. */
@@ -384,13 +385,14 @@ export interface PluginUiExtension {
   id: string;
   /** UI slot into which the extension is mounted. Currently only `"sidebar"` is supported. */
   slot: "sidebar";
+
   /**
    * Rendering strategy:
    * - `"embedded-module"` — module exporting a component mounted in-process.
    * - `"embedded-page"` — full-page HTML loaded in an isolated frame.
    * - `"info-card"` — lightweight read-only card rendered from `defaults`.
    */
-  kind: "embedded-module" | "embedded-page" | "info-card" | "action";
+  kind: "embedded-module" | "embedded-page" | "info-card";
   /** Name shown in navigation. Falls back to `title` when omitted. @optional */
   displayName?: string;
   /** Title shown at the top of the extension surface. */
@@ -405,8 +407,6 @@ export interface PluginUiExtension {
   exportName?: string;
   /** Path (relative to the plugin root) of the HTML page to load for `embedded-page`. @optional */
   page?: string;
-
-  tool?: string;
 
   window?: {
     width?: number;
