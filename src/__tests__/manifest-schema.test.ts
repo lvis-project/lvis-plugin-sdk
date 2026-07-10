@@ -68,7 +68,7 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
-  it("accepts a legacy manifest verbatim (window compat)", () => {
+  it("rejects a legacy manifest verbatim (legacy arm removed — string tools + toolSchemas + uiActions)", () => {
     const manifest = {
       ...BASE,
       tools: ["msgraph_email_list", "msgraph_email_read"],
@@ -82,8 +82,8 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
         },
       },
     };
-    const { valid, errors } = check(manifest);
-    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    const { valid } = check(manifest);
+    expect(valid).toBe(false);
   });
 
   it("accepts a pure manifest with auth but no uiActions (conditional-d guard)", () => {
@@ -96,25 +96,30 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
-  it("accepts a legacy auth manifest with uiActions (conditional-d legacy arm)", () => {
+  it("rejects a legacy auth manifest with string tools + uiActions (legacy arm removed)", () => {
     const manifest = {
       ...BASE,
       tools: ["t_ping"],
       uiActions: { t_ping: {} },
       auth: { statusTool: "t_ping", loginTool: "t_ping" },
     };
-    const { valid, errors } = check(manifest);
+    const { valid } = check(manifest);
+    expect(valid).toBe(false);
+  });
+
+  it("accepts an empty tools:[] (minItems:0 — template / MCP-server manifests)", () => {
+    const { valid, errors } = check({ ...BASE, tools: [] });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
-  it("accepts the template shape tools:[] + toolSchemas:{} (empty ⇒ legacy arm)", () => {
-    const { valid, errors } = check({ ...BASE, tools: [], toolSchemas: {} });
-    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  it("rejects the removed toolSchemas map even alongside empty tools:[]", () => {
+    const { valid } = check({ ...BASE, tools: [], toolSchemas: {} });
+    expect(valid).toBe(false);
   });
 
-  it("accepts a legacy UI-only plugin tools:[] + uiActions:{…}", () => {
-    const { valid, errors } = check({ ...BASE, tools: [], uiActions: { t_ping: {} } });
-    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  it("rejects the removed uiActions map (legacy UI-only shape gone)", () => {
+    const { valid } = check({ ...BASE, tools: [], uiActions: { t_ping: {} } });
+    expect(valid).toBe(false);
   });
 
   // ── rejects ────────────────────────────────────────────────────────────
