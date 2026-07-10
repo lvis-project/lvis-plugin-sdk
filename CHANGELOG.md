@@ -7,6 +7,32 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+### Removed (BREAKING — next release is semver-major)
+- The entire SDK UI surface. Deleted `src/ui/**` (components, hooks, tokens,
+  `inject`/`primeTheme`, `useTheme`, `useFocusTrap`, the CSS-namespace/token
+  validators) and every export that exposed it: the `./ui`, `./ui/tokens`,
+  `./ui/tokens/*`, `./ui/hooks/*`, and `./ui/components/*` subpaths, the
+  `check:plugin-css` script + `scripts/check-plugin-css.mjs`, Storybook
+  (`.storybook/`, `stories/`, the Deploy Storybook workflow), and the
+  `react` / `react-dom` / `focus-trap` / `lucide-react` dependencies. Plugins
+  now own their UI freely; the design **philosophy** (responsive width tiers,
+  448px panel floor) lives in the host's
+  [DESIGN.md](https://github.com/lvis-project/lvis-app/blob/main/DESIGN.md),
+  documented rather than enforced.
+- Dropped the theme-bundles + plugin-ui-tokens sync from
+  `scripts/sync-from-host.mjs`; `sync:from-host` / `check:drift` now regenerate
+  only the type surface (`src/index.ts`). Obsoletes issue #211 (theme-bundles
+  drift) by removal.
+
+Migration: plugins consuming `@lvis/plugin-sdk/ui*` (e.g. `primeTheme`, the
+component barrel) must vendor those helpers or bring their own UI before
+bumping past this release. Type-only and `runtime/*` / `build` consumers are
+unaffected.
+
+---
+
 ## v5.22.0 — 2026-07-08
 
 ### Added
