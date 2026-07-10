@@ -201,166 +201,16 @@ describe("PluginManifest — schema validation", () => {
     });
   });
 
-  it("treats toolSchemas[*].category as optional and deprecated (host classifies risk)", () => {
-    // A category-bearing toolSchema still validates (backward compatibility).
-    const withCategory = {
-      ...VALID_MINIMAL,
-      tools: ["my_plugin_ping"],
-      toolSchemas: {
-        my_plugin_ping: {
-          description: "Ping the plugin and return a status object.",
-          category: "read",
-          inputSchema: { type: "object", properties: {} },
-        },
-      },
-    };
-    const validWithCategory = validateManifest(withCategory);
-    expect(validWithCategory.valid, `Errors: ${validWithCategory.errors.join(", ")}`).toBe(true);
-
-    // A category-less toolSchema now validates — the host derives the
-    // permission risk itself, so plugins no longer grade their own tools.
-    const withoutCategory = {
-      ...withCategory,
-      toolSchemas: {
-        my_plugin_ping: {
-          description: "Ping the plugin and return a status object.",
-          inputSchema: { type: "object", properties: {} },
-        },
-      },
-    };
-    const validWithoutCategory = validateManifest(withoutCategory);
-    expect(validWithoutCategory.valid, `Errors: ${validWithoutCategory.errors.join(", ")}`).toBe(
-      true,
-    );
-
-    // When a plugin still declares a category, an out-of-enum value is
-    // rejected. `meta` is host-only and not part of the plugin-facing enum.
-    const hostOnlyMeta = {
-      ...withCategory,
-      toolSchemas: {
-        my_plugin_ping: {
-          ...withCategory.toolSchemas!.my_plugin_ping,
-          category: "meta",
-        },
-      },
-    };
-    expect(validateManifest(hostOnlyMeta).valid).toBe(false);
-
-    const bogusCategory = {
-      ...withCategory,
-      toolSchemas: {
-        my_plugin_ping: {
-          ...withCategory.toolSchemas!.my_plugin_ping,
-          category: "danger",
-        },
-      },
-    };
-    expect(validateManifest(bogusCategory).valid).toBe(false);
-  });
-
-  it("accepts toolSchemas[*].workerId while keeping unknown tool schema fields rejected", () => {
-    const workerBacked = {
-      ...VALID_MINIMAL,
-      tools: ["my_plugin_ping"],
-      toolSchemas: {
-        my_plugin_ping: {
-          description: "Worker-backed ping tool.",
-          workerId: "main-worker",
-          inputSchema: { type: "object", properties: {} },
-        },
-      },
-    };
-    const validWorkerBacked = validateManifest(workerBacked);
-    expect(validWorkerBacked.valid, `Errors: ${validWorkerBacked.errors.join(", ")}`).toBe(true);
-
-    const unknownToolSchemaField = {
-      ...VALID_MINIMAL,
-      toolSchemas: {
-        my_plugin_ping: {
-          description: "Worker-backed ping tool.",
-          workerId: "main-worker",
-          unsupportedField: true,
-          inputSchema: { type: "object", properties: {} },
-        },
-      },
-    };
-    expect(validateManifest(unknownToolSchemaField).valid).toBe(false);
-  });
-
-  // Issue #664 P1 / PR #860 — sandbox-write self-attestation flag contract.
-  describe("toolSchemas[*].writesToOwnSandbox — type contract", () => {
-    const SANDBOX_BASE = {
-      ...VALID_MINIMAL,
-      tools: ["my_plugin_ping"],
-      toolSchemas: {
-        my_plugin_ping: {
-          description: "Ping the plugin and return a status object.",
-          category: "write",
-          inputSchema: { type: "object", properties: {} },
-        },
-      },
-    };
-
-    it("accepts writesToOwnSandbox: true (sandbox-local cache opt-in)", () => {
-      const m = {
-        ...SANDBOX_BASE,
-        toolSchemas: {
-          my_plugin_ping: {
-            ...SANDBOX_BASE.toolSchemas!.my_plugin_ping,
-            writesToOwnSandbox: true,
-          },
-        },
-      };
-      const { valid, errors } = validateManifest(m);
-      expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
-    });
-
-    it("accepts writesToOwnSandbox: false (explicit opt-out)", () => {
-      const m = {
-        ...SANDBOX_BASE,
-        toolSchemas: {
-          my_plugin_ping: {
-            ...SANDBOX_BASE.toolSchemas!.my_plugin_ping,
-            writesToOwnSandbox: false,
-          },
-        },
-      };
-      const { valid, errors } = validateManifest(m);
-      expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
-    });
-
-    it("rejects writesToOwnSandbox: \"true\" (string — type contract)", () => {
-      const m = {
-        ...SANDBOX_BASE,
-        toolSchemas: {
-          my_plugin_ping: {
-            ...SANDBOX_BASE.toolSchemas!.my_plugin_ping,
-            writesToOwnSandbox: "true",
-          },
-        },
-      };
-      const { valid, errors } = validateManifest(m);
-      expect(valid).toBe(false);
-      expect(errors.some((e) => e.includes("/writesToOwnSandbox"))).toBe(true);
-      expect(errors.some((e) => /must be boolean/.test(e))).toBe(true);
-    });
-
-    it("accepts manifest without writesToOwnSandbox (optional field)", () => {
-      const { valid, errors } = validateManifest(SANDBOX_BASE);
-      expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
-    });
-  });
-
   it("rejects manifest missing required field: id", () => {
     const { id: _, ...noId } = VALID_MINIMAL;
     const { valid } = validateManifest(noId);
     expect(valid).toBe(false);
   });
 
-  it("rejects manifest missing required field: name", () => {
+  it("accepts manifest missing optional field: name (AB2 — name no longer required)", () => {
     const { name: _, ...noName } = VALID_MINIMAL;
-    const { valid } = validateManifest(noName);
-    expect(valid).toBe(false);
+    const { valid, errors } = validateManifest(noName);
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
   it("rejects manifest missing required field: version", () => {
@@ -412,19 +262,25 @@ describe("PluginManifest — schema validation", () => {
     expect(valid).toBe(false);
   });
 
+  const toolNamed = (name: string) => ({
+    name,
+    description: "Tool used to exercise the name pattern.",
+    inputSchema: { type: "object", properties: {} },
+  });
+
   it("rejects tool names with dots (underscore format required)", () => {
     const { valid, errors } = validateManifest({
       ...VALID_MINIMAL,
-      tools: ["my.plugin.ping"],
+      tools: [toolNamed("my.plugin.ping")],
     });
     expect(valid).toBe(false);
-    expect(errors.some((e) => e.includes("tools") || e.includes("pattern"))).toBe(true);
+    expect(errors.some((e) => e.includes("name") || e.includes("pattern"))).toBe(true);
   });
 
   it("rejects tool names with hyphens", () => {
     const { valid } = validateManifest({
       ...VALID_MINIMAL,
-      tools: ["my-plugin-ping"],
+      tools: [toolNamed("my-plugin-ping")],
     });
     expect(valid).toBe(false);
   });
@@ -432,7 +288,7 @@ describe("PluginManifest — schema validation", () => {
   it("accepts tool names with underscores and numbers", () => {
     const { valid, errors } = validateManifest({
       ...VALID_MINIMAL,
-      tools: ["my_plugin_v2_ping", "another_tool123"],
+      tools: [toolNamed("my_plugin_v2_ping"), toolNamed("another_tool123")],
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
@@ -1125,63 +981,55 @@ describe("PluginHostApi — interface contract (structural)", () => {
 
 });
 
-// ─── auth cross-field invariant (H6) ───────────────────────────────────────
-describe("PluginManifest — auth ⇒ uiActions invariant (H6)", () => {
-  // Architect post-merge follow-up: cross-field invariant
-  // `auth.statusTool ∈ uiActions` was prose-only. The SDK-side schema
-  // now lifts the structural half of the invariant via `allOf` so AJV
-  // catches the most common manifest mistake (declaring `auth` without
-  // any `uiActions` allowlist). The full value-level check stays in
-  // the host's manifest-validation.ts.
-  it("rejects manifest with auth but no uiActions", () => {
-    const { valid } = validateManifest({
-      id: "auth-no-ui",
-      name: "Auth no UI",
-      version: "1.0.0",
-      entry: "dist/index.js",
-      tools: ["regular_tool"],
-      description: "Auth contract without uiActions allowlist.",
-      auth: { statusTool: "status_tool", loginTool: "login_tool" },
-    });
-    expect(valid).toBe(false);
+// ─── auth no longer coupled to uiActions (v6 collapse — AB4/R) ──────────────
+describe("PluginManifest — auth decoupled from uiActions (guard removed)", () => {
+  // The legacy `auth ⇒ uiActions` structural guard (and the `uiActions`
+  // map itself) were removed in the v6 pure-Tool collapse. Auth tool names
+  // now reference app-visible entries in `tools[]` (`_meta.ui.visibility`
+  // includes "app"); the host value-validates that against the normalized
+  // Tool[]. AJV only enforces that the three names are well-formed strings.
+  const appTool = (name: string) => ({
+    name,
+    description: `App-visible auth tool ${name}.`,
+    inputSchema: { type: "object", properties: {} },
+    _meta: { ui: { visibility: ["app"] } },
   });
 
-  it("rejects manifest with auth and empty uiActions", () => {
-    const { valid } = validateManifest({
-      id: "auth-empty-ui",
-      name: "Auth empty UI",
-      version: "1.0.0",
-      entry: "dist/index.js",
-      tools: ["regular_tool"],
-      description: "Auth contract with empty uiActions allowlist.",
-      uiActions: {},
-      auth: { statusTool: "status_tool", loginTool: "login_tool" },
-    });
-    expect(valid).toBe(false);
-  });
-
-  it("accepts manifest with auth and a non-empty uiActions allowlist", () => {
+  it("accepts a pure manifest with auth and no uiActions (guard removed)", () => {
     const { valid, errors } = validateManifest({
-      id: "auth-ok",
-      name: "Auth OK",
+      id: "auth-pure",
+      name: "Auth Pure",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["regular_tool"],
-      description: "Auth contract with uiActions.",
-      uiActions: { status_tool: {}, login_tool: {} },
+      tools: [appTool("status_tool"), appTool("login_tool")],
+      description: "Auth contract on a pure Tool[] manifest.",
       auth: { statusTool: "status_tool", loginTool: "login_tool" },
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
-  it("accepts manifest without auth regardless of uiActions", () => {
+  it("rejects a manifest that still carries the removed uiActions map", () => {
+    const { valid } = validateManifest({
+      id: "auth-legacy-ui",
+      name: "Auth Legacy UI",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [appTool("status_tool"), appTool("login_tool")],
+      description: "uiActions is now an unknown top-level key.",
+      uiActions: { status_tool: {}, login_tool: {} },
+      auth: { statusTool: "status_tool", loginTool: "login_tool" },
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("accepts a pure manifest without auth", () => {
     const { valid, errors } = validateManifest({
       id: "no-auth",
       name: "No Auth",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["ping"],
-      description: "No auth contract — uiActions not required.",
+      tools: [appTool("ping")],
+      description: "No auth contract declared.",
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
@@ -1198,9 +1046,21 @@ describe("PluginManifest — auth.partitionDomains schema", () => {
       name: "Partition Test",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["regular_tool"],
+      tools: [
+        {
+          name: "status_tool",
+          description: "App-visible status tool.",
+          inputSchema: { type: "object", properties: {} },
+          _meta: { ui: { visibility: ["app"] } },
+        },
+        {
+          name: "login_tool",
+          description: "App-visible login tool.",
+          inputSchema: { type: "object", properties: {} },
+          _meta: { ui: { visibility: ["app"] } },
+        },
+      ],
       description: "Partition allow-list test.",
-      uiActions: { status_tool: {}, login_tool: {} },
       auth: {
         statusTool: "status_tool",
         loginTool: "login_tool",
@@ -1291,16 +1151,7 @@ describe("PluginManifest — auth.partitionDomains schema", () => {
   });
 
   it("does not require partitionDomains on auth — plugins that never open a viewer can omit it", () => {
-    const { valid, errors } = validateManifest({
-      id: "no-viewer",
-      name: "No Viewer",
-      version: "1.0.0",
-      entry: "dist/index.js",
-      tools: ["regular_tool"],
-      description: "Auth contract without partitionDomains.",
-      uiActions: { status_tool: {}, login_tool: {} },
-      auth: { statusTool: "status_tool", loginTool: "login_tool" },
-    });
+    const { valid, errors } = validateManifest(withDomains(undefined));
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
@@ -1761,7 +1612,11 @@ describe("PluginManifest — edge cases", () => {
       name: "Multi",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["tool_one", "tool_two", "tool_three"],
+      tools: [
+        { name: "tool_one", description: "First tool.", inputSchema: { type: "object", properties: {} } },
+        { name: "tool_two", description: "Second tool.", inputSchema: { type: "object", properties: {} } },
+        { name: "tool_three", description: "Third tool.", inputSchema: { type: "object", properties: {} } },
+      ],
       description: "Test fixture.",
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
