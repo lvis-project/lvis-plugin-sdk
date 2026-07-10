@@ -46,9 +46,33 @@ import type {
   ConversationTriggerResult,
   MissingDependenciesError as MissingDepsErrorType,
   PluginLifecycleEvent,
+  PluginMarketplaceItem,
 } from "../index.js";
 
 import { MissingDependenciesError } from "../index.js";
+
+describe("PluginMarketplaceItem — host catalog compatibility", () => {
+  it("retains host catalog fields that are independent of the pure manifest wire contract", () => {
+    const item: PluginMarketplaceItem = {
+      id: "marketplace-fixture",
+      name: "Marketplace Fixture",
+      description: "A fixture that locks the marketplace type surface.",
+      packageSpec: "@lvis/marketplace-fixture",
+      packageName: "@lvis/marketplace-fixture",
+      tools: ["fixture_ping"],
+      defaultConfig: { enabled: true },
+      ui: [],
+      keywords: [{ keyword: "fixture", skillId: "fixture-skill" }],
+      uiActions: { fixture_status: {} },
+      emittedEvents: ["fixture.ready"],
+      notificationEvents: [{ event: "fixture.ready", titleField: "title" }],
+      toolSchemas: {},
+    };
+
+    expect(item.tools).toEqual(["fixture_ping"]);
+    expect(item.defaultConfig).toEqual({ enabled: true });
+  });
+});
 
 // ─── PluginManifest schema validation ─────────────────────────────────────────
 describe("PluginManifest — schema validation", () => {
@@ -57,7 +81,13 @@ describe("PluginManifest — schema validation", () => {
     name: "My Plugin",
     version: "1.0.0",
     entry: "dist/index.js",
-    tools: ["my_plugin_ping"],
+    tools: [
+      {
+        name: "my_plugin_ping",
+        description: "Return the plugin health status.",
+        inputSchema: { type: "object", properties: {} },
+      },
+    ],
     description: "One-line summary of what this plugin does.",
   };
 
@@ -74,7 +104,6 @@ describe("PluginManifest — schema validation", () => {
       capabilities: ["calendar-source", "mail-source"],
       eventSubscriptions: ["meeting:started", "meeting:ended"],
       emittedEvents: ["plugin:event:fired"],
-      uiActions: { my_plugin_ping: {} },
       keywords: [{ keyword: "example", skillId: "example-skill" }],
       publisher: "Example Corp",
       startupTimeoutMs: 5000,
@@ -88,13 +117,6 @@ describe("PluginManifest — schema validation", () => {
         allowedDomains: ["intranet.example.com"],
         allowPrivateNetworks: true,
         reasoning: "On-prem API access.",
-      },
-      toolSchemas: {
-        my_plugin_ping: {
-          description: "Worker-backed ping tool.",
-          workerId: "main-worker",
-          inputSchema: { type: "object", properties: {} },
-        },
       },
     };
     const { valid, errors } = validateManifest(full);
@@ -181,8 +203,9 @@ describe("PluginManifest — schema validation", () => {
 
   it("treats toolSchemas[*].category as optional and deprecated (host classifies risk)", () => {
     // A category-bearing toolSchema still validates (backward compatibility).
-    const withCategory: PluginManifest = {
+    const withCategory = {
       ...VALID_MINIMAL,
+      tools: ["my_plugin_ping"],
       toolSchemas: {
         my_plugin_ping: {
           description: "Ping the plugin and return a status object.",
@@ -197,7 +220,7 @@ describe("PluginManifest — schema validation", () => {
     // A category-less toolSchema now validates — the host derives the
     // permission risk itself, so plugins no longer grade their own tools.
     const withoutCategory = {
-      ...VALID_MINIMAL,
+      ...withCategory,
       toolSchemas: {
         my_plugin_ping: {
           description: "Ping the plugin and return a status object.",
@@ -236,8 +259,9 @@ describe("PluginManifest — schema validation", () => {
   });
 
   it("accepts toolSchemas[*].workerId while keeping unknown tool schema fields rejected", () => {
-    const workerBacked: PluginManifest = {
+    const workerBacked = {
       ...VALID_MINIMAL,
+      tools: ["my_plugin_ping"],
       toolSchemas: {
         my_plugin_ping: {
           description: "Worker-backed ping tool.",
@@ -265,8 +289,9 @@ describe("PluginManifest — schema validation", () => {
 
   // Issue #664 P1 / PR #860 — sandbox-write self-attestation flag contract.
   describe("toolSchemas[*].writesToOwnSandbox — type contract", () => {
-    const SANDBOX_BASE: PluginManifest = {
+    const SANDBOX_BASE = {
       ...VALID_MINIMAL,
+      tools: ["my_plugin_ping"],
       toolSchemas: {
         my_plugin_ping: {
           description: "Ping the plugin and return a status object.",
@@ -487,7 +512,13 @@ describe("PluginManifest — window has no defaultMode (host-decided placement)"
     name: "Detach Plugin",
     version: "1.0.0",
     entry: "dist/index.js",
-    tools: ["detach_ping"],
+    tools: [
+      {
+        name: "detach_ping",
+        description: "Check detached window support.",
+        inputSchema: { type: "object", properties: {} },
+      },
+    ],
     description: "Test fixture.",
     ui: [
       {
@@ -565,7 +596,13 @@ describe("PluginManifest — configSchema field (post-#76)", () => {
       name: "Config Plugin",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["config_ping"],
+      tools: [
+        {
+          name: "config_ping",
+          description: "Check configuration support.",
+          inputSchema: { type: "object", properties: {} },
+        },
+      ],
       description: "Test fixture.",
       configSchema: schema,
     };
@@ -1469,22 +1506,22 @@ describe("PluginManifest.emittedEvents JSDoc — no eventPublishes alias text (H
   });
 });
 
-// ─── tool description JSDoc — LLM-facing, not catalogue (M10) ─────────────
-describe("toolSchemas[].description JSDoc — LLM-facing (M10)", () => {
-  it("source surface describes inner tool description as LLM-facing with min length 10", async () => {
+// ─── MCP Tool surface replaces legacy tool maps (v6) ───────────────────────
+describe("Tool surface — v6 MCP contract", () => {
+  it("exports the MCP Tool description and confines legacy maps to RawPluginManifest", async () => {
     const { readFileSync } = await import("node:fs");
     const { fileURLToPath } = await import("node:url");
     const here = dirname(fileURLToPath(import.meta.url));
     const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
-    // Locate the toolSchemas Record block and its inner description JSDoc.
-    const block = indexSrc.match(
-      /toolSchemas\?:\s*Record<\s*\n\s*string,\s*\n\s*\{[\s\S]*?\}\s*\n\s*>/,
-    );
-    expect(block, "toolSchemas block not found").not.toBeNull();
-    expect(block![0]).toMatch(/LLM-facing/);
-    expect(block![0]).toMatch(/Minimum 10/);
-    // The wrong text from the parent PluginManifest catalogue must NOT leak.
-    expect(block![0]).not.toMatch(/plugin catalogues and tool pickers/);
+    const toolBlock = indexSrc.match(/export interface Tool \{[\s\S]*?\n\}/);
+    expect(toolBlock, "MCP Tool interface not found").not.toBeNull();
+    expect(toolBlock![0]).toMatch(/description\?: string;/);
+    expect(toolBlock![0]).toMatch(/inputSchema:/);
+    const manifestBlock = indexSrc.match(/export interface PluginManifest \{[\s\S]*?\n\}/);
+    expect(manifestBlock, "pure PluginManifest interface not found").not.toBeNull();
+    expect(manifestBlock![0]).not.toMatch(/\n\s*toolSchemas\?:/);
+    expect(manifestBlock![0]).not.toMatch(/\n\s*uiActions\?:/);
+    expect(indexSrc).toMatch(/export type RawPluginManifest[\s\S]*?toolSchemas\?:/);
   });
 });
 
@@ -1598,7 +1635,13 @@ describe("PluginManifest — hostSecrets field (#893)", () => {
       name: "Secrets Plugin",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["secrets_ping"],
+      tools: [
+        {
+          name: "secrets_ping",
+          description: "Check host secret access.",
+          inputSchema: { type: "object", properties: {} },
+        },
+      ],
       description: "Plugin that reads LLM provider keys.",
       hostSecrets: { read: ["llm.apiKey.openai"] },
     };
