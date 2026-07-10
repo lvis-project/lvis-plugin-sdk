@@ -7,7 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## v7.0.0 — 2026-07-10
 
 ### Removed (BREAKING — next release is semver-major)
 - The entire SDK UI surface. Deleted `src/ui/**` (components, hooks, tokens,
