@@ -597,31 +597,16 @@ export interface PluginMarketplaceItem {
   /** Canonical package name (for example the npm package name) used to identify updates. */
   packageName: string;
 
-  /** Tools the plugin will expose — mirrors `PluginManifest.tools` for preview purposes. */
-  tools: string[];
-
       /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */
   version?: string;
 
   artifactSha256?: string;
 
   channel?: "stable";
-  /** Default configuration seeded into the plugin on first install. Users may override this. @optional */
-  defaultConfig?: Record<string, unknown>;
-  /** UI extensions the plugin will contribute once installed. @optional */
-  ui?: PluginUiExtension[];
+
   capabilities?: string[];
-  keywords?: Array<{ keyword: string; skillId: string }>;
   auth?: PluginAuthSpec;
   networkAccess?: PluginManifest["networkAccess"];
-  emittedEvents?: string[];
-
-  notificationEvents?: Array<{
-    event: string;
-    titleField?: string;
-    bodyField?: string;
-    bypassFocusGate?: boolean;
-  }>;
   installPolicy?: InstallPolicy;
   dependencies?: Array<string | DependencySpec>;
   pluginAccess?: PluginAccessSpec;

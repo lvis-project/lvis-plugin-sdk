@@ -57,7 +57,13 @@ describe("PluginManifest — schema validation", () => {
     name: "My Plugin",
     version: "1.0.0",
     entry: "dist/index.js",
-    tools: ["my_plugin_ping"],
+    tools: [
+      {
+        name: "my_plugin_ping",
+        description: "Return the plugin health status.",
+        inputSchema: { type: "object", properties: {} },
+      },
+    ],
     description: "One-line summary of what this plugin does.",
   };
 
@@ -74,7 +80,6 @@ describe("PluginManifest — schema validation", () => {
       capabilities: ["calendar-source", "mail-source"],
       eventSubscriptions: ["meeting:started", "meeting:ended"],
       emittedEvents: ["plugin:event:fired"],
-      uiActions: { my_plugin_ping: {} },
       keywords: [{ keyword: "example", skillId: "example-skill" }],
       publisher: "Example Corp",
       startupTimeoutMs: 5000,
@@ -88,13 +93,6 @@ describe("PluginManifest — schema validation", () => {
         allowedDomains: ["intranet.example.com"],
         allowPrivateNetworks: true,
         reasoning: "On-prem API access.",
-      },
-      toolSchemas: {
-        my_plugin_ping: {
-          description: "Worker-backed ping tool.",
-          workerId: "main-worker",
-          inputSchema: { type: "object", properties: {} },
-        },
       },
     };
     const { valid, errors } = validateManifest(full);
@@ -181,8 +179,9 @@ describe("PluginManifest — schema validation", () => {
 
   it("treats toolSchemas[*].category as optional and deprecated (host classifies risk)", () => {
     // A category-bearing toolSchema still validates (backward compatibility).
-    const withCategory: PluginManifest = {
+    const withCategory = {
       ...VALID_MINIMAL,
+      tools: ["my_plugin_ping"],
       toolSchemas: {
         my_plugin_ping: {
           description: "Ping the plugin and return a status object.",
@@ -197,7 +196,7 @@ describe("PluginManifest — schema validation", () => {
     // A category-less toolSchema now validates — the host derives the
     // permission risk itself, so plugins no longer grade their own tools.
     const withoutCategory = {
-      ...VALID_MINIMAL,
+      ...withCategory,
       toolSchemas: {
         my_plugin_ping: {
           description: "Ping the plugin and return a status object.",
@@ -236,8 +235,9 @@ describe("PluginManifest — schema validation", () => {
   });
 
   it("accepts toolSchemas[*].workerId while keeping unknown tool schema fields rejected", () => {
-    const workerBacked: PluginManifest = {
+    const workerBacked = {
       ...VALID_MINIMAL,
+      tools: ["my_plugin_ping"],
       toolSchemas: {
         my_plugin_ping: {
           description: "Worker-backed ping tool.",
@@ -265,8 +265,9 @@ describe("PluginManifest — schema validation", () => {
 
   // Issue #664 P1 / PR #860 — sandbox-write self-attestation flag contract.
   describe("toolSchemas[*].writesToOwnSandbox — type contract", () => {
-    const SANDBOX_BASE: PluginManifest = {
+    const SANDBOX_BASE = {
       ...VALID_MINIMAL,
+      tools: ["my_plugin_ping"],
       toolSchemas: {
         my_plugin_ping: {
           description: "Ping the plugin and return a status object.",
@@ -487,7 +488,13 @@ describe("PluginManifest — window has no defaultMode (host-decided placement)"
     name: "Detach Plugin",
     version: "1.0.0",
     entry: "dist/index.js",
-    tools: ["detach_ping"],
+    tools: [
+      {
+        name: "detach_ping",
+        description: "Check detached window support.",
+        inputSchema: { type: "object", properties: {} },
+      },
+    ],
     description: "Test fixture.",
     ui: [
       {
@@ -565,7 +572,13 @@ describe("PluginManifest — configSchema field (post-#76)", () => {
       name: "Config Plugin",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["config_ping"],
+      tools: [
+        {
+          name: "config_ping",
+          description: "Check configuration support.",
+          inputSchema: { type: "object", properties: {} },
+        },
+      ],
       description: "Test fixture.",
       configSchema: schema,
     };
@@ -1595,7 +1608,13 @@ describe("PluginManifest — hostSecrets field (#893)", () => {
       name: "Secrets Plugin",
       version: "1.0.0",
       entry: "dist/index.js",
-      tools: ["secrets_ping"],
+      tools: [
+        {
+          name: "secrets_ping",
+          description: "Check host secret access.",
+          inputSchema: { type: "object", properties: {} },
+        },
+      ],
       description: "Plugin that reads LLM provider keys.",
       hostSecrets: { read: ["llm.apiKey.openai"] },
     };
