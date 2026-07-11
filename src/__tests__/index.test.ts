@@ -656,7 +656,20 @@ describe("PluginManifest — capability / event declarations", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
-  it("schema rejects unknown capability value", () => {
+  it("schema accepts free-form capability strings (host #1595 relaxed the closed enum)", () => {
+    const { valid, errors } = validateManifest({
+      id: "freeform-cap-plugin",
+      name: "Freeform Cap",
+      version: "1.0.0",
+      entry: "dist/index.js",
+      tools: [],
+      description: "Test fixture.",
+      capabilities: ["not-a-real-capability"],
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("schema rejects malformed capability strings (format hygiene: pattern ^[a-z][a-z0-9:-]*$)", () => {
     const { valid } = validateManifest({
       id: "bad-cap-plugin",
       name: "Bad Cap",
@@ -664,7 +677,7 @@ describe("PluginManifest — capability / event declarations", () => {
       entry: "dist/index.js",
       tools: [],
       description: "Test fixture.",
-      capabilities: ["not-a-real-capability"],
+      capabilities: ["Not_A_Real_Capability"],
     });
     expect(valid).toBe(false);
   });
@@ -863,6 +876,8 @@ describe("PluginHostApi — interface contract (structural)", () => {
         list: async () => [],
         exists: async (_) => false,
         mkdir: async () => {},
+        writeEncrypted: async () => {},
+        readEncrypted: async () => "",
       },
       config: {
         get: (_key) => undefined,
@@ -879,6 +894,8 @@ describe("PluginHostApi — interface contract (structural)", () => {
       callLlm: async (_prompt, _opts) => "",
       logEvent: (_level, _msg, _data) => {},
       onShutdown: (_handler) => {},
+      openExternalUrl: async (_url: string) => {},
+      probePrivateHost: async (_host: string, _opts?: { timeoutMs?: number }) => false,
       // Discriminate on `returnFinalUrl` so each overload branch returns its
       // declared shape — TS catches future signature drift instead of letting
       // a `as unknown as` cast hide it.
