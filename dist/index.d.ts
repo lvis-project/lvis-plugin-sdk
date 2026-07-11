@@ -466,6 +466,11 @@ export interface PluginMarketplaceItem {
     /** Legacy tool-schema metadata retained for catalog compatibility. @optional */
     toolSchemas?: RawPluginManifest["toolSchemas"];
 }
+export declare class PluginStorageEncryptionUnavailableError extends Error {
+    readonly code = "encryption-unavailable";
+    readonly pluginId: string;
+    constructor(pluginId: string);
+}
 export type StorageEncoding = "utf-8" | "utf8" | "ascii" | "base64" | "base64url" | "hex" | "latin1" | "binary";
 export interface PluginStorage {
     resolve(...segments: string[]): string;
@@ -480,6 +485,8 @@ export interface PluginStorage {
     list(relPath?: string): Promise<string[]>;
     exists(relPath: string): Promise<boolean>;
     mkdir(relPath: string): Promise<void>;
+    writeEncrypted(relPath: string, plaintext: string): Promise<void>;
+    readEncrypted(relPath: string): Promise<string>;
 }
 export type PluginLifecycleEvent = {
     type: "installed";
@@ -695,7 +702,10 @@ export interface PluginHostApi {
      *
      * @optional
      */
-    openExternalUrl?(url: string): Promise<void>;
+    openExternalUrl(url: string): Promise<void>;
+    probePrivateHost(host: string, opts?: {
+        timeoutMs?: number;
+    }): Promise<boolean>;
     getAppPreference?<T = unknown>(key: string): T | undefined;
     /**
      * Request host overlay staging for a plugin-authored suggestion.
