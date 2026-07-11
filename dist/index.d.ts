@@ -113,13 +113,6 @@ export interface EventSubscription {
     /** Optional structured hint shown by the host alongside the subscription. @optional */
     hint?: EventSubscriptionHint;
 }
-export interface McpToolUiMeta {
-    visibility?: Array<"model" | "app">;
-}
-export interface McpToolMeta {
-    ui?: McpToolUiMeta;
-    "xyz.lvis/pathFields"?: string[];
-}
 export interface Tool {
     name: string;
     title?: string;
@@ -143,7 +136,12 @@ export interface Tool {
         mimeType?: string;
         sizes?: string;
     }>;
-    _meta?: McpToolMeta;
+    _meta?: {
+        ui?: {
+            visibility?: Array<"model" | "app">;
+        };
+        "xyz.lvis/pathFields"?: string[];
+    };
 }
 /**
  * Declarative metadata for a plugin. Describes the tools, capabilities, UI

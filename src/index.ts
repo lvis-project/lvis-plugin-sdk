@@ -169,21 +169,10 @@ export interface EventSubscription {
  * legacy triple — a `string[]` tool list plus separate `toolSchemas` and per-tool
  * app-action maps — entirely:
  * `PluginManifest.tools` is now `Tool[]` and every host consumer reads surface
- * visibility off each tool's `_meta.ui.visibility` (materialized once by
- * `normalizeManifest`). The SDK public surface (`@lvis/plugin-sdk`) mirrors these
- * via `sync-from-host`.
+ * visibility off each tool's `_meta.ui.visibility` (materialized once at manifest
+ * load by `parsePluginJson`). The SDK public surface (`@lvis/plugin-sdk`) mirrors
+ * these via `sync-from-host`.
  * ==========================================================================*/
-
-export interface McpToolUiMeta {
-  visibility?: Array<"model" | "app">;
-}
-
-export interface McpToolMeta {
-
-  ui?: McpToolUiMeta;
-
-  "xyz.lvis/pathFields"?: string[];
-}
 
 export interface Tool {
 
@@ -211,7 +200,12 @@ export interface Tool {
 
   icons?: Array<{ src: string; mimeType?: string; sizes?: string }>;
 
-  _meta?: McpToolMeta;
+  _meta?: {
+
+    ui?: { visibility?: Array<"model" | "app"> };
+
+    "xyz.lvis/pathFields"?: string[];
+  };
 }
 
 /**
@@ -1177,7 +1171,7 @@ export const normalizeManifest = (
   const allNames = [...names, ...uiNames.filter((name) => !names.includes(name))];
   const tools = allNames.map((name): Tool => {
     const schema = schemas[name];
-    const meta: McpToolMeta = {
+    const meta: NonNullable<Tool["_meta"]> = {
       ui: { visibility: deriveVisibility(names.includes(name), uiNames.includes(name)) },
     };
     if (schema?.pathFields && schema.pathFields.length > 0) {

@@ -307,7 +307,7 @@ export const normalizeManifest = (
   const allNames = [...names, ...uiNames.filter((name) => !names.includes(name))];
   const tools = allNames.map((name): Tool => {
     const schema = schemas[name];
-    const meta: McpToolMeta = {
+    const meta: NonNullable<Tool["_meta"]> = {
       ui: { visibility: deriveVisibility(names.includes(name), uiNames.includes(name)) },
     };
     if (schema?.pathFields && schema.pathFields.length > 0) {
