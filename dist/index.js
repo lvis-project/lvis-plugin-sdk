@@ -46,6 +46,17 @@ var MissingPluginDependenciesError = class extends Error {
     this.name = "MissingPluginDependenciesError";
   }
 };
+var PluginStorageEncryptionUnavailableError = class extends Error {
+  code = "encryption-unavailable";
+  pluginId;
+  constructor(pluginId) {
+    super(
+      `[plugin-storage:${pluginId}] OS encryption is unavailable \u2014 encrypted storage cannot be used (no plaintext fallback)`
+    );
+    this.name = "PluginStorageEncryptionUnavailableError";
+    this.pluginId = pluginId;
+  }
+};
 var normalizeManifest = (raw, report) => {
   const DUAL = ["model", "app"];
   const stripLegacyMaps = (manifest) => {
@@ -118,6 +129,7 @@ export {
   IncompatibleAppVersionError,
   MissingDependenciesError,
   MissingPluginDependenciesError,
+  PluginStorageEncryptionUnavailableError,
   compileManifestValidator,
   normalizeManifest
 };

@@ -611,6 +611,18 @@ export interface PluginMarketplaceItem {
   toolSchemas?: RawPluginManifest["toolSchemas"];
 }
 
+export class PluginStorageEncryptionUnavailableError extends Error {
+  readonly code = "encryption-unavailable";
+  readonly pluginId: string;
+  constructor(pluginId: string) {
+    super(
+      `[plugin-storage:${pluginId}] OS encryption is unavailable — encrypted storage cannot be used (no plaintext fallback)`,
+    );
+    this.name = "PluginStorageEncryptionUnavailableError";
+    this.pluginId = pluginId;
+  }
+}
+
 export type StorageEncoding =
   | "utf-8"
   | "utf8"
@@ -642,6 +654,10 @@ export interface PluginStorage {
   exists(relPath: string): Promise<boolean>;
 
   mkdir(relPath: string): Promise<void>;
+
+  writeEncrypted(relPath: string, plaintext: string): Promise<void>;
+
+  readEncrypted(relPath: string): Promise<string>;
 }
 
 export type PluginLifecycleEvent =
@@ -881,7 +897,9 @@ export interface PluginHostApi {
    *
    * @optional
    */
-  openExternalUrl?(url: string): Promise<void>;
+  openExternalUrl(url: string): Promise<void>;
+
+  probePrivateHost(host: string, opts?: { timeoutMs?: number }): Promise<boolean>;
 
   getAppPreference?<T = unknown>(key: string): T | undefined;
 

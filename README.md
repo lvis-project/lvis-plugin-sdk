@@ -2,8 +2,7 @@
 
 Source SDK for LVIS plugin authors. Provides the complete plugin contract
 surface — `PluginManifest`, `PluginHostApi`, `PluginRuntimeContext`,
-`RuntimePlugin` — plus thin runtime utilities (the `tsup` build helper and
-host-context shims for `safeStorage` / `shell.openExternal`). It does **not**
+`RuntimePlugin` — plus a thin `tsup` build helper. It does **not**
 ship UI components, design tokens, or theme helpers: plugins own their UI
 freely (see [Plugin UI](#plugin-ui)). Marketplace trust keys are also
 intentionally excluded.
@@ -45,8 +44,6 @@ No submodule is required.
 |---|---|
 | `@lvis/plugin-sdk` | All type contracts (`PluginManifest`, `PluginHostApi`, `PluginRuntimeContext`, `RuntimePlugin`, …) |
 | `@lvis/plugin-sdk/build` | `defineLvisPluginConfig` — tsup build helper enforcing the self-contained plugin bundle contract |
-| `@lvis/plugin-sdk/runtime/electron` | Host-context shims (`getSafeStorage` / `getShell`) |
-| `@lvis/plugin-sdk/runtime/network` | Private-network egress guard helpers |
 | `@lvis/plugin-sdk/schemas/plugin-manifest.schema.json` | Manifest JSON Schema (byte-equal copy of the host schema) |
 
 ## Plugin anatomy

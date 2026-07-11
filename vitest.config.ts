@@ -5,13 +5,9 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/__tests__/**/*.{test,spec}.{ts,tsx}", "__tests__/**/*.{test,spec}.{ts,tsx}"],
     testTimeout: 10000,
-    // Pin per-file isolation. `src/runtime/electron.ts` carries module-
-    // level test-seam state (`_testSafeStorageOverride`,
-    // `_testShellOverride`); a future switch to `pool: "threads"` with
-    // `isolate: false` would let two test files alternately stomp the
-    // override and produce flaky "encryption not available" failures.
-    // `forks` is vitest's default but we make it explicit so a
-    // contributor can't silently regress the contract.
+    // Pin vitest's default `forks` pool explicitly so a contributor can't
+    // silently switch to `pool: "threads"` with `isolate: false` and
+    // reintroduce cross-file module-state bleed between test files.
     pool: "forks",
   },
 });
