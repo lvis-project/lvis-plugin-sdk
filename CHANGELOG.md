@@ -7,6 +7,43 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v8.0.0 — 2026-07-11
+
+### Removed (BREAKING)
+- The runtime shim subpaths `@lvis/plugin-sdk/runtime/electron` and
+  `@lvis/plugin-sdk/runtime/network`, along with their source
+  (`src/runtime/electron.ts`, `src/runtime/network.ts`, and the shared
+  `src/runtime/_test-env.ts` seam guard), their tests, the `package.json`
+  `exports` entries (`./runtime/electron`, `./runtime/network`), the
+  `tsup.config.ts` build entries, and the generated `dist/runtime/**`. These
+  host-context shims now live in the host and are reached through
+  `PluginHostApi` (landed host-side in #1592), so re-shipping them from the
+  SDK is redundant.
+
+  Migration — consumers replace the SDK shim import with the host API:
+  - `getSafeStorage()` → `hostApi.storage.writeEncrypted(relPath, plaintext)` / `hostApi.storage.readEncrypted(relPath)`
+  - `getShell().openExternal(url)` → `hostApi.openExternalUrl(url)` (now a required `PluginHostApi` method)
+  - `detectViaPrivateDnsProbe(host, opts)` → `hostApi.probePrivateHost(host, opts)`
+
+### Changed
+- Regenerated the type surface (`src/index.ts`) from the host contract
+  (`src/plugins/types.ts`, #1592): `PluginStorage` gains `writeEncrypted` /
+  `readEncrypted`; `PluginHostApi` gains `probePrivateHost` and promotes
+  `openExternalUrl` from optional to **required**; adds the
+  `PluginStorageEncryptionUnavailableError` export.
+- Synced `schemas/plugin-manifest.schema.json` byte-for-byte from the host
+  schema (the host is the schema source of truth post-ph2). `capabilities`
+  is now a free-form, format-validated string array
+  (`pattern: ^[a-z][a-z0-9:-]*$`) rather than a closed enum (host #1595), so
+  installed manifests declaring legacy/removed capability strings still
+  validate.
+
+Migration note: the consuming plugins bump their SDK pin to `#v8.0.0` and
+migrate the shim imports listed above in their own alignment wave (tracked
+separately).
+
+---
+
 ## v7.0.0 — 2026-07-10
 
 ### Removed (BREAKING — next release is semver-major)
