@@ -3,13 +3,6 @@ export default defineConfig({
   entry: {
     "index": "src/index.ts",
     "build/tsup": "src/build/tsup.ts",
-    // `runtime/_test-env` is intentionally NOT a tsup entry — it's an
-    // internal helper imported by `runtime/electron` + `runtime/network`,
-    // and the splitting:false config inlines it into each consumer's
-    // bundle. Keeping it off the entry list also avoids shipping a
-    // separately-importable `@lvis/plugin-sdk/runtime/_test-env` artifact.
-    "runtime/electron": "src/runtime/electron.ts",
-    "runtime/network": "src/runtime/network.ts",
   },
   format: ["esm"],
   // dts emission is delegated to `tsc -p tsconfig.build.json` (see package.json
