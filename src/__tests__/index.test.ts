@@ -928,12 +928,12 @@ describe("PluginHostApi — interface contract (structural)", () => {
 
   it("PluginHostApi.getInstalledPluginIds returns string[]", () => {
     const api: Pick<PluginHostApi, "getInstalledPluginIds"> = {
-      getInstalledPluginIds: () => ["com.ep.ms-graph", "com.ep.meeting-recorder"],
+      getInstalledPluginIds: () => ["com.example.ms-graph", "com.example.meeting-recorder"],
     };
     const ids = api.getInstalledPluginIds();
     expect(Array.isArray(ids)).toBe(true);
     expect(ids).toHaveLength(2);
-    expect(ids[0]).toBe("com.ep.ms-graph");
+    expect(ids[0]).toBe("com.example.ms-graph");
   });
 
   it("PluginHostApi.onPluginsChanged delivers PluginLifecycleEvent discriminated union (installed.source + uninstalled)", () => {
@@ -951,9 +951,9 @@ describe("PluginHostApi — interface contract (structural)", () => {
     const unsub = api.onPluginsChanged((e) => events.push(e));
     expect(unsub).toBeTypeOf("function");
     expect(handlers).toHaveLength(1);
-    handlers[0]!({ type: "installed", pluginId: "com.ep.ms-graph", source: "marketplace" });
+    handlers[0]!({ type: "installed", pluginId: "com.example.ms-graph", source: "marketplace" });
     handlers[0]!({ type: "installed", pluginId: "com.local.dev-fixture", source: "local-dev" });
-    handlers[0]!({ type: "uninstalled", pluginId: "com.ep.meeting-recorder" });
+    handlers[0]!({ type: "uninstalled", pluginId: "com.example.meeting-recorder" });
     expect(events).toHaveLength(3);
     if (events[0].type === "installed") expect(events[0].source).toBe("marketplace");
     if (events[1].type === "installed") expect(events[1].source).toBe("local-dev");
@@ -1261,17 +1261,17 @@ describe("PluginManifest — python co-deployment field (H3)", () => {
 describe("PluginManifest — packageName field (M9)", () => {
   it("accepts manifest with packageName", () => {
     const manifest: PluginManifest = {
-      id: "ep-meeting",
+      id: "example-meeting",
       name: "Meeting",
       version: "1.0.0",
       entry: "dist/index.js",
       tools: [],
       description: "Meeting recorder.",
-      packageName: "@lge/lvis-plugin-meeting",
+      packageName: "@example/lvis-plugin-meeting",
     };
     const { valid, errors } = validateManifest(manifest);
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
-    expect(manifest.packageName).toBe("@lge/lvis-plugin-meeting");
+    expect(manifest.packageName).toBe("@example/lvis-plugin-meeting");
   });
 });
 
