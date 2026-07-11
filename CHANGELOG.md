@@ -186,8 +186,8 @@ mcpAuth 문서화와 같은 follow-up).
 세 오픈 이슈 일괄 처리.
 
 - **#152** drift sync — host main 의 `PluginMarketplaceItem` + 위 MCP auth
-  surface + token 컨트랙트 업데이트 (사내 테마 bundle id `violet-light`/
-  `violet-dark` → `violet-light`/`violet-dark`) 를 `src/index.ts` +
+  surface + token 컨트랙트 업데이트 (legacy 사내 theme bundle id, renamed to
+  `violet-light`/`violet-dark`) 를 `src/index.ts` +
   `ui/tokens/index.ts` + `ui/tokens/theme-bundles.ts` 에 sync.
   `useTheme.test.ts` + `inject.test.ts` + `README.md` 의 하드코딩 bundle
   id 도 동시 갱신. (#146 superseded by #152 + closed.)
@@ -221,7 +221,7 @@ payload 경로 차단.
 
 ### Companion repos (bundle-id rename follow-up)
 
-host 의 `lge-*` → `violet-*` bundle-id rename 영향 받는 plugin repo (별도 PR):
+host 의 legacy corporate bundle id → `violet-*` bundle-id rename 영향 받는 plugin repo (별도 PR):
 - `lvis-plugin-meeting` (`test/themePropagate.test.ts`)
 - `lvis-plugin-local-indexer` (`src/ui/indexer-control.styles.js`,
   `scripts/inline-sdk-tokens.mjs`)
@@ -275,7 +275,7 @@ MSAL token cache 등 OAuth flow). runtime 이 path containment 를 invocation
 
 ### Added — `runtime/network` shared DNS-probe primitive
 
-ms-graph (advisory MSAL tenant routing) 와 ep-api (hard SSO pre-gate) 가
+ms-graph (advisory MSAL tenant routing) 와 corp-sso (hard SSO pre-gate) 가
 같은 사내망 감지 휴리스틱 (private-host DNS lookup) 을 각자 자기 패키지
 안에 사본으로 들고 있었음. 세 번째 corporate-internal 플러그인이 같은 트릭을
 재구현하기 전에 SDK 로 승격.
@@ -351,13 +351,13 @@ breaking change 없음.
 
 - **`OpenAuthWindowBaseOptions.show?: boolean`** — `false` 일 때 호스트가
   Electron `BrowserWindow` 를 `show: false` 로 생성, 페이지는 navigate 하지만
-  사용자에게는 절대 노출하지 않음. silent-SSO warmup (internal search / 근태 / 주차
+  사용자에게는 절대 노출하지 않음. silent-SSO warmup (사내 포털 / 근태 / 주차
   등) 이 IdP cookies 만 minted 하고 사라지는 케이스에 사용. `timeoutMs` 을
   함께 명시하지 않으면 hidden challenge page 가 영원히 hang 될 수 있어
   호스트가 권장.
 - **`PluginHostApi.clearAuthPartition?(partition: string)`** —
   `persist:plugin-auth:<pluginId>[:<sub>]` 의 모든 cookie / storage / cache /
-  credential 을 wipe. `lge_signout` 같은 user-triggered sign-out 후 다음
+  credential 을 wipe. `corp_signout` 같은 user-triggered sign-out 후 다음
   `openAuthWindow` 호출이 IdP residual cookies 로 silent SSO 되는 것을 차단.
   Partition 이름은 `openAuthWindow.persistPartition` 과 동일한 allow-list
   검증. `external-auth-consumer` capability 게이트 필수. Optional —
@@ -366,7 +366,7 @@ breaking change 없음.
 ### Migration notes
 
 플러그인은 모든 silent warmup 호출에 `show: false` 를 추가하면 popup flash
-가 사라짐. `lge_signout` / `auth-reset` 류 핸들러는 in-memory + on-disk
+가 사라짐. `corp_signout` / `auth-reset` 류 핸들러는 in-memory + on-disk
 정리 직후 `await hostApi.clearAuthPartition?.(YOUR_PARTITION)` 을 호출해야
 재로그인 시 사용자 자격증명 입력이 다시 요구됨. 두 surface 모두 optional
 이라 hostApi 5.4.0 미만 호스트에서도 동작 (silent fallback).
@@ -492,7 +492,7 @@ directly should switch to the live `host.theme.changed` payload (via
 
 ##### 증상
 
-v5.0.0 부터 `github:lvis-project/lvis-plugin-sdk#v5.0.0` 를 의존성으로 받는 모든 plugin (lvis-plugin-meeting, lvis-plugin-ep-api, lvis-plugin-local-indexer 등) 의 `bun install --frozen-lockfile` 이 다음 형태로 실패:
+v5.0.0 부터 `github:lvis-project/lvis-plugin-sdk#v5.0.0` 를 의존성으로 받는 모든 plugin (lvis-plugin-meeting, lvis-plugin-corp-sso, lvis-plugin-local-indexer 등) 의 `bun install --frozen-lockfile` 이 다음 형태로 실패:
 
 ```
 src/ui/components/Toggle.tsx(61,7): error TS7026: JSX element implicitly has type 'any' ...
@@ -573,7 +573,7 @@ v1 필드를 참조하는 모든 plugin 코드가 TypeScript 컴파일 에러를
 
 ```typescript
 interface LvisHostThemeEvent {
-  bundleId: "tokyo-night" | "midnight" | "forest" | "violet-light" | "violet-dark" | "high-contrast";
+  bundleId: "tokyo-night" | "midnight" | "forest" | "legacy-light" | "legacy-dark" | "high-contrast";
   shell: "light" | "dark";
   tokens: LvisTokenMap;
 }
@@ -716,7 +716,7 @@ SDK `useTheme` 훅을 그대로 사용하는 plugin 은 훅 내부가 자동으�
 ### Why
 
 Implementation survey across LVIS plugins: 3/5 plugins
-(meeting / local-indexer / ep-api) duplicate ~9 lucide-shaped SVGs as
+(meeting / local-indexer / corp-sso) duplicate ~9 lucide-shaped SVGs as
 inline `<svg>` strings in vanilla JS. Plus agent-hub / work-proactive
 (React) inline their own SVGs case-by-case. Standard primitive removes
 the duplication and locks the curated set to a maintained source.
@@ -728,7 +728,7 @@ the duplication and locks the curated set to a maintained source.
 
 ### Consumer migration
 
-Vanilla plugins (local-indexer, meeting, ep-api) cannot consume the
+Vanilla plugins (local-indexer, meeting, corp-sso) cannot consume the
 React `Icon` primitive directly — their migration to the SDK lands as
 part of the vanilla → React + SDK track (project-plugin-theme-migration-plan
 memo). Until then, the Icon primitive is consumed by React-native
@@ -943,7 +943,7 @@ gate-coverage cases added in `inject.test.ts`).
 ### Companion repos (recommended sweep after 3.8.0 publish)
 - `lvis-plugin-template` — add `check-ui-tokens` script + CI step
   consuming `@lvis/plugin-sdk/ui/tokens/validate`.
-- 7 plugin repos (`meeting`, `local-indexer`, `ms-graph`, `ep-api`,
+- 7 plugin repos (`meeting`, `local-indexer`, `ms-graph`, `corp-sso`,
   `work-proactive`, `agent-hub`, plus future ones) — same
   `check-ui-tokens` step. Current scan: zero `var(--lvis-*)` references
   across all plugins, so the validator's introduction is a clean
@@ -974,7 +974,7 @@ gate-coverage cases added in `inject.test.ts`).
 - lvis-plugin-meeting
 - lvis-plugin-local-indexer
 - lvis-plugin-ms-graph
-- lvis-plugin-ep-api
+- lvis-plugin-corp-sso
 - lvis-plugin-work-proactive
 - lvis-plugin-agent-hub
 - lvis-plugin-template
@@ -1007,7 +1007,7 @@ gate-coverage cases added in `inject.test.ts`).
   - `lvis-plugin-meeting`
   - `lvis-plugin-local-indexer`
   - `lvis-plugin-ms-graph`
-  - `lvis-plugin-ep-api`
+  - `lvis-plugin-corp-sso`
   - `lvis-plugin-work-proactive`
   - `lvis-plugin-template`
 
