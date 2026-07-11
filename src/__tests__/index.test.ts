@@ -876,6 +876,8 @@ describe("PluginHostApi — interface contract (structural)", () => {
         list: async () => [],
         exists: async (_) => false,
         mkdir: async () => {},
+        writeEncrypted: async () => {},
+        readEncrypted: async () => "",
       },
       config: {
         get: (_key) => undefined,
@@ -892,6 +894,8 @@ describe("PluginHostApi — interface contract (structural)", () => {
       callLlm: async (_prompt, _opts) => "",
       logEvent: (_level, _msg, _data) => {},
       onShutdown: (_handler) => {},
+      openExternalUrl: async (_url: string) => {},
+      probePrivateHost: async (_host: string, _opts?: { timeoutMs?: number }) => false,
       // Discriminate on `returnFinalUrl` so each overload branch returns its
       // declared shape — TS catches future signature drift instead of letting
       // a `as unknown as` cast hide it.
