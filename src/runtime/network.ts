@@ -39,11 +39,10 @@
  * must enforce real trust at the cookie/origin level downstream.
  *
  * Note on error class: SDK ships the mechanism only. Each consumer keeps
- * its own domain-specific error class (e.g. lge-api's `NonCorpNetworkError`
- * with a Korean message + IPC-stable code). Promoting a generic
- * `PrivateDnsProbeRequiredError` was considered and rejected — only one
- * of the two current consumers actually throws, and the wording / code
- * surface is company-specific.
+ * its own domain-specific error class with a localized message + IPC-stable
+ * code. Promoting a generic `PrivateDnsProbeRequiredError` was considered
+ * and rejected — only one of the two current consumers actually throws, and
+ * the wording / code surface is consumer-specific.
  *
  * Caller responsibility: this module does NOT abort the underlying
  * `dns.lookup` when the timeout fires (Node's `node:dns/promises` does
