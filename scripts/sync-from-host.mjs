@@ -251,12 +251,27 @@ export interface McpUiResourceCsp {
   baseUriDomains?: string[];
 }
 
+/**
+ * Sandbox permissions a UI resource requests (spec \`McpUiResourcePermissions\`).
+ * NOTE: the host manifest schema accepts only camera/microphone/geolocation — a
+ * declared \`clipboardWrite\` FAILS validation (measured un-honorable). The type
+ * carries all four for wire fidelity.
+ */
+export interface McpUiResourcePermissions {
+  camera?: Record<string, never>;
+  microphone?: Record<string, never>;
+  geolocation?: Record<string, never>;
+  clipboardWrite?: Record<string, never>;
+}
+
 /** A first-party plugin's declaration of ONE \`ui://\` MCP App card it serves. */
 export interface PluginUiResourceDecl {
   /** \`ui://<pluginId>/<path>\` — authority MUST equal the declaring plugin's id. */
   uri: string;
   /** The resource's own declared CSP (spec \`McpUiResourceCsp\`). @optional */
   csp?: McpUiResourceCsp;
+  /** Sandbox permissions the resource requests (spec \`McpUiResourcePermissions\`). @optional */
+  permissions?: McpUiResourcePermissions;
 }`;
 
 function render(body) {
