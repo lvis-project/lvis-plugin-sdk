@@ -15,9 +15,16 @@ export interface McpUiResourceCsp {
     frameDomains?: string[];
     baseUriDomains?: string[];
 }
+export interface McpUiResourcePermissions {
+    camera?: Record<string, never>;
+    microphone?: Record<string, never>;
+    geolocation?: Record<string, never>;
+    clipboardWrite?: Record<string, never>;
+}
 export interface PluginUiResourceDecl {
     uri: string;
     csp?: McpUiResourceCsp;
+    permissions?: McpUiResourcePermissions;
 }
 export type InstallPolicy = "admin" | "user";
 export type AuthWindowCookie = {
