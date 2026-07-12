@@ -7,6 +7,26 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v10.0.0 — 2026-07-12
+
+### Removed (BREAKING)
+- Dropped the transitional `xyz.lvis/*` `_meta` alias. `Tool._meta` and the
+  mirrored manifest schema now accept **only** `lvisai/pathFields`; the legacy
+  reverse-DNS `xyz.lvis/pathFields` property is gone from both
+  `schemas/plugin-manifest.schema.json` and the generated `src/index.ts` type.
+  Because tool `_meta` is `additionalProperties:false`, a manifest still declaring
+  the legacy key is now **rejected** (fail-closed) rather than silently accepted
+  with its security-bearing pathFields ignored. This is a breaking narrowing of the
+  accepted manifest shape: a manifest the v9 schema accepted is now rejected.
+  Mirrors merged host lvis-app#1606, which removed the host's transitional dual-read
+  fail-closed. Installed pre-rename plugins are auto-migrated host-side (Plugin
+  Doctor `manifest-validation-error` reinstall + managed auto-update) — the SDK just
+  stops accepting the legacy key for NEW builds, so an out-of-process plugin
+  compiled/validated against SDK v10 can no longer ship it on the wire. The only
+  legacy-key plugin (local-indexer) was migrated to `lvisai/pathFields` upstream.
+
+---
+
 ## v9.0.0 — 2026-07-12
 
 ### Removed (BREAKING)
