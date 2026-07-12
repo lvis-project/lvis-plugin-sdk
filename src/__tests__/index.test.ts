@@ -63,10 +63,8 @@ describe("PluginMarketplaceItem — host catalog compatibility", () => {
       defaultConfig: { enabled: true },
       ui: [],
       keywords: [{ keyword: "fixture", skillId: "fixture-skill" }],
-      uiActions: { fixture_status: {} },
       emittedEvents: ["fixture.ready"],
       notificationEvents: [{ event: "fixture.ready", titleField: "title" }],
-      toolSchemas: {},
     };
 
     expect(item.tools).toEqual(["fixture_ping"]);
@@ -1376,7 +1374,7 @@ describe("PluginManifest.emittedEvents JSDoc — no eventPublishes alias text (H
 
 // ─── MCP Tool surface replaces legacy tool maps (v6) ───────────────────────
 describe("Tool surface — v6 MCP contract", () => {
-  it("exports the MCP Tool description and confines legacy maps to RawPluginManifest", async () => {
+  it("exports the MCP Tool description and carries no legacy tool maps anywhere", async () => {
     const { readFileSync } = await import("node:fs");
     const { fileURLToPath } = await import("node:url");
     const here = dirname(fileURLToPath(import.meta.url));
@@ -1385,11 +1383,39 @@ describe("Tool surface — v6 MCP contract", () => {
     expect(toolBlock, "MCP Tool interface not found").not.toBeNull();
     expect(toolBlock![0]).toMatch(/description\?: string;/);
     expect(toolBlock![0]).toMatch(/inputSchema:/);
-    const manifestBlock = indexSrc.match(/export interface PluginManifest \{[\s\S]*?\n\}/);
-    expect(manifestBlock, "pure PluginManifest interface not found").not.toBeNull();
-    expect(manifestBlock![0]).not.toMatch(/\n\s*toolSchemas\?:/);
-    expect(manifestBlock![0]).not.toMatch(/\n\s*uiActions\?:/);
-    expect(indexSrc).toMatch(/export type RawPluginManifest[\s\S]*?toolSchemas\?:/);
+    // The pre-v6 legacy triple (tools: string[] + toolSchemas + uiActions) is
+    // gone from the whole surface, not merely quarantined into a Raw* type: the
+    // host hard-rejects the legacy manifest shape at load and the manifest schema
+    // only accepts pure `Tool[]`, so an SDK-side legacy adapter has no consumer.
+    expect(indexSrc).not.toMatch(/^\s*toolSchemas\??:/m);
+    expect(indexSrc).not.toMatch(/^\s*uiActions\??:/m);
+    expect(indexSrc).not.toMatch(/RawPluginManifest|normalizeManifest|NormalizedManifest/);
+  });
+
+  it("adds no logic of its own — value exports are host error classes, nothing else", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const here = dirname(fileURLToPath(import.meta.url));
+    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
+    // The surface is a mirror of the host contract. Runtime values are allowed
+    // ONLY where the host itself declares one (error classes plugins `instanceof`,
+    // and the code string that names them). Anything else means the SDK grew
+    // behavior again — which is precisely what ph2 moved into the host, whose
+    // `runtime/manifest-validation.ts` is now the only thing that compiles the
+    // manifest schema.
+    const valueExports = [...indexSrc.matchAll(/^export (?:function|const|let|var|class) (\w+)/gm)]
+      .map((m) => m[1]);
+    expect(valueExports.sort()).toEqual(
+      [
+        "INCOMPATIBLE_APP_VERSION_CODE",
+        "IncompatibleAppVersionError",
+        "MissingDependenciesError",
+        "MissingPluginDependenciesError",
+        "PluginStorageEncryptionUnavailableError",
+      ].sort(),
+    );
+    expect(indexSrc).not.toMatch(/compileManifestValidator/);
+    expect(indexSrc).not.toMatch(/\bajv\b/i);
   });
 });
 
