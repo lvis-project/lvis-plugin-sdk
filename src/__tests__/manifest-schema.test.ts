@@ -73,12 +73,62 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
         pureTool({ name: "msgraph_email_list", _meta: { ui: { visibility: ["model", "app"] } } }),
         pureTool({
           name: "msgraph_email_read",
-          _meta: { ui: { visibility: ["model"] }, "xyz.lvis/pathFields": ["attachmentPath"] },
+          _meta: { ui: { visibility: ["model"] }, "lvisai/pathFields": ["attachmentPath"] },
           outputSchema: { type: "object", properties: {} },
           icons: [{ src: "icon.png", mimeType: "image/png", sizes: "48x48" }],
           title: "Read email",
         }),
         pureTool({ name: "msgraph_status", _meta: { ui: { visibility: ["app"] } } }),
+      ],
+    };
+    const { valid, errors } = check(manifest);
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  // ── vendor _meta namespace: lvisai/* (new) + xyz.lvis/* (transitional) ──
+  //
+  // `_meta` is `additionalProperties: false`, so accepting the new spelling is a
+  // schema change, not a no-op: until this schema learns `lvisai/pathFields`, a
+  // renamed manifest is REJECTED outright. The plugin repos' pre-commit hook and
+  // CI validate `plugin.json` with ajv-cli against exactly this file (see
+  // dev-tools/scripts/run-local-checks.mjs), which is why the SDK has to accept
+  // the new key before any plugin can commit its rename. Both spellings are
+  // accepted for the migration window — mirrors lvis-app#1601, which reads both
+  // and writes only the new one. Drop the legacy arm only in lock-step with the
+  // host, once no installed manifest still carries it.
+  it("accepts the new lvisai/pathFields vendor key", () => {
+    const manifest = {
+      ...BASE,
+      tools: [
+        pureTool({ _meta: { ui: { visibility: ["model"] }, "lvisai/pathFields": ["srcPath"] } }),
+      ],
+    };
+    const { valid, errors } = check(manifest);
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("still accepts the legacy xyz.lvis/pathFields key (transitional — installed plugins keep working)", () => {
+    const manifest = {
+      ...BASE,
+      tools: [
+        pureTool({ _meta: { ui: { visibility: ["model"] }, "xyz.lvis/pathFields": ["srcPath"] } }),
+      ],
+    };
+    const { valid, errors } = check(manifest);
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts both spellings on the same tool (a manifest mid-migration)", () => {
+    const manifest = {
+      ...BASE,
+      tools: [
+        pureTool({
+          _meta: {
+            ui: { visibility: ["model"] },
+            "lvisai/pathFields": ["srcPath"],
+            "xyz.lvis/pathFields": ["srcPath"],
+          },
+        }),
       ],
     };
     const { valid, errors } = check(manifest);
@@ -153,8 +203,18 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     expect(valid).toBe(false);
   });
 
-  it("rejects an unknown _meta key (xyz.lvis/category)", () => {
-    const bad = pureTool({ _meta: { ui: { visibility: ["model"] }, "xyz.lvis/category": "read" } });
+  // The rename covers `pathFields` and nothing else. `category` was hard-cut
+  // (#885 Phase R — the host derives the effective category per invocation and
+  // never reads a declared one), so it stays rejected, and moving to the `lvisai/`
+  // namespace must not quietly resurrect it: `_meta` is additionalProperties:false
+  // in BOTH spellings, and only the two pathFields keys are declared.
+  it.each([
+    ["xyz.lvis/category"],
+    ["lvisai/category"],
+    ["lvisai/workerId"],
+    ["lvisai/rawResult"],
+  ])("rejects an undeclared _meta key (%s)", (key) => {
+    const bad = pureTool({ _meta: { ui: { visibility: ["model"] }, [key]: "read" } });
     const { valid } = check({ ...BASE, tools: [bad] });
     expect(valid).toBe(false);
   });
