@@ -7,7 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## Unreleased — next tag MUST be v9.0.0 (breaking)
+## v9.0.0 — 2026-07-12
 
 ### Removed (BREAKING)
 - `compileManifestValidator()`, and with it the `ajv` / `ajv-formats` runtime
@@ -35,6 +35,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   its seven post-process passes are gone, since the host absorbed all of them.
   `drift-check.yml` now runs it, so the schema mirror is gated like the type
   surface.
+
+### Added (MCP Apps — mirrored from host)
+- `PluginManifest.uiResources[]` and the `PluginUiResourceDecl` / `McpUiResourceCsp`
+  type twins — a plugin declares the `ui://` MCP App cards it serves (lvis-app#1600).
+- Per-resource `permissions` on a `ui://` resource (`McpUiResourcePermissions`:
+  camera / microphone / geolocation; `clipboardWrite` is rejected by the host schema
+  as un-honorable) — lvis-app#1604. Because these host types live outside
+  `plugins/types.ts`, they are carried as hand-maintained twins in
+  `sync-from-host.mjs` `HOST_SHARED_TYPE_TWINS`; the extractor cannot follow the
+  cross-file reference.
 
 ---
 
