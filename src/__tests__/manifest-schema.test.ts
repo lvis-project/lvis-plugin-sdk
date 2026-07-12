@@ -36,12 +36,15 @@ beforeAll(() => {
   validate = compileSchema();
 });
 
-function check(obj: unknown): { valid: boolean; errors: string[] } {
+function check(obj: unknown): {
+  valid: boolean;
+  errors: string[];
+  rawErrors: NonNullable<ValidateFunction["errors"]>;
+} {
   const valid = validate(obj) as boolean;
-  const errors = valid
-    ? []
-    : (validate.errors ?? []).map((e) => `${e.instancePath} ${e.message}`);
-  return { valid, errors };
+  const rawErrors = valid ? [] : (validate.errors ?? []);
+  const errors = rawErrors.map((e) => `${e.instancePath} ${e.message}`);
+  return { valid, errors, rawErrors };
 }
 
 const BASE = {
@@ -85,17 +88,15 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
-  // ── vendor _meta namespace: lvisai/* (new) + xyz.lvis/* (transitional) ──
+  // ── vendor _meta namespace: lvisai/* is the SOLE accepted spelling ──
   //
-  // `_meta` is `additionalProperties: false`, so accepting the new spelling is a
-  // schema change, not a no-op: until this schema learns `lvisai/pathFields`, a
-  // renamed manifest is REJECTED outright. The plugin repos' pre-commit hook and
-  // CI validate `plugin.json` with ajv-cli against exactly this file (see
-  // dev-tools/scripts/run-local-checks.mjs), which is why the SDK has to accept
-  // the new key before any plugin can commit its rename. Both spellings are
-  // accepted for the migration window — mirrors lvis-app#1601, which reads both
-  // and writes only the new one. Drop the legacy arm only in lock-step with the
-  // host, once no installed manifest still carries it.
+  // `_meta` is `additionalProperties: false`, so the accepted vendor key is a
+  // hard part of the contract: only `lvisai/pathFields` is declared. The plugin
+  // repos' pre-commit hook and CI validate `plugin.json` with ajv-cli against
+  // exactly this file (see dev-tools/scripts/run-local-checks.mjs). The legacy
+  // reverse-DNS `xyz.lvis/pathFields` alias was dropped in lock-step with the
+  // host (lvis-app#1606) once the transitional dual-read was removed fail-closed;
+  // an out-of-process plugin built against SDK v10 can no longer ship it.
   it("accepts the new lvisai/pathFields vendor key", () => {
     const manifest = {
       ...BASE,
@@ -107,18 +108,37 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
-  it("still accepts the legacy xyz.lvis/pathFields key (transitional — installed plugins keep working)", () => {
+  it("REJECTS the legacy xyz.lvis/pathFields key (removed after host #1606, fail-closed)", () => {
+    // The `_meta` vendor rename (`xyz.lvis/* → lvisai/*`) dropped both the host's
+    // transitional dual-read AND the schema's legacy property. Because tool `_meta`
+    // is `additionalProperties:false`, a manifest still declaring the legacy key is
+    // now REJECTED — NOT silently accepted with its security-bearing pathFields
+    // ignored (that would be fail-OPEN: the host permission gate would stop seeing
+    // the plugin's declared filesystem effects). Mirrors the host's own inverted
+    // validator test (manifest-validator-host-sot.test.ts). Because the SDK is
+    // what out-of-process plugins compile/validate against, this rejection also
+    // guarantees a plugin built with SDK v10 cannot ship the legacy key on the wire.
     const manifest = {
       ...BASE,
       tools: [
         pureTool({ _meta: { ui: { visibility: ["model"] }, "xyz.lvis/pathFields": ["srcPath"] } }),
       ],
     };
-    const { valid, errors } = check(manifest);
-    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    const { valid, rawErrors } = check(manifest);
+    expect(valid).toBe(false);
+    // The rejection specifically names the legacy key as the disallowed additional
+    // property (not some unrelated failure).
+    expect(rawErrors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          keyword: "additionalProperties",
+          params: expect.objectContaining({ additionalProperty: "xyz.lvis/pathFields" }),
+        }),
+      ]),
+    );
   });
 
-  it("accepts both spellings on the same tool (a manifest mid-migration)", () => {
+  it("REJECTS a tool carrying both spellings (the legacy arm poisons the whole _meta)", () => {
     const manifest = {
       ...BASE,
       tools: [
@@ -131,8 +151,16 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
         }),
       ],
     };
-    const { valid, errors } = check(manifest);
-    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+    const { valid, rawErrors } = check(manifest);
+    expect(valid).toBe(false);
+    expect(rawErrors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          keyword: "additionalProperties",
+          params: expect.objectContaining({ additionalProperty: "xyz.lvis/pathFields" }),
+        }),
+      ]),
+    );
   });
 
   it("rejects a legacy manifest verbatim (legacy arm removed — string tools + toolSchemas + uiActions)", () => {
@@ -207,8 +235,10 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
   // (#885 Phase R — the host derives the effective category per invocation and
   // never reads a declared one), so it stays rejected, and moving to the `lvisai/`
   // namespace must not quietly resurrect it: `_meta` is additionalProperties:false
-  // in BOTH spellings, and only the two pathFields keys are declared.
+  // and `lvisai/pathFields` is now the SOLE declared vendor key (the legacy
+  // reverse-DNS `xyz.lvis/*` alias was removed in lock-step with host #1606).
   it.each([
+    ["xyz.lvis/pathFields"],
     ["xyz.lvis/category"],
     ["lvisai/category"],
     ["lvisai/workerId"],
