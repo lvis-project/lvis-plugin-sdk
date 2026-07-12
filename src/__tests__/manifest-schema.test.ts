@@ -1,22 +1,39 @@
 /**
- * Manifest JSON-schema — Plugin Contract v6 (#885) a2 unit tests.
+ * Manifest JSON-schema — acceptance tests for the host-mirrored schema.
  *
- * Compiles the canonical schema via `compileManifestValidator()` (the SDK's
- * AJV strict:true builder — the SAME construction the host reuses) so this
- * suite doubles as the hard gate that the v6 `oneOf` + `#/definitions/tool`
- * schema compiles without throwing. Cases mirror u1-sdk-v6.md §Tests
- * "SDK schema unit".
+ * `schemas/plugin-manifest.schema.json` is a verbatim mirror of the host's SOT
+ * copy, which the host compiles with AJV at plugin load. The SDK itself compiles
+ * nothing at runtime any more, so this suite builds the validator locally with
+ * the SAME AJV options the host uses (`buildManifestValidator()` in
+ * lvis-app `src/plugins/runtime/manifest-validation.ts`). That keeps this file
+ * an honest gate on what the host will actually accept: if the options drift
+ * apart, these tests stop predicting host behavior.
  */
 import { describe, it, expect, beforeAll } from "vitest";
-import { compileManifestValidator } from "../index.js";
+import { createRequire } from "node:module";
+import Ajv from "ajv";
+import addFormats from "ajv-formats";
 import type { ValidateFunction } from "ajv";
+
+const require = createRequire(import.meta.url);
+
+function compileSchema(): ValidateFunction {
+  const ajv = new Ajv({
+    strict: true,
+    strictRequired: false,
+    allErrors: true,
+    allowUnionTypes: true,
+  });
+  addFormats(ajv);
+  return ajv.compile(require("../../schemas/plugin-manifest.schema.json"));
+}
 
 let validate: ValidateFunction;
 
 beforeAll(() => {
-  // Hard gate: this MUST NOT throw (the v6 oneOf/definitions schema compiles
-  // cleanly under AJV strict:true).
-  validate = compileManifestValidator();
+  // Hard gate: the mirrored schema MUST compile cleanly under AJV strict:true —
+  // a schema the host cannot compile fails plugin loading closed.
+  validate = compileSchema();
 });
 
 function check(obj: unknown): { valid: boolean; errors: string[] } {
@@ -44,8 +61,8 @@ const pureTool = (over: Record<string, unknown> = {}) => ({
 });
 
 describe("plugin-manifest schema (v6) — compiles + validates", () => {
-  it("compileManifestValidator() compiles the v6 schema without throwing", () => {
-    expect(() => compileManifestValidator()).not.toThrow();
+  it("the mirrored schema compiles under the host's AJV options without throwing", () => {
+    expect(() => compileSchema()).not.toThrow();
   });
 
   // ── accepts ────────────────────────────────────────────────────────────

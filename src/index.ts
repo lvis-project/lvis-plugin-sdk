@@ -1,10 +1,8 @@
 // AUTO-GENERATED — DO NOT EDIT. Regenerate via: bun run sync:from-host
 //
-// @lvis/plugin-sdk — public surface of the LVIS plugin contract.
-// This file mirrors the host plugin type contract.
-
-import { createRequire } from "node:module";
-import type { ValidateFunction } from "ajv";
+// @lvis/plugin-sdk — public surface of the LVIS plugin contract, mirrored from
+// the host. The SDK adds no logic of its own: the host owns manifest validation,
+// and the only runtime values below are the host's own error classes + codes.
 
 export type MarketplacePackageType =
   | "plugin"
@@ -19,25 +17,6 @@ export type MarketplacePackageAsset =
   | ({ type: "provider"; providerId: string } & Record<string, unknown>)
   | ({ type: "theme"; bundleId: string } & Record<string, unknown>)
   | ({ type: "language-pack"; locale: string } & Record<string, unknown>);
-
-const requireFromSdk = createRequire(import.meta.url);
-
-export function compileManifestValidator(): ValidateFunction {
-  const AjvModule = requireFromSdk("ajv") as { default?: unknown };
-  const AddFormatsModule = requireFromSdk("ajv-formats") as { default?: unknown };
-  const AjvCtor = (AjvModule.default ?? AjvModule) as new (opts?: unknown) => {
-    compile: (schema: unknown) => ValidateFunction;
-  };
-  const addFormats = (AddFormatsModule.default ?? AddFormatsModule) as (ajv: unknown) => void;
-  const ajv = new AjvCtor({
-    strict: true,
-    strictRequired: false,
-    allErrors: true,
-    allowUnionTypes: true,
-  });
-  addFormats(ajv);
-  return ajv.compile(requireFromSdk("../schemas/plugin-manifest.schema.json"));
-}
 
 export type InstallPolicy = "admin" | "user";
 
@@ -596,8 +575,6 @@ export interface PluginMarketplaceItem {
   ui?: PluginUiExtension[];
   /** Skill keywords published by the catalog entry. @optional */
   keywords?: Array<{ keyword: string; skillId: string }>;
-  /** Legacy UI-action metadata retained for catalog compatibility. @optional */
-  uiActions?: Record<string, PluginUiActionSpec>;
   /** Event names this catalog entry may emit. @optional */
   emittedEvents?: string[];
   /** Notification metadata mirrored from the installable manifest. @optional */
@@ -607,8 +584,6 @@ export interface PluginMarketplaceItem {
     bodyField?: string;
     bypassFocusGate?: boolean;
   }>;
-  /** Legacy tool-schema metadata retained for catalog compatibility. @optional */
-  toolSchemas?: RawPluginManifest["toolSchemas"];
 }
 
 export class PluginStorageEncryptionUnavailableError extends Error {
@@ -1096,116 +1071,3 @@ export interface RuntimePlugin {
  * export default factory;
  */
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
-
-export interface PluginUiActionSpec {
-  description?: string;
-}
-
-export type LegacyToolSchema = {
-  description?: string;
-  pathFields?: string[];
-  inputSchema?: Tool["inputSchema"];
-  category?: unknown;
-  workerId?: unknown;
-  writesToOwnSandbox?: unknown;
-  version?: unknown;
-  deprecatedSince?: unknown;
-  replacedBy?: unknown;
-};
-
-export type RawPluginManifest = Omit<PluginManifest, "tools"> & {
-  tools: string[] | Tool[];
-  uiActions?: Record<string, { description?: string }>;
-  toolSchemas?: Record<string, LegacyToolSchema>;
-};
-
-export type NormalizedManifest = Omit<
-  RawPluginManifest,
-  "tools" | "toolSchemas" | "uiActions"
-> & {
-  tools: Tool[];
-};
-
-export interface NormalizeNotice {
-  pluginId: string;
-  kind: "legacy-shape";
-  droppedFields: Array<
-    "category" | "workerId" | "writesToOwnSandbox" | "version" | "deprecatedSince" | "replacedBy"
-  >;
-}
-
-export type NormalizeReporter = (notice: NormalizeNotice) => void;
-
-export const normalizeManifest = (
-  raw: RawPluginManifest,
-  report?: NormalizeReporter,
-): NormalizedManifest => {
-  const DUAL: Array<"model" | "app"> = ["model", "app"];
-  const stripLegacyMaps = (manifest: RawPluginManifest) => {
-    const { toolSchemas: _schemas, uiActions: _actions, tools: _tools, ...rest } = manifest;
-    return rest;
-  };
-
-  const uiNames = Object.keys(raw.uiActions ?? {});
-  const schemas = raw.toolSchemas ?? {};
-  const isLegacy =
-    typeof raw.tools[0] === "string" ||
-    (raw.tools.length === 0 && (uiNames.length > 0 || Object.keys(schemas).length > 0));
-  if (!isLegacy) {
-    const tools = (raw.tools as Tool[]).map((tool): Tool => {
-      const visibility = tool._meta?.ui?.visibility;
-      if (visibility === undefined) {
-        return {
-          ...tool,
-          _meta: { ...tool._meta, ui: { ...tool._meta?.ui, visibility: [...DUAL] } },
-        };
-      }
-      if (visibility.length === 0) {
-        throw new Error(
-          `[normalizeManifest] plugin '${raw.id}' tool '${tool.name}': _meta.ui.visibility is [] — ` +
-            "a tool must be reachable by ≥1 surface (SoT §2.2/§2.3)",
-        );
-      }
-      return tool;
-    });
-    return { ...stripLegacyMaps(raw), tools };
-  }
-
-  const names = raw.tools as string[];
-  const removed = [
-    "category", "workerId", "writesToOwnSandbox", "version", "deprecatedSince", "replacedBy",
-  ] as const;
-  const dropped = new Set<NormalizeNotice["droppedFields"][number]>();
-  const deriveVisibility = (inModel: boolean, inApp: boolean): Array<"model" | "app"> => {
-    if (inModel && inApp) return ["model", "app"];
-    if (inModel) return ["model"];
-    if (inApp) return ["app"];
-    throw new Error(
-      `[normalizeManifest] plugin '${raw.id}': a tool is reachable by neither surface ` +
-        "(not in tools[] nor uiActions) — every tool needs ≥1 surface (SoT §2.3)",
-    );
-  };
-
-  const allNames = [...names, ...uiNames.filter((name) => !names.includes(name))];
-  const tools = allNames.map((name): Tool => {
-    const schema = schemas[name];
-    const meta: NonNullable<Tool["_meta"]> = {
-      ui: { visibility: deriveVisibility(names.includes(name), uiNames.includes(name)) },
-    };
-    if (schema?.pathFields && schema.pathFields.length > 0) {
-      meta["xyz.lvis/pathFields"] = schema.pathFields;
-    }
-    for (const field of removed) {
-      if (schema?.[field] !== undefined) dropped.add(field);
-    }
-    return {
-      name,
-      ...(schema?.description === undefined ? {} : { description: schema.description }),
-      inputSchema: schema?.inputSchema ?? { type: "object", properties: {} },
-      _meta: meta,
-    };
-  });
-
-  report?.({ pluginId: raw.id, kind: "legacy-shape", droppedFields: [...dropped] });
-  return { ...stripLegacyMaps(raw), tools };
-};
