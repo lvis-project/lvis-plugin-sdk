@@ -9,6 +9,16 @@ export type MarketplacePackageAsset = ({
     type: "language-pack";
     locale: string;
 } & Record<string, unknown>);
+export interface McpUiResourceCsp {
+    connectDomains?: string[];
+    resourceDomains?: string[];
+    frameDomains?: string[];
+    baseUriDomains?: string[];
+}
+export interface PluginUiResourceDecl {
+    uri: string;
+    csp?: McpUiResourceCsp;
+}
 export type InstallPolicy = "admin" | "user";
 export type AuthWindowCookie = {
     name: string;
@@ -177,6 +187,7 @@ export interface PluginManifest {
     config?: Record<string, unknown>;
     /** Sidebar / panel UI extensions contributed by this plugin. @optional */
     ui?: PluginUiExtension[];
+    uiResources?: PluginUiResourceDecl[];
     /** Skill keywords registered with the host keyword engine. Each entry binds a surface keyword to a `skillId` the plugin handles. @optional */
     keywords?: Array<{
         keyword: string;
@@ -845,6 +856,7 @@ export interface RuntimePlugin {
      * `PluginManifest.tools`. The host rejects calls to missing handlers.
      */
     handlers: Record<string, PluginToolHandler>;
+    readUiResource?: (uri: string) => Promise<string> | string;
 }
 /**
  * Factory function exported (as default) from a plugin's `entry` module.

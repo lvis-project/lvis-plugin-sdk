@@ -217,11 +217,13 @@ function extract(srcPath) {
 }
 
 /**
- * Hand-maintained twins of two host types that live OUTSIDE `src/plugins/types.ts`
- * (`shared/assistant-context.ts` and `shared/marketplace-package-assets.ts`), which
- * the extractor does not read. `PluginMarketplaceItem` references both, so the
- * generated surface will not compile without them. Keep in lock-step with the host
- * by hand — there is no drift check covering these two declarations.
+ * Hand-maintained twins of host types that live OUTSIDE `src/plugins/types.ts`
+ * (`shared/assistant-context.ts`, `shared/marketplace-package-assets.ts`, and
+ * `mcp/types.ts`), which the extractor does not read. `PluginMarketplaceItem`
+ * references the first two; `PluginManifest.uiResources` references
+ * `PluginUiResourceDecl` (→ `McpUiResourceCsp`) from `mcp/types.ts`. The generated
+ * surface will not compile without them. Keep in lock-step with the host by hand —
+ * there is no drift check covering these declarations.
  */
 const HOST_SHARED_TYPE_TWINS = `export type MarketplacePackageType =
   | "plugin"
@@ -235,7 +237,27 @@ const HOST_SHARED_TYPE_TWINS = `export type MarketplacePackageType =
 export type MarketplacePackageAsset =
   | ({ type: "provider"; providerId: string } & Record<string, unknown>)
   | ({ type: "theme"; bundleId: string } & Record<string, unknown>)
-  | ({ type: "language-pack"; locale: string } & Record<string, unknown>);`;
+  | ({ type: "language-pack"; locale: string } & Record<string, unknown>);
+
+/** A UI resource's declared CSP — spec \`McpUiResourceCsp\` (domain buckets, not directive names). */
+export interface McpUiResourceCsp {
+  /** Origins for network requests (fetch/XHR/WebSocket) → \`connect-src\`. */
+  connectDomains?: string[];
+  /** Origins for images, scripts, stylesheets, fonts, media → those five directives. */
+  resourceDomains?: string[];
+  /** Origins for nested iframes → \`frame-src\`. */
+  frameDomains?: string[];
+  /** Allowed base URIs for the document → \`base-uri\`. */
+  baseUriDomains?: string[];
+}
+
+/** A first-party plugin's declaration of ONE \`ui://\` MCP App card it serves. */
+export interface PluginUiResourceDecl {
+  /** \`ui://<pluginId>/<path>\` — authority MUST equal the declaring plugin's id. */
+  uri: string;
+  /** The resource's own declared CSP (spec \`McpUiResourceCsp\`). @optional */
+  csp?: McpUiResourceCsp;
+}`;
 
 function render(body) {
   // NOTE: `sanitizeForPublic` only preserves the first 5 lines as the banner —
