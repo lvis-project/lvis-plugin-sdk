@@ -211,8 +211,6 @@ export interface Tool {
     ui?: { visibility?: Array<"model" | "app"> };
 
     "lvisai/pathFields"?: string[];
-
-    "xyz.lvis/pathFields"?: string[];
   };
 }
 
