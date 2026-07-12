@@ -2,6 +2,23 @@
 /**
  * Extract the host-owned plugin contract into the SDK public surface.
  *
+ * WHAT IT SYNCS
+ *   lvis-app `src/plugins/types.ts`  (the SOT)
+ *     -> this repo's `src/index.ts`  (types only; this generator is its ONLY writer)
+ *
+ * WHY THE HOST IS THE SOURCE
+ *   The host owns the plugin contract. The SDK re-publishes it as a typed mirror
+ *   so plugin authors can compile against the same declarations the host runs.
+ *   The SDK has no authority here and holds no runtime logic: manifest schema
+ *   validation lives in the host (`runtime/manifest-validation.ts`), so this file
+ *   emits type declarations and nothing else. Anything that would need to EXECUTE
+ *   at plugin runtime belongs in the host or in the plugin, never here.
+ *
+ * WHO CONSUMES THE OUTPUT
+ *   Every plugin repo (`@lvis/plugin-sdk` pinned to a git tag) — all of them
+ *   `import type` only. `.github/workflows/drift-check.yml` re-runs this script
+ *   against host `main` and fails the PR when the committed output is stale.
+ *
  * Usage:
  *   node scripts/sync-from-host.mjs              # write src/index.ts
  *   node scripts/sync-from-host.mjs --check      # exit 1 if regenerated output differs from committed
@@ -148,15 +165,6 @@ function hasDefaultModifier(stmt) {
   return stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword);
 }
 
-function isSdkOwnedManifestAdapter(stmt) {
-  if (ts.isTypeAliasDeclaration(stmt) && stmt.name.text === "NormalizedManifest") {
-    return true;
-  }
-  return ts.isVariableStatement(stmt) && stmt.declarationList.declarations.some(
-    (declaration) => ts.isIdentifier(declaration.name) && declaration.name.text === "normalizeManifest",
-  );
-}
-
 function extract(srcPath) {
   const text = fs.readFileSync(srcPath, "utf8");
   const sf = ts.createSourceFile(srcPath, text, ts.ScriptTarget.ES2022, true);
@@ -197,11 +205,6 @@ function extract(srcPath) {
       process.exit(1);
     }
 
-    // The host's v6 normalizer accepts only its already-pure internal shape.
-    // The SDK additionally supports published legacy plugin.json manifests and
-    // owns the explicit conversion boundary below.
-    if (isSdkOwnedManifestAdapter(stmt)) continue;
-
     const leading = ts.getLeadingCommentRanges(text, stmt.pos) ?? [];
     const commentText = leading.map((r) => text.slice(r.pos, r.end)).join("\n");
     // stmt.getStart(sf) skips leading trivia (comments/whitespace) so we don't
@@ -213,132 +216,16 @@ function extract(srcPath) {
   return chunks.join("\n\n") + "\n";
 }
 
-const SDK_MANIFEST_COMPAT_ADAPTER = `
-/** Legacy UI-action metadata retained for published marketplace catalog entries. */
-export interface PluginUiActionSpec {
-  description?: string;
-}
-
-export type LegacyToolSchema = {
-  description?: string;
-  pathFields?: string[];
-  inputSchema?: Tool["inputSchema"];
-  category?: unknown;
-  workerId?: unknown;
-  writesToOwnSandbox?: unknown;
-  version?: unknown;
-  deprecatedSince?: unknown;
-  replacedBy?: unknown;
-};
-
-export type RawPluginManifest = Omit<PluginManifest, "tools"> & {
-  tools: string[] | Tool[];
-  uiActions?: Record<string, { description?: string }>;
-  toolSchemas?: Record<string, LegacyToolSchema>;
-};
-
-export type NormalizedManifest = Omit<
-  RawPluginManifest,
-  "tools" | "toolSchemas" | "uiActions"
-> & {
-  tools: Tool[];
-};
-
-export interface NormalizeNotice {
-  pluginId: string;
-  kind: "legacy-shape";
-  droppedFields: Array<
-    "category" | "workerId" | "writesToOwnSandbox" | "version" | "deprecatedSince" | "replacedBy"
-  >;
-}
-
-export type NormalizeReporter = (notice: NormalizeNotice) => void;
-
-export const normalizeManifest = (
-  raw: RawPluginManifest,
-  report?: NormalizeReporter,
-): NormalizedManifest => {
-  const DUAL: Array<"model" | "app"> = ["model", "app"];
-  const stripLegacyMaps = (manifest: RawPluginManifest) => {
-    const { toolSchemas: _schemas, uiActions: _actions, tools: _tools, ...rest } = manifest;
-    return rest;
-  };
-
-  const uiNames = Object.keys(raw.uiActions ?? {});
-  const schemas = raw.toolSchemas ?? {};
-  const isLegacy =
-    typeof raw.tools[0] === "string" ||
-    (raw.tools.length === 0 && (uiNames.length > 0 || Object.keys(schemas).length > 0));
-  if (!isLegacy) {
-    const tools = (raw.tools as Tool[]).map((tool): Tool => {
-      const visibility = tool._meta?.ui?.visibility;
-      if (visibility === undefined) {
-        return {
-          ...tool,
-          _meta: { ...tool._meta, ui: { ...tool._meta?.ui, visibility: [...DUAL] } },
-        };
-      }
-      if (visibility.length === 0) {
-        throw new Error(
-          \`[normalizeManifest] plugin '\${raw.id}' tool '\${tool.name}': _meta.ui.visibility is [] — \` +
-            "a tool must be reachable by ≥1 surface (SoT §2.2/§2.3)",
-        );
-      }
-      return tool;
-    });
-    return { ...stripLegacyMaps(raw), tools };
-  }
-
-  const names = raw.tools as string[];
-  const removed = [
-    "category", "workerId", "writesToOwnSandbox", "version", "deprecatedSince", "replacedBy",
-  ] as const;
-  const dropped = new Set<NormalizeNotice["droppedFields"][number]>();
-  const deriveVisibility = (inModel: boolean, inApp: boolean): Array<"model" | "app"> => {
-    if (inModel && inApp) return ["model", "app"];
-    if (inModel) return ["model"];
-    if (inApp) return ["app"];
-    throw new Error(
-      \`[normalizeManifest] plugin '\${raw.id}': a tool is reachable by neither surface \` +
-        "(not in tools[] nor uiActions) — every tool needs ≥1 surface (SoT §2.3)",
-    );
-  };
-
-  const allNames = [...names, ...uiNames.filter((name) => !names.includes(name))];
-  const tools = allNames.map((name): Tool => {
-    const schema = schemas[name];
-    const meta: NonNullable<Tool["_meta"]> = {
-      ui: { visibility: deriveVisibility(names.includes(name), uiNames.includes(name)) },
-    };
-    if (schema?.pathFields && schema.pathFields.length > 0) {
-      meta["xyz.lvis/pathFields"] = schema.pathFields;
-    }
-    for (const field of removed) {
-      if (schema?.[field] !== undefined) dropped.add(field);
-    }
-    return {
-      name,
-      ...(schema?.description === undefined ? {} : { description: schema.description }),
-      inputSchema: schema?.inputSchema ?? { type: "object", properties: {} },
-      _meta: meta,
-    };
-  });
-
-  report?.({ pluginId: raw.id, kind: "legacy-shape", droppedFields: [...dropped] });
-  return { ...stripLegacyMaps(raw), tools };
-};
-`;
-
-function render(body) {
-  return `// AUTO-GENERATED — DO NOT EDIT. Regenerate via: bun run sync:from-host
-//
-// @lvis/plugin-sdk — public surface of the LVIS plugin contract.
-// This file mirrors the host plugin type contract.
-
-import { createRequire } from "node:module";
-import type { ValidateFunction } from "ajv";
-
-export type MarketplacePackageType =
+/**
+ * Hand-maintained twins of host types that live OUTSIDE `src/plugins/types.ts`
+ * (`shared/assistant-context.ts`, `shared/marketplace-package-assets.ts`, and
+ * `mcp/types.ts`), which the extractor does not read. `PluginMarketplaceItem`
+ * references the first two; `PluginManifest.uiResources` references
+ * `PluginUiResourceDecl` (→ `McpUiResourceCsp`) from `mcp/types.ts`. The generated
+ * surface will not compile without them. Keep in lock-step with the host by hand —
+ * there is no drift check covering these declarations.
+ */
+const HOST_SHARED_TYPE_TWINS = `export type MarketplacePackageType =
   | "plugin"
   | "mcp"
   | "agent"
@@ -352,27 +239,38 @@ export type MarketplacePackageAsset =
   | ({ type: "theme"; bundleId: string } & Record<string, unknown>)
   | ({ type: "language-pack"; locale: string } & Record<string, unknown>);
 
-const requireFromSdk = createRequire(import.meta.url);
-
-export function compileManifestValidator(): ValidateFunction {
-  const AjvModule = requireFromSdk("ajv") as { default?: unknown };
-  const AddFormatsModule = requireFromSdk("ajv-formats") as { default?: unknown };
-  const AjvCtor = (AjvModule.default ?? AjvModule) as new (opts?: unknown) => {
-    compile: (schema: unknown) => ValidateFunction;
-  };
-  const addFormats = (AddFormatsModule.default ?? AddFormatsModule) as (ajv: unknown) => void;
-  const ajv = new AjvCtor({
-    strict: true,
-    strictRequired: false,
-    allErrors: true,
-    allowUnionTypes: true,
-  });
-  addFormats(ajv);
-  return ajv.compile(requireFromSdk("../schemas/plugin-manifest.schema.json"));
+/** A UI resource's declared CSP — spec \`McpUiResourceCsp\` (domain buckets, not directive names). */
+export interface McpUiResourceCsp {
+  /** Origins for network requests (fetch/XHR/WebSocket) → \`connect-src\`. */
+  connectDomains?: string[];
+  /** Origins for images, scripts, stylesheets, fonts, media → those five directives. */
+  resourceDomains?: string[];
+  /** Origins for nested iframes → \`frame-src\`. */
+  frameDomains?: string[];
+  /** Allowed base URIs for the document → \`base-uri\`. */
+  baseUriDomains?: string[];
 }
 
-${body}
-${SDK_MANIFEST_COMPAT_ADAPTER}`;
+/** A first-party plugin's declaration of ONE \`ui://\` MCP App card it serves. */
+export interface PluginUiResourceDecl {
+  /** \`ui://<pluginId>/<path>\` — authority MUST equal the declaring plugin's id. */
+  uri: string;
+  /** The resource's own declared CSP (spec \`McpUiResourceCsp\`). @optional */
+  csp?: McpUiResourceCsp;
+}`;
+
+function render(body) {
+  // NOTE: `sanitizeForPublic` only preserves the first 5 lines as the banner —
+  // keep this header at or under that, or it gets truncated mid-sentence.
+  return `// AUTO-GENERATED — DO NOT EDIT. Regenerate via: bun run sync:from-host
+//
+// @lvis/plugin-sdk — public surface of the LVIS plugin contract, mirrored from
+// the host. The SDK adds no logic of its own: the host owns manifest validation,
+// and the only runtime values below are the host's own error classes + codes.
+
+${HOST_SHARED_TYPE_TWINS}
+
+${body}`;
 }
 
 /**
@@ -962,13 +860,12 @@ function enrichWithJsDoc(text, catalog) {
       const lines = bodyText.split("\n");
 
       // Track nesting depth across lines so field re-injection only fires on
-      // direct (depth-0) members of the interface body. Without this guard the
-      // script greedily injects PluginManifest.fields.description JSDoc onto
-      // the inner `toolSchemas[].description` field too — which is the LLM-
-      // facing tool description with min length 10, NOT a plugin catalog
-      // summary. Strings, comments, and template literals are NOT separately
-      // tokenized — for our generated output (no string-literal braces inside
-      // type signatures) plain brace counting is sufficient.
+      // direct (depth-0) members of the interface body. Without this guard a
+      // catalog entry's JSDoc (say `PluginManifest.description`) is greedily
+      // injected onto any same-named field of a NESTED inline object type too,
+      // where it is simply wrong. Strings, comments, and template literals are
+      // NOT separately tokenized — for our generated output (no string-literal
+      // braces inside type signatures) plain brace counting is sufficient.
       let lineDepth = 0;
 
       const newLines = [];
@@ -1069,61 +966,7 @@ export type StorageEncoding =
   out = ensurePluginManifestPackageName(out);
   out = ensurePluginManifestAuthor(out);
   out = ensurePluginManifestUiSlots(out);
-  out = annotateToolSchemaInner(out);
   out = ensurePluginMarketplaceCatalogFields(out);
-
-  return out;
-}
-
-/**
- * M10 — the depth-aware field-injection in `enrichWithJsDoc` deliberately
- * skips nested object members so PluginManifest's `description` JSDoc no
- * longer leaks onto the inner `toolSchemas[].description` (which is the
- * LLM-facing tool description with `minLength: 10` per the JSON Schema —
- * NOT a plugin catalog summary). This pass adds back a correct JSDoc on
- * those nested members. Idempotent.
- */
-function annotateToolSchemaInner(text) {
-  // The v6 host contract removed the legacy toolSchemas map. Avoid matching an
-  // unrelated top-level `version` field when the nested legacy block is absent.
-  if (!/toolSchemas\?: Record<\s*\r?\n\s*string,\s*\r?\n\s*\{/.test(text)) return text;
-
-  const innerDescDoc =
-    "      /** LLM-facing tool description (when/what/returns). Minimum 10 characters per JSON Schema. */";
-  const innerVersionDoc =
-    "      /** Optional stable SemVer (MAJOR.MINOR.PATCH) for this tool — §6.4 Tool versioning. Falls back to the manifest top-level `version` when omitted. @optional */";
-  const innerDeprecatedDoc =
-    "      /** Stable SemVer marking the manifest version that deprecated this tool. Triggers a runtime warn on call. @optional */";
-  const innerReplacedByDoc =
-    "      /** Tool name that supersedes this deprecated tool — host transparently redirects calls. @optional */";
-
-  let out = text;
-
-  // Tolerate CRLF — Windows checkouts of the host source carry \r\n line
-  // endings; without `\r?\n` these regexes silently no-op on Windows and CI
-  // (Linux, LF) regenerates a different file → spurious drift on every PR.
-  out = out.replace(
-    /(toolSchemas\?: Record<\s*\r?\n\s*string,\s*\r?\n\s*\{\s*\r?\n)([ \t]+description: string;)/m,
-    (_match, head, line) => {
-      if (head.includes(innerDescDoc.trim())) return _match;
-      return `${head}${innerDescDoc}\n${line}`;
-    },
-  );
-  out = out.replace(
-    /(\r?\n)([ \t]+version\?: string;\r?\n)/,
-    (_match, lead, line) =>
-      out.includes(innerVersionDoc.trim()) ? _match : `${lead}${innerVersionDoc}\n${line}`,
-  );
-  out = out.replace(
-    /(\r?\n)([ \t]+deprecatedSince\?: string;\r?\n)/,
-    (_match, lead, line) =>
-      out.includes(innerDeprecatedDoc.trim()) ? _match : `${lead}${innerDeprecatedDoc}\n${line}`,
-  );
-  out = out.replace(
-    /(\r?\n)([ \t]+replacedBy\?: string;\r?\n)/,
-    (_match, lead, line) =>
-      out.includes(innerReplacedByDoc.trim()) ? _match : `${lead}${innerReplacedByDoc}\n${line}`,
-  );
 
   return out;
 }
@@ -1265,10 +1108,8 @@ function ensurePluginMarketplaceCatalogFields(text) {
     ["defaultConfig", "  /** Default configuration seeded into the plugin on first install. Users may override this. @optional */\n  defaultConfig?: Record<string, unknown>;"],
     ["ui", "  /** UI extensions the plugin will contribute once installed. @optional */\n  ui?: PluginUiExtension[];"],
     ["keywords", "  /** Skill keywords published by the catalog entry. @optional */\n  keywords?: Array<{ keyword: string; skillId: string }>;"],
-    ["uiActions", "  /** Legacy UI-action metadata retained for catalog compatibility. @optional */\n  uiActions?: Record<string, PluginUiActionSpec>;"],
     ["emittedEvents", "  /** Event names this catalog entry may emit. @optional */\n  emittedEvents?: string[];"],
     ["notificationEvents", "  /** Notification metadata mirrored from the installable manifest. @optional */\n  notificationEvents?: Array<{\n    event: string;\n    titleField?: string;\n    bodyField?: string;\n    bypassFocusGate?: boolean;\n  }>;"],
-    ["toolSchemas", "  /** Legacy tool-schema metadata retained for catalog compatibility. @optional */\n  toolSchemas?: RawPluginManifest[\"toolSchemas\"];"],
   ];
   const missing = fields
     .filter(([name]) => !interfaceHasField(text, "PluginMarketplaceItem", name))

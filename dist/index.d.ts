@@ -1,4 +1,3 @@
-import type { ValidateFunction } from "ajv";
 export type MarketplacePackageType = "plugin" | "mcp" | "agent" | "skill" | "provider" | "theme" | "language-pack";
 export type MarketplacePackageAsset = ({
     type: "provider";
@@ -10,7 +9,16 @@ export type MarketplacePackageAsset = ({
     type: "language-pack";
     locale: string;
 } & Record<string, unknown>);
-export declare function compileManifestValidator(): ValidateFunction;
+export interface McpUiResourceCsp {
+    connectDomains?: string[];
+    resourceDomains?: string[];
+    frameDomains?: string[];
+    baseUriDomains?: string[];
+}
+export interface PluginUiResourceDecl {
+    uri: string;
+    csp?: McpUiResourceCsp;
+}
 export type InstallPolicy = "admin" | "user";
 export type AuthWindowCookie = {
     name: string;
@@ -140,6 +148,7 @@ export interface Tool {
         ui?: {
             visibility?: Array<"model" | "app">;
         };
+        "lvisai/pathFields"?: string[];
         "xyz.lvis/pathFields"?: string[];
     };
 }
@@ -178,6 +187,7 @@ export interface PluginManifest {
     config?: Record<string, unknown>;
     /** Sidebar / panel UI extensions contributed by this plugin. @optional */
     ui?: PluginUiExtension[];
+    uiResources?: PluginUiResourceDecl[];
     /** Skill keywords registered with the host keyword engine. Each entry binds a surface keyword to a `skillId` the plugin handles. @optional */
     keywords?: Array<{
         keyword: string;
@@ -452,8 +462,6 @@ export interface PluginMarketplaceItem {
         keyword: string;
         skillId: string;
     }>;
-    /** Legacy UI-action metadata retained for catalog compatibility. @optional */
-    uiActions?: Record<string, PluginUiActionSpec>;
     /** Event names this catalog entry may emit. @optional */
     emittedEvents?: string[];
     /** Notification metadata mirrored from the installable manifest. @optional */
@@ -463,8 +471,6 @@ export interface PluginMarketplaceItem {
         bodyField?: string;
         bypassFocusGate?: boolean;
     }>;
-    /** Legacy tool-schema metadata retained for catalog compatibility. @optional */
-    toolSchemas?: RawPluginManifest["toolSchemas"];
 }
 export declare class PluginStorageEncryptionUnavailableError extends Error {
     readonly code = "encryption-unavailable";
@@ -850,6 +856,7 @@ export interface RuntimePlugin {
      * `PluginManifest.tools`. The host rejects calls to missing handlers.
      */
     handlers: Record<string, PluginToolHandler>;
+    readUiResource?: (uri: string) => Promise<string> | string;
 }
 /**
  * Factory function exported (as default) from a plugin's `entry` module.
@@ -866,35 +873,4 @@ export interface RuntimePlugin {
  * export default factory;
  */
 export type RuntimePluginFactory = (context: PluginRuntimeContext) => Promise<RuntimePlugin> | RuntimePlugin;
-export interface PluginUiActionSpec {
-    description?: string;
-}
-export type LegacyToolSchema = {
-    description?: string;
-    pathFields?: string[];
-    inputSchema?: Tool["inputSchema"];
-    category?: unknown;
-    workerId?: unknown;
-    writesToOwnSandbox?: unknown;
-    version?: unknown;
-    deprecatedSince?: unknown;
-    replacedBy?: unknown;
-};
-export type RawPluginManifest = Omit<PluginManifest, "tools"> & {
-    tools: string[] | Tool[];
-    uiActions?: Record<string, {
-        description?: string;
-    }>;
-    toolSchemas?: Record<string, LegacyToolSchema>;
-};
-export type NormalizedManifest = Omit<RawPluginManifest, "tools" | "toolSchemas" | "uiActions"> & {
-    tools: Tool[];
-};
-export interface NormalizeNotice {
-    pluginId: string;
-    kind: "legacy-shape";
-    droppedFields: Array<"category" | "workerId" | "writesToOwnSandbox" | "version" | "deprecatedSince" | "replacedBy">;
-}
-export type NormalizeReporter = (notice: NormalizeNotice) => void;
-export declare const normalizeManifest: (raw: RawPluginManifest, report?: NormalizeReporter) => NormalizedManifest;
 //# sourceMappingURL=index.d.ts.map
