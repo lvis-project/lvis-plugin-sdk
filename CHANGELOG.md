@@ -7,6 +7,37 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## Unreleased — next tag MUST be v9.0.0 (breaking)
+
+### Removed (BREAKING)
+- `compileManifestValidator()`, and with it the `ajv` / `ajv-formats` runtime
+  dependencies. The host owns the manifest schema since ph2 and compiles its own
+  validator (`src/plugins/runtime/manifest-validation.ts`), with no runtime
+  `@lvis/plugin-sdk` import. No plugin repo called this; manifests are validated
+  by ajv-cli against `schemas/plugin-manifest.schema.json`, which is unchanged as
+  a consumable artifact. Anything still calling it should validate against that
+  schema file directly.
+- `normalizeManifest()` and the pre-v6 legacy manifest types (`RawPluginManifest`,
+  `NormalizedManifest`, `LegacyToolSchema`, `NormalizeNotice`, `NormalizeReporter`,
+  `PluginUiActionSpec`), plus the `uiActions` / `toolSchemas` fields on
+  `PluginMarketplaceItem`. The legacy manifest shape (tool-name strings +
+  `toolSchemas` + `uiActions`) is rejected by the host at load and by this
+  package's own schema, so the adapter had no reachable use.
+
+### Changed
+- The vendor `_meta` namespace is now `lvisai/*`. `Tool._meta` and the manifest
+  schema both carry `lvisai/pathFields`; the legacy `xyz.lvis/pathFields` remains
+  accepted as a transitional alias so installed plugins keep validating. Companion
+  to lvis-app#1601 — do not release ahead of it. No other vendor key is renamed.
+- `scripts/sync-schema-from-host.mjs` now reads the host's real schema path
+  (`schemas/plugin-manifest.schema.json`; it was still reading the deleted
+  `schemas/plugin.schema.json` and failing on every run) and copies it verbatim —
+  its seven post-process passes are gone, since the host absorbed all of them.
+  `drift-check.yml` now runs it, so the schema mirror is gated like the type
+  surface.
+
+---
+
 ## v8.0.0 — 2026-07-11
 
 ### Removed (BREAKING)
