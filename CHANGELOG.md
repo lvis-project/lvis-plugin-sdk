@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v11.0.0 — 2026-07-19
+
+### Removed (BREAKING)
+- `PluginHostApi.callTool()` is no longer part of the plugin contract, so a plugin cannot invoke another plugin's tool directly.
+- `PluginAccessTarget.tools` and the corresponding `pluginAccess.plugins[].tools` manifest schema property are removed. Legacy persisted grants are stripped by the host while preserving event grants.
+
+### Migration
+- Model cross-plugin collaboration as named `emitEvent` / `onEvent` request-and-response events. A plugin's own UI/MCP tool invocation remains unchanged.
+
+
 ## v10.0.0 — 2026-07-12
 
 ### Removed (BREAKING)
