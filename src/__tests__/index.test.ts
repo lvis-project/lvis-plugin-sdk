@@ -888,7 +888,6 @@ describe("PluginHostApi — interface contract (structural)", () => {
       getInstalledPluginIds: () => [],
       onPluginsChanged: (_handler) => () => {},
       getSecret: (_key) => null,
-      callTool: (_name, _payload) => Promise.resolve(undefined) as Promise<never>,
       callLlm: async (_prompt, _opts) => "",
       logEvent: (_level, _msg, _data) => {},
       onShutdown: (_handler) => {},
