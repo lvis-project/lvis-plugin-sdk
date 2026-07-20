@@ -87,7 +87,7 @@ A plugin has two artifacts:
 | `auth` | `PluginAuthSpec` | Declarative auth contract for OAuth/cookie flows. `statusTool`/`loginTool`/`logoutTool` must appear in `uiActions` and must **NOT** appear in `tools[]` — auth is a host-managed lifecycle, not LLM-callable; the host rejects a manifest that lists an auth tool in `tools[]`. |
 | `configSchema` | `PluginConfigSchema` | JSON Schema draft-07 subset; `format: "secret"` routes values through the encrypted keychain. |
 | `dependencies` | `Array<string \| DependencySpec>` | Plugin-level dependencies (other plugin ids). |
-| `pluginAccess` | `PluginAccessSpec` | Cross-plugin tool/event access grants. |
+| `pluginAccess` | `PluginAccessSpec` | Cross-plugin event subscription grants; use request/response events instead of direct tool calls. |
 | `publisher` | `string` | Non-empty string. Required for marketplace submissions. |
 | `startupTimeoutMs` | `number` | Max ms host waits for `start()` to resolve. |
 | `python` | `{managedBy?, requirementsLock?, interpreter?}` | Python co-deployment metadata for plugins with Python workers. |

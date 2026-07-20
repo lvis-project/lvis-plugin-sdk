@@ -667,9 +667,11 @@ const JSDOC_CATALOG = {
  * Open \`url\` in a hardened BrowserWindow bound to this plugin's
  * \`persist:plugin-auth:<pluginId>\` partition, so the page reuses
  * AAD/OIDC cookies already deposited by the plugin's \`openAuthWindow\`
- * call (silent-SSO, no re-login). Designed for the cross-plugin flow
- * where a consumer plugin invokes the auth-owning plugin's tool via
- * \`callTool\` and that tool opens the viewer.
+ * call (silent-SSO, no re-login).
+ *
+ * Caller binding: the host derives the partition from this HostApi's
+ * plugin id. A plugin cannot name or reuse another plugin's partition;
+ * its own UI or auth flow must open a viewer through its own HostApi.
  *
  * Preconditions:
  *   - Plugin manifest MUST declare capability \`external-auth-consumer\`.
