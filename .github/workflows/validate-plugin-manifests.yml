@@ -55,7 +55,8 @@ jobs:
             echo "::error title=Missing secret::PLUGIN_MANIFEST_REPOS secret not configured. Set it to a space-separated list of active plugin repo names via: gh secret set PLUGIN_MANIFEST_REPOS --repo lvis-project/lvis-plugin-sdk"
             exit 1
           fi
-          json=$(printf '%s\n' $PLUGIN_MANIFEST_REPOS | jq -R . | jq -sc .)
+          read -r -a plugin_repos <<< "$PLUGIN_MANIFEST_REPOS"
+          json=$(printf '%s\n' "${plugin_repos[@]}" | jq -R . | jq -sc .)
           echo "plugins=$json" >> "$GITHUB_OUTPUT"
 
   validate:
@@ -71,7 +72,7 @@ jobs:
         plugin: ${{ fromJson(needs.resolve-matrix.outputs.plugins) }}
     steps:
       - name: Checkout SDK
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       # `continue-on-error: true` lets the next step inspect the outcome and
       # decide between two very different 404 causes:
@@ -84,7 +85,7 @@ jobs:
       - name: Generate read token for plugin repo
         id: app-token
         continue-on-error: true
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
@@ -164,7 +165,7 @@ jobs:
 
       - name: Open issue on validation failure (nightly only)
         if: failure() && github.event_name == 'schedule' && steps.app-token.outcome == 'success'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
           script: |
             const title = `validate-plugin-manifests: ${{ matrix.plugin }} drift`;
