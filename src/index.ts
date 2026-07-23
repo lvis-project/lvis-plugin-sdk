@@ -18,31 +18,20 @@ export type MarketplacePackageAsset =
   | ({ type: "theme"; bundleId: string } & Record<string, unknown>)
   | ({ type: "language-pack"; locale: string } & Record<string, unknown>);
 
-export interface McpUiResourceCsp {
-
-  connectDomains?: string[];
-
-  resourceDomains?: string[];
-
-  frameDomains?: string[];
-
-  baseUriDomains?: string[];
-}
-
-export interface McpUiResourcePermissions {
-  camera?: Record<string, never>;
-  microphone?: Record<string, never>;
-  geolocation?: Record<string, never>;
-  clipboardWrite?: Record<string, never>;
-}
-
 export interface PluginUiResourceDecl {
-
   uri: string;
+  csp?: {
+    connectDomains?: string[];
+    resourceDomains?: string[];
+    frameDomains?: string[];
+    baseUriDomains?: string[];
+  };
 
-  csp?: McpUiResourceCsp;
-
-  permissions?: McpUiResourcePermissions;
+  permissions?: {
+    camera?: Record<string, never>;
+    microphone?: Record<string, never>;
+    geolocation?: Record<string, never>;
+  };
 }
 
 export type InstallPolicy = "admin" | "user";
