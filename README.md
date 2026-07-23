@@ -1,33 +1,22 @@
 # @lvis/plugin-sdk
 
-Source SDK for LVIS plugin authors. Provides the complete plugin contract
-surface — `PluginManifest`, `PluginHostApi`, `PluginRuntimeContext`,
-`RuntimePlugin` — plus a thin `tsup` build helper. It does **not**
-ship UI components, design tokens, or theme helpers: plugins own their UI
-freely (see [Plugin UI](#plugin-ui)). Marketplace trust keys are also
-intentionally excluded.
+Minimal authoring package for LVIS plugins.
 
-```ts
-import type {
-  RuntimePluginFactory,
-  PluginHostApi,
-  PluginManifest,
-} from "@lvis/plugin-sdk";
+The Host owns the complete public plugin contract and documentation:
 
-const createPlugin: RuntimePluginFactory = async ({ hostApi, log }) => ({
-  async start() { log("candidate prepared"); },
-  async onPublished() { log("active generation ready"); },
-  handlers: {
-    my_plugin_ping: async () => ({ ok: true }),
-  },
-});
+- `lvis-app/src/plugins/public-contract.ts` owns every public declaration,
+  runtime ABI value, and JSDoc block.
+- `lvis-app/schemas/plugin-manifest.schema.json` owns manifest validation shape.
+- this SDK's `src/index.ts` and schema are generated mechanical mirrors.
 
-export default createPlugin;
-```
+The SDK does not select declarations, synthesize documentation, define
+compatibility aliases, or validate manifests at Host runtime. Marketplace trust
+keys and Host-private registry/marketplace DTOs are intentionally excluded by
+the Host source boundary.
 
 ## Install
 
-Consume the SDK as a Git dependency pinned to a release tag:
+Pin a released Git tag:
 
 ```json
 {
@@ -42,333 +31,79 @@ No submodule is required.
 ## Exports
 
 | Subpath | Contents |
-|---|---|
-| `@lvis/plugin-sdk` | All type contracts (`PluginManifest`, `PluginHostApi`, `PluginRuntimeContext`, `RuntimePlugin`, …) |
-| `@lvis/plugin-sdk/build` | `defineLvisPluginConfig` — tsup build helper enforcing the self-contained plugin bundle contract |
-| `@lvis/plugin-sdk/schemas/plugin-manifest.schema.json` | Manifest JSON Schema (byte-equal copy of the host schema) |
-
-## Plugin anatomy
-
-A plugin archive has two required members and may include declared contributions:
-
-1. **`plugin.json`** — declarative manifest parsed by the host before the runtime loads.
-2. **Entry module** (`entry` field in manifest) — exports a `RuntimePluginFactory` as default.
-3. Optional **Skills, Hooks, and MCP descriptors** at the exact relative paths
-   declared by `skills[]`, `hooks[]`, and `mcpServers[]`. These files are part of
-   the same signed/versioned archive and lifecycle as the runtime.
-
-### Minimal `plugin.json`
-
-```json
-{
-  "id": "com.example.my-plugin",
-  "name": "My Plugin",
-  "version": "1.0.0",
-  "description": "One-line summary (required, 1-280 chars). The LLM reads this.",
-  "entry": "dist/index.js",
-  "tools": [{
-    "name": "my_plugin_ping",
-    "description": "Return plugin health.",
-    "inputSchema": { "type": "object", "properties": {} }
-  }]
-}
-```
-
-### `PluginManifest` — key fields
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | `string` | Globally unique. Reverse-DNS style recommended (`com.example.my-plugin`). |
-| `name` | `string` | Display name. |
-| `version` | `string` | SemVer. |
-| `description` | `string` | **Required** since v3.0.0. 1-280 chars. LLM-visible. |
-| `entry` | `string` | Path relative to plugin root; default export must be `RuntimePluginFactory`. |
-| `tools` | `Tool[]` | Typed MCP Tool objects. Names use `^[a-zA-Z_][a-zA-Z0-9_]*$`; `_meta.ui.visibility` controls model/app exposure. |
-| `skills` / `hooks` / `mcpServers` | `Array<{id, path}>` | Signed plugin-owned contributions activated and retired atomically with the runtime generation. |
-| `capabilities` | `string[]` | Capability tags (e.g. `"meeting-recorder"`, `"host:overlay"`). Hosts gate features on these. |
-| `keywords` | `Array<{keyword, skillId}>` | Optional discovery keywords for a declared Skill; not a direct tool-dispatch alias. |
-| `eventSubscriptions` | `string[] \| EventSubscription[]` | Events the plugin listens to via `hostApi.onEvent`. |
-| `emittedEvents` | `string[]` | Events the plugin emits via `hostApi.emitEvent`. Declare all emitted events here. |
-| `notificationEvents` | `Array<{event, titleField?, bodyField?, bypassFocusGate?}>` | Events surfaced as host OS notifications. |
-| `ui` | `PluginUiExtension[]` | Sidebar/panel UI extensions. Currently `slot: "sidebar"` only. |
-| `auth` | `PluginAuthSpec` | Declarative auth contract for the plugin's trusted panel. Auth tools remain app-only and are not model-visible. |
-| `configSchema` | `PluginConfigSchema` | JSON Schema draft-07 subset; `format: "secret"` routes values through the encrypted keychain. |
-| `dependencies` | `Array<string \| DependencySpec>` | Plugin-level dependencies (other plugin ids). |
-| `pluginAccess` | `PluginAccessSpec` | Cross-plugin event subscription grants; use request/response events instead of direct tool calls. |
-| `publisher` | `string` | Non-empty string. Required for marketplace submissions. |
-| `packageName` | `string` | Marketplace-persisted package identity used for rollback; the publish pipeline owns this value. |
-| `author` | `string` | Optional individual maintainer credit, distinct from the publishing organization. |
-| `uiSlots` | `string[]` | Marketplace-only slot advertisement; actual extension bindings remain in `ui[].slot`. |
-| `startupTimeoutMs` | `number` | Max ms host waits for `start()` to resolve. |
-| `python` | `{managedBy?, requirementsLock?, interpreter?}` | Canonical Python co-deployment metadata; legacy parallel lockfile aliases are unsupported. |
-
-### Tool operations and path fields
-
-The Host classifies risk. A discriminated Read or Write tool may colocate a
-signed restriction in `tool._meta["lvisai/operationPolicy"]`. The policy can
-narrow app-visible operations, raise the minimum risk floor, and require a fresh
-read before a write; it cannot create a second tool/action surface or relax Host
-policy. Filesystem argument names belong in
-`tool._meta["lvisai/pathFields"]`; the Host validates them against the plugin's
-scoped storage boundary.
-
-## `PluginRuntimeContext`
-
-The context object passed by the host to `RuntimePluginFactory`:
+| --- | --- |
+| `@lvis/plugin-sdk` | Mechanical mirror of the Host public contract |
+| `@lvis/plugin-sdk/build` | Thin `defineLvisPluginConfig` tsup helper |
+| `@lvis/plugin-sdk/schemas/plugin-manifest.schema.json` | Verbatim Host schema mirror |
 
 ```ts
-interface PluginRuntimeContext {
-  pluginId: string;        // matches manifest.id
-  pluginRoot: string;      // absolute path to plugin install dir (read-safe)
-  hostRoot: string;        // absolute path to host working dir (avoid direct writes)
-  pluginDataDir: string;   // ~/.lvis/plugins/<pluginId>/ — plugin's private data dir
-  config?: Record<string, unknown>; // manifest defaults merged with user overrides
-  log: (message: string, meta?: unknown) => void; // scoped logger (prefix = pluginId)
-  hostApi: PluginHostApi;
-}
+import type { RuntimePluginFactory } from "@lvis/plugin-sdk";
+
+const createPlugin: RuntimePluginFactory = async ({ log }) => ({
+  async start() {
+    log("candidate prepared");
+  },
+  async onPublished() {
+    log("active generation ready");
+  },
+  handlers: {
+    my_plugin_ping: async () => ({ ok: true }),
+  },
+});
+
+export default createPlugin;
 ```
 
-Plugin data is stored under `~/.lvis/plugins/<pluginId>/`. Do not read or write outside this directory without going through a host API method.
+Use the generated JSDoc in `@lvis/plugin-sdk` for the authoring API. The
+reader-facing development guide and security rationale live in Host:
 
-## `PluginHostApi` — full surface
+- `docs/guides/plugin-development.md`
+- `docs/references/plugin-tool-schema-design.md`
+- `docs/architecture/plugin-contract-v6-design.md`
 
-```ts
-interface PluginHostApi {
-  // ── Config (reactive) ─────────────────────────────────────────────────────
-  config: {
-    get<T = unknown>(key: string): T | undefined;
-    set<T = unknown>(key: string, value: T): Promise<void>;
-    onChange<T = unknown>(key: string, cb: (value: T | undefined) => void): () => void;
-  };
+## Regenerating Mirrors
 
-  // ── Storage (scoped to pluginDataDir) ─────────────────────────────────────
-  storage: PluginStorage; // read / write / exists / mkdir — all paths relative to pluginDataDir
-
-  // ── Keywords ──────────────────────────────────────────────────────────────
-  registerKeywords(keywords: Array<{ keyword: string; skillId: string }>): void;
-
-  // ── Events ────────────────────────────────────────────────────────────────
-  emitEvent(eventType: string, data?: unknown): void;
-  onEvent(eventType: string, handler: (data: unknown) => void): () => void; // returns unsubscribe fn
-
-  // ── Plugin lifecycle ──────────────────────────────────────────────────────
-  getInstalledPluginIds(): string[];                                         // excludes caller
-  onPluginsChanged(handler: (event: PluginLifecycleEvent) => void): () => void;
-
-  // ── Secrets (Electron safeStorage) ────────────────────────────────────────
-  getSecret(key: string): string | null;
-
-  // ── LLM API key resolution ─────────────────────────────────────────────────
-  resolveApiKey?(opts: {
-    purpose: "llm" | "stt" | "embedding" | "vision";
-    vendor?: "openai" | "azure-openai" | "vertex" | "anthropic";
-    signal?: AbortSignal;
-  }): Promise<{ ok: true; vendor: string; bearer: () => string } | { ok: false; error: string; message: string }>;
-
-  // ── Overlay / conversation trigger ────────────────────────────────────────
-  triggerConversation(spec: ConversationTriggerSpec): Promise<ConversationTriggerResult>;
-
-  // ── Auth window ───────────────────────────────────────────────────────────
-  openAuthWindow(options: OpenAuthWindowWithFinalUrlOptions): Promise<OpenAuthWindowFinalUrlResult>;
-  openAuthWindow(options: OpenAuthWindowCookieOptions): Promise<AuthWindowCookie[]>;
-  openAuthPartitionViewer(pluginId: string): Promise<void>;
-
-  // ── Logging ────────────────────────────────────────────────────────────────
-  log(level: "info" | "warn" | "error", message: string, data?: unknown): void;
-
-  // ── Shutdown ───────────────────────────────────────────────────────────────
-  onShutdown(handler: () => void | Promise<void>): void;
-}
-```
-
-## `RuntimePlugin` lifecycle
-
-```ts
-interface RuntimePlugin {
-  start?: () => Promise<void> | void;  // hidden candidate: reversible preparation only
-  onPublished?: () => Promise<void> | void; // active generation: network/session/timers
-  stop?: () => Promise<void> | void;   // flush state, release resources
-  handlers: Record<string, PluginToolHandler>; // keys must match manifest.tools
-}
-```
-
-Call `hostApi.onEvent` unsubscribe functions and release resources in `stop()`.
-
-## Event naming convention
-
-Events are **dot-delimited** strings. Plugin-emitted events must be namespaced
-under the plugin's own id to avoid collisions:
-
-```
-<manifest.id>.<verb>.<noun>
-```
-
-Examples:
-- `com.example.my-plugin.task.created`
-- `com.example.my-plugin.auth.changed`  ← required when `auth` spec is declared (§9.4a)
-
-The namespace `plugin.*` is reserved by the host — `hostApi.emitEvent("plugin.installed", ...)` is rejected.
-
-No underscore↔hyphen normalization is applied: the string you emit must exactly
-match the string subscribers register with `onEvent`.
-
-## Auth event contract
-
-When a plugin declares an `auth` spec in its manifest, it **must** include
-`<pluginId>.auth.changed` in `emittedEvents[]` and emit it from all login/logout
-and auth-state-change paths. The host settings badge polls by event, not by
-timer — omitting the event means the UI never refreshes after login.
-
-## Schema source-of-truth (US-A1)
-
-`schemas/plugin-manifest.schema.json` is a **byte-equality copy** of
-`lvis-app/schemas/plugin-manifest.schema.json`. A plugin that passes SDK validation will
-pass host validation and vice versa.
-
-- The host repo (`lvis-app`) is the canonical source of truth.
-- SDK schema is regenerated by `scripts/sync-schema-from-host.mjs`.
-- `drift-check` CI workflow runs nightly and on every PR; fails when SDK types
-  or schema diverge from the host.
-- To regenerate locally:
-
-  ```bash
-  LVIS_HOST_SCHEMA_PATH=/path/to/lvis-app/schemas/plugin-manifest.schema.json \
-    bun run sync:schema-from-host
-  ```
-
-Both schemas use JSON Schema **draft-07** (the dialect AJV strict-mode enforces
-in the host's runtime validator).
-
-## Plugin UI
-
-The SDK does **not** ship UI components, design tokens, theme subscribers, or a
-CSS-namespace validator. Plugins own their UI completely — pick whatever
-rendering approach fits (vanilla DOM, React, or any framework you bundle
-yourself) and style it however you like.
-
-The design **philosophy** — how a plugin panel should look and behave so it
-feels native inside the host shell — is documented, not enforced. It lives in
-the host's design guide:
-
-**[lvis-app / DESIGN.md](https://github.com/lvis-project/lvis-app/blob/main/DESIGN.md)**
-
-That guide covers the support boundaries the host commits to, including the
-responsive width tiers and the 448px sidebar-panel floor. Treat it as guidance
-for building a panel that reads well across those tiers; it is not a contract
-the SDK checks at build time.
-
-Practical notes for plugin authors:
-
-- Bundle your own UI runtime. The `@lvis/plugin-sdk/build` helper
-  (`defineLvisPluginConfig`) already bundles every dependency into `dist/` so a
-  React (or other) UI ships self-contained.
-- The host paints its theme onto the plugin surface via CSS custom properties;
-  read them (e.g. `var(--lvis-bg)`) from your own styles if you want to track
-  the active theme. Namespacing and token discipline are now the plugin's own
-  responsibility.
-
-## Trust model
-
-Marketplace signing keys are intentionally not part of this SDK:
-
-- `lvis-marketplace` validates and signs uploaded plugin artifacts.
-- `lvis-app` owns the marketplace trust anchors and verifies signed artifacts during install/update.
-- Plugin repos use this SDK only for authoring types and manifest contracts.
-
-## Tag policy
-
-- `v2.0.0+` tags are immutable release points.
-- Pin a specific tag: `github:lvis-project/lvis-plugin-sdk#vX.Y.Z`.
-- Each release tag must be annotated and contain exactly one
-  `Host-Ref: <40-character lvis-app commit SHA>` trailer. The release workflow
-  proves both the SDK tag commit and that Host commit belong to their respective
-  `main` histories before it can publish.
-- Each tag push triggers `release.yml`, which runs unit tests, typecheck, build,
-  source/schema/dist drift checks against that exact Host commit, and then creates
-  a public GitHub Release with a provenance JSON asset.
-- Semver: patch for fixes, minor for additive type changes, major for breaking contract changes.
-
-## Releasing a new version
-
-1. Bump `version` in `package.json` following semver.
-2. Commit: `chore: release vX.Y.Z`
-3. Resolve the exact Host contract commit already merged to `lvis-app/main`:
-   `git -C ../lvis-app rev-parse origin/main`.
-4. Create an annotated tag whose trailer binds the SDK release to that contract:
-   `git tag -a vX.Y.Z -m "Release vX.Y.Z" -m "Host-Ref: <40-character SHA>"`.
-5. Push the tag: `git push origin vX.Y.Z`.
-6. The `release` workflow verifies the annotated tag, peeled commit, main ancestry,
-   package version, exact Host ref, tests/build, and all drift gates before creating
-   the public GitHub Release.
-7. Verify the release notes and attached `lvis-sdk-release-provenance.json`, then
-   notify downstream plugin authors to update their `#vX.Y.Z` pin.
-
-## Changelog highlights
-
-### v5.13.0 (current)
-
-Downstream pin: `github:lvis-project/lvis-plugin-sdk#v5.13.0`
-
-### v5.10.0 Additions (additive — no migration)
-
-MCP auth metadata types added:
-
-- `McpRuntimeSpec.stdio.apiKeyEnv?: string`
-- `McpRuntimeSpec.http.apiKeyHeader?` / `allowPrivateNetworks?` / `oauth?: McpOAuthMetadata`
-- `interface McpOAuthMetadata` — MCP 2025-06-18 + RFC 8414/7591 fields
-- `interface McpAuthMetadata extends McpOAuthMetadata` — `mode` discriminator
-
-Marketplace catalog DTOs remain Host-internal and are not exported by the
-plugin-author SDK. Manifest/runtime auth metadata is generated directly from
-the Host contract.
-
-### v5.0.0 Migration Guide — LvisHostThemeEvent v2 (BREAKING)
-
-The following fields were **removed** from `LvisHostThemeEvent`. No compat alias.
-
-| Removed field | v1 type | v2 replacement |
-|---|---|---|
-| `theme` | `"light" \| "dark" \| "high-contrast"` | `bundleId` + `shell` |
-| `chatTheme` | `"default" \| "lg" \| "purple" \| "orange" \| "blue"` | `bundleId` |
-| `codeTheme` | `"light" \| "dark"` | `bundleId` + `shell` |
-| `colorScheme` | `string` (optional) | `shell: "light" \| "dark"` |
-| `reducedMotion` | `boolean` (optional) | OS-level `prefers-reduced-motion` media query |
-| `fonts?.family` | `string` | plugin-managed CSS or future `--lvis-*` font token |
-
-`useTheme(bridge)` users: the hook is updated internally — no code changes needed, just bump the SDK version.
-
-### v3.1.0 Additions (additive — no migration)
-
-- `PluginHostApi.getInstalledPluginIds()` and `onPluginsChanged(handler)` added.
-- `PluginLifecycleEvent` discriminated union added: `{type: "installed", pluginId, source: "marketplace" | "local-dev"}` / `{type: "uninstalled", pluginId}`.
-- `plugin.*` event namespace reserved for host — plugin-side emit is rejected.
-
-### v3.0.0 Migration Guide (breaking)
-
-- `description` is now **required** in every `plugin.json`.
-- `eventPublishes` removed — use `emittedEvents` exclusively.
-- `permissions` top-level field removed (`additionalProperties: false` enforced).
-- `python` field added (optional) for plugins with Python workers.
-- `publisher` requires `minLength: 1` — empty string fails validation.
-
-### `$schema` URL migration
-
-```diff
-- "$schema": "https://sdk.lvis.com/schemas/plugin.schema.json",
-+ "$schema": "https://sdk.lvisai.xyz/schemas/plugin.schema.json",
-```
-
-Both URLs validate during the deprecation window. The legacy URL will be rejected at the next major release.
-
-### Upgrading
+With a sibling `lvis-app` checkout:
 
 ```bash
-# bun (recommended)
-bun add -d github:lvis-project/lvis-plugin-sdk#v5.13.0
-
-# npm
-npm install --save-dev github:lvis-project/lvis-plugin-sdk#v5.13.0
+bun run sync:from-host
+bun run sync:schema-from-host
 ```
 
-After upgrading, validate your `plugin.json` against:
-`node_modules/@lvis/plugin-sdk/schemas/plugin-manifest.schema.json`
+With explicit paths:
+
+```bash
+LVIS_HOST_CONTRACT_PATH=/path/to/lvis-app/src/plugins/public-contract.ts \
+  bun run sync:from-host
+
+LVIS_HOST_SCHEMA_PATH=/path/to/lvis-app/schemas/plugin-manifest.schema.json \
+  bun run sync:schema-from-host
+```
+
+Drift gates:
+
+```bash
+bun run check:drift
+bun run check:schema-drift
+bun run check:dist-drift
+```
+
+`scripts/sync-from-host.mjs` copies the complete Host public module and prepends
+only a generated-file banner. `scripts/sync-schema-from-host.mjs` copies the
+Host schema. Contract or documentation changes must therefore be made in
+`lvis-app` first.
+
+## Build Helper
+
+`@lvis/plugin-sdk/build` is the one deliberately SDK-local surface. It provides
+`defineLvisPluginConfig` for producing a self-contained plugin bundle. It does
+not change the Host contract.
+
+## Trust And Release
+
+- `lvis-marketplace` validates and signs uploaded artifacts.
+- `lvis-app` owns trust anchors and verifies artifacts during install/update.
+- Release tags are immutable and carry one
+  `Host-Ref: <40-character lvis-app commit SHA>` trailer.
+- Release CI validates tests, typecheck, build, source/schema/dist drift, and
+  provenance against that exact Host commit before publishing.
