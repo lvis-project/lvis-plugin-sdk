@@ -57,9 +57,10 @@ export const BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
  *
  * ## Self-contained plugin contract
  *
- * LVIS marketplace plugins are distributed as zip archives that contain
- * ONLY `dist/` and `plugin.json`. The publish workflow excludes
- * `node_modules/` from the zip, and the host plugin loader uses strict
+ * LVIS marketplace plugins are distributed as signed zip archives containing
+ * `dist/`, `plugin.json`, and every manifest-declared `skills`, `hooks`, and
+ * `mcpServers` path. The publish workflow excludes `node_modules/` from the
+ * zip, and the host plugin loader uses strict
  * `pluginRoot` containment (no sibling-repo escape since 2026-05). So
  * plugins cannot fall back to the host's `node_modules/` at runtime.
  *

@@ -7,6 +7,19 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v11.2.0 — 2026-07-23
+
+### Added
+- `RuntimePlugin.onPublished()` runs after the Host has durably selected the
+  plugin's immutable generation. Plugins should defer network discovery,
+  persisted-session recovery, and timers to this hook so hidden update
+  candidates remain side-effect free.
+
+### Changed
+- Packaging guidance now treats manifest-declared `skills`, `hooks`, and
+  `mcpServers` as signed plugin archive members alongside `dist/` and
+  `plugin.json`.
+
 ## v11.1.0 — 2026-07-23
 
 ### Added
