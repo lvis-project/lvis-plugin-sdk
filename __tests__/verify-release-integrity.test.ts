@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { verifyTagProtection } from "../scripts/verify-release-integrity.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SCRIPT = path.join(ROOT, "scripts/verify-release-integrity.mjs");
@@ -180,5 +181,87 @@ describe("verify-release-integrity", () => {
     const rejected = run(repo, "host", "--host-ref", sideSha, "--main-ref", "main");
     expect(rejected.status).toBe(1);
     expect(rejected.stderr).toContain("is not an ancestor of main");
+  });
+});
+
+describe("verifyTagProtection", () => {
+  const repository = "lvis-project/lvis-plugin-sdk";
+  const summary = {
+    id: 42,
+    name: "protect releases",
+    source_type: "Repository",
+    source: repository,
+    enforcement: "active",
+  };
+  const covered = {
+    ...summary,
+    target: "tag",
+    conditions: {
+      ref_name: {
+        include: ["refs/tags/v*"],
+        exclude: [],
+      },
+    },
+    rules: [
+      { type: "update" },
+      { type: "deletion" },
+    ],
+  };
+
+  it("fails closed when GitHub ruleset authority is unavailable", async () => {
+    await expect(
+      verifyTagProtection(
+        { repository, tag: "v11.0.0" },
+        { requestJson: async () => { throw new Error("HTTP 403"); } },
+      ),
+    ).rejects.toThrow("Tag-protection authority unavailable: HTTP 403");
+  });
+
+  it("rejects a tag with no active repository ruleset coverage", async () => {
+    await expect(
+      verifyTagProtection(
+        { repository, tag: "v11.0.0" },
+        { requestJson: async () => [] },
+      ),
+    ).rejects.toThrow(
+      "Release tag refs/tags/v11.0.0 is not protected: no active repository tag ruleset",
+    );
+  });
+
+  it("accepts a covered tag pattern with update and delete restrictions", async () => {
+    const requestedUrls: string[] = [];
+    const result = await verifyTagProtection(
+      { repository, tag: "v11.0.0" },
+      {
+        requestJson: async (url: string) => {
+          requestedUrls.push(url);
+          return url.includes("/rulesets/42?") ? covered : [summary];
+        },
+      },
+    );
+
+    expect(result).toEqual({
+      ref: "refs/tags/v11.0.0",
+      ruleset_ids: [42],
+    });
+    expect(requestedUrls[0]).toContain(
+      "/rulesets?includes_parents=false&targets=tag&per_page=100&page=1",
+    );
+    expect(requestedUrls[1]).toContain("/rulesets/42?includes_parents=false");
+  });
+
+  it("rejects matching patterns that do not enforce immutable tag rules", async () => {
+    await expect(
+      verifyTagProtection(
+        { repository, tag: "v11.0.0" },
+        {
+          requestJson: async (url: string) => (
+            url.includes("/rulesets/42?")
+              ? { ...covered, rules: [] }
+              : [summary]
+          ),
+        },
+      ),
+    ).rejects.toThrow("matching rulesets lack required rules: update, deletion");
   });
 });
