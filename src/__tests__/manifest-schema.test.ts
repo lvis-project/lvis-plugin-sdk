@@ -265,7 +265,7 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
-  it("accepts explicit bundled contributions and Host-only operation governance", () => {
+  it("accepts explicit bundled contributions and colocated operation restrictions", () => {
     const readTool = pureTool({
       name: "attendance_read",
       inputSchema: {
@@ -284,34 +284,39 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
         additionalProperties: false,
       },
     });
+    readTool._meta = {
+      ...readTool._meta,
+      "lvisai/operationPolicy": {
+        discriminant: "operation",
+        operations: {
+          today: { kind: "read", minimumRisk: "read", appVisible: true },
+        },
+      },
+    };
+    writeTool._meta = {
+      ...writeTool._meta,
+      "lvisai/operationPolicy": {
+        discriminant: "operation",
+        operations: {
+          clock: {
+            kind: "write",
+            minimumRisk: "network",
+            appVisible: true,
+            requiresRead: {
+              tool: "attendance_read",
+              operations: ["today"],
+              maxAgeMs: 60_000,
+            },
+          },
+        },
+      },
+    };
     const { valid, errors } = check({
       ...BASE,
       tools: [readTool, writeTool],
       skills: [{ id: "attendance", path: "skills/attendance" }],
       hooks: [{ id: "audit_hook", path: "hooks/audit.json" }],
       mcpServers: [{ id: "attendance_mcp", path: "mcp/attendance.json" }],
-      operationGovernance: {
-        attendance_read: {
-          discriminant: "operation",
-          appAllowed: ["today"],
-          operations: { today: { kind: "read", minimumRisk: "read" } },
-        },
-        attendance_write: {
-          discriminant: "operation",
-          appAllowed: ["clock"],
-          operations: {
-            clock: {
-              kind: "write",
-              minimumRisk: "network",
-              requiresRead: {
-                tool: "attendance_read",
-                operations: ["today"],
-                maxAgeMs: 60_000,
-              },
-            },
-          },
-        },
-      },
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
@@ -332,18 +337,28 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
   });
 
   it("rejects undeclared fields in an operation rule", () => {
+    const tool = pureTool();
+    tool._meta = {
+      ...tool._meta,
+      "lvisai/operationPolicy": {
+        discriminant: "operation",
+        operations: {
+          ping: { kind: "read", minimumRisk: "read", confirmed: true },
+        },
+      },
+    };
+    const { valid } = check({
+      ...BASE,
+      tools: [tool],
+    });
+    expect(valid).toBe(false);
+  });
+
+  it("rejects a parallel top-level operation policy map", () => {
     const { valid } = check({
       ...BASE,
       tools: [pureTool()],
-      operationGovernance: {
-        t_ping: {
-          discriminant: "operation",
-          appAllowed: ["ping"],
-          operations: {
-            ping: { kind: "read", minimumRisk: "read", confirmed: true },
-          },
-        },
-      },
+      operationGovernance: {},
     });
     expect(valid).toBe(false);
   });

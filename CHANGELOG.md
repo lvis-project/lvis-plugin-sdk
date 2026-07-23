@@ -19,6 +19,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Packaging guidance now treats manifest-declared `skills`, `hooks`, and
   `mcpServers` as signed plugin archive members alongside `dist/` and
   `plugin.json`.
+- Composite operation restrictions are colocated on each Tool as
+  `_meta["lvisai/operationPolicy"]`. The unreleased top-level
+  `operationGovernance`/`appAllowed` side-map shape was removed so
+  manifest==wire and the single-Tool contract remain intact.
+- `RequiresSpec.capabilities` is optional, matching the JSON schema and allowing
+  a plugin to declare only `requires.minAppVersion`.
 
 ## v11.1.0 — 2026-07-23
 
