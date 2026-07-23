@@ -110,6 +110,7 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
   });
 
   it.each([
+    ["missing priority", { locales: validFirstTask.locales }],
     ["missing English fallback", {
       ...validFirstTask,
       locales: { ko: validFirstTask.locales.en },
@@ -117,6 +118,13 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     ["invalid locale key", {
       ...validFirstTask,
       locales: { ...validFirstTask.locales, en_US: validFirstTask.locales.en },
+    }],
+    ["oversized locale key", {
+      ...validFirstTask,
+      locales: {
+        ...validFirstTask.locales,
+        [`en-${"segment-".repeat(5)}us`]: validFirstTask.locales.en,
+      },
     }],
     ["out-of-range priority", { ...validFirstTask, priority: 1001 }],
     ["executable field", { ...validFirstTask, autoSubmit: true }],
