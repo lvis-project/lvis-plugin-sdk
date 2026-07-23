@@ -52,6 +52,8 @@ export type GovernedRiskFloor = "read" | "write" | "network" | "shell";
 export interface PluginToolOperationRule {
   kind: "read" | "write";
   minimumRisk: GovernedRiskFloor;
+
+  appVisible?: boolean;
   requiresRead?: {
     tool: string;
     operations: string[];
@@ -61,7 +63,6 @@ export interface PluginToolOperationRule {
 
 export interface PluginToolOperationPolicy {
   discriminant: "operation";
-  appAllowed: string[];
   operations: Record<string, PluginToolOperationRule>;
 }
 
@@ -228,6 +229,8 @@ export interface Tool {
     ui?: { visibility?: Array<"model" | "app"> };
 
     "lvisai/pathFields"?: string[];
+
+    "lvisai/operationPolicy"?: PluginToolOperationPolicy;
   };
 }
 
@@ -263,8 +266,6 @@ export interface PluginManifest {
 
   /** Pure MCP Tool objects exposed to the host. Each `tool.name` must match `^[a-zA-Z_][a-zA-Z0-9_]*$`; use `_meta.ui.visibility` to declare model and/or app reachability. */
   tools: Tool[];
-
-  operationGovernance?: Record<string, PluginToolOperationPolicy>;
 
   /** One-line summary (1-280 chars) of what the plugin does. **Required** since v3.0.0 — the LLM uses this in the inactive-plugin catalogue to decide whether to surface the plugin to the user. */
   description: string;
@@ -535,7 +536,8 @@ export interface VerifyResult {
 }
 
 export interface RequiresSpec {
-  capabilities: string[];
+
+  capabilities?: string[];
 
   minAppVersion?: string;
 }
