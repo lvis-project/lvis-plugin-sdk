@@ -1,56 +1,18 @@
 import type { Options } from "tsup";
+import {
+  BUNDLE_EVERYTHING_REGEX,
+  HOST_BROWSER_EXTERNAL_MODULES,
+  HOST_EXTERNAL_MODULES,
+} from "../index.js";
 
-/**
- * Modules treated as external by the LVIS host runtime.
- *
- * Marketplace plugins MUST NOT bundle these — they are provided by the
- * host process at plugin-load time. Bundling them would create duplicate
- * runtime instances (e.g., two `electron` contexts) and break IPC.
- *
- * This list is the SDK ↔ host contract. When the host adds a new
- * injected module, SDK MAJOR is bumped and this list is updated; plugins
- * pinned to an older SDK version continue using the older contract,
- * which means the new module gets bundled redundantly — harmless, just a
- * larger zip.
- */
-export const HOST_EXTERNAL_MODULES = ["electron"] as const;
-
-/**
- * Modules historically reserved as "host-shared" for browser-target
- * plugin bundles. **In practice they are bundled, not shared** — the
- * `noExternal: [BUNDLE_EVERYTHING_REGEX]` policy below overrides this
- * list at tsup-level (tsup checks `noExternal` before `external`).
- *
- * Why bundling React per plugin is OK:
- *   - Plugin webviews mount in a sandboxed renderer subtree (sidebar /
- *     detached window) with their own React root. They do not share
- *     a React provider/context tree with the host's main window — so
- *     two React instances co-existing is the expected design, not a
- *     bug.
- *   - The historical "MUST come from host" prescription assumed an
- *     in-process provider/consumer relationship that never materialized.
- *
- * Trade-off accepted: every plugin webview that imports React ships
- * ~1MB. If/when a future React-context sharing mechanism arrives
- * (host injects `window.React` via `plugin-ui-shell.html` + plugin
- * tsup alias), this list flips back to load-bearing. Until then it is
- * informational only — left in place so the eventual escape hatch
- * has a named anchor.
- *
- * See issue #103 for the design discussion.
- */
-export const HOST_BROWSER_EXTERNAL_MODULES = ["react", "react-dom"] as const;
-
-/**
- * The match-everything regex used as the helper's `noExternal` value.
- *
- * Exposed so plugin tests can assert that a given dependency name would
- * be matched (and therefore bundled) by the helper-produced config.
- */
-// JSDoc cannot embed `*` followed by `/` inside a `/_*_ ... _*_/` block
-// without prematurely terminating the comment, so the regex literal is
-// constructed via the RegExp constructor.
-export const BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
+// Build-helper exports are direct references to the mechanically mirrored Host
+// values above. This module owns composition only, never contract policy or
+// duplicate constants.
+export {
+  BUNDLE_EVERYTHING_REGEX,
+  HOST_BROWSER_EXTERNAL_MODULES,
+  HOST_EXTERNAL_MODULES,
+} from "../index.js";
 
 /**
  * Build a tsup configuration for an LVIS marketplace plugin.

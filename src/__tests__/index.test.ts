@@ -1388,21 +1388,22 @@ describe("Tool surface — v6 MCP contract", () => {
     expect(indexSrc).not.toMatch(/RawPluginManifest|normalizeManifest|NormalizedManifest/);
   });
 
-  it("adds no logic of its own — value exports are host error classes, nothing else", async () => {
+  it("adds no logic of its own — value exports come only from the Host contract", async () => {
     const { readFileSync } = await import("node:fs");
     const { fileURLToPath } = await import("node:url");
     const here = dirname(fileURLToPath(import.meta.url));
     const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
     // The surface is a mirror of the host contract. Runtime values are allowed
-    // ONLY where the host itself declares one (error classes plugins `instanceof`,
-    // and the code string that names them). Anything else means the SDK grew
-    // behavior again — which is precisely what ph2 moved into the host, whose
-    // `runtime/manifest-validation.ts` is now the only thing that compiles the
-    // manifest schema.
+    // ONLY where the Host itself declares one: error values plugins inspect and
+    // build-policy ABI values consumed by the thin SDK build helper. Anything
+    // else means the SDK grew independent behavior again.
     const valueExports = [...indexSrc.matchAll(/^export (?:function|const|let|var|class) (\w+)/gm)]
       .map((m) => m[1]);
     expect(valueExports.sort()).toEqual(
       [
+        "BUNDLE_EVERYTHING_REGEX",
+        "HOST_BROWSER_EXTERNAL_MODULES",
+        "HOST_EXTERNAL_MODULES",
         "INCOMPATIBLE_APP_VERSION_CODE",
         "IncompatibleAppVersionError",
         "MissingDependenciesError",
