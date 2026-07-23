@@ -63,6 +63,18 @@ const pureTool = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+const validFirstTask = {
+  priority: 10,
+  locales: {
+    en: {
+      headline: "Try the plugin",
+      body: "Prefill a visible prompt without invoking a tool.",
+      actionLabel: "Prefill",
+      composerPrompt: "Help me use this plugin",
+    },
+  },
+};
+
 describe("plugin-manifest schema (v6) — compiles + validates", () => {
   it("the mirrored schema compiles under the host's AJV options without throwing", () => {
     expect(() => compileSchema()).not.toThrow();
@@ -86,6 +98,44 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     };
     const { valid, errors } = check(manifest);
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts a complete inert onboarding first-task declaration", () => {
+    const { valid, errors } = check({
+      ...BASE,
+      tools: [],
+      onboarding: { firstTask: validFirstTask },
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it.each([
+    ["missing English fallback", {
+      ...validFirstTask,
+      locales: { ko: validFirstTask.locales.en },
+    }],
+    ["invalid locale key", {
+      ...validFirstTask,
+      locales: { ...validFirstTask.locales, en_US: validFirstTask.locales.en },
+    }],
+    ["out-of-range priority", { ...validFirstTask, priority: 1001 }],
+    ["executable field", { ...validFirstTask, autoSubmit: true }],
+    ["incomplete copy", {
+      ...validFirstTask,
+      locales: { en: { headline: "Incomplete" } },
+    }],
+    ["oversized composer prompt", {
+      ...validFirstTask,
+      locales: {
+        en: { ...validFirstTask.locales.en, composerPrompt: "x".repeat(513) },
+      },
+    }],
+  ])("rejects malformed onboarding: %s", (_name, firstTask) => {
+    expect(check({
+      ...BASE,
+      tools: [],
+      onboarding: { firstTask },
+    }).valid).toBe(false);
   });
 
   // ── vendor _meta namespace: lvisai/* is the SOLE accepted spelling ──
