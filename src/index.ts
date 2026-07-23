@@ -47,6 +47,24 @@ export interface PluginUiResourceDecl {
 
 export type InstallPolicy = "admin" | "user";
 
+export type GovernedRiskFloor = "read" | "write" | "network" | "shell";
+
+export interface PluginToolOperationRule {
+  kind: "read" | "write";
+  minimumRisk: GovernedRiskFloor;
+  requiresRead?: {
+    tool: string;
+    operations: string[];
+    maxAgeMs: number;
+  };
+}
+
+export interface PluginToolOperationPolicy {
+  discriminant: "operation";
+  appAllowed: string[];
+  operations: Record<string, PluginToolOperationRule>;
+}
+
 export type AuthWindowCookie = {
   name: string;
   value: string;
@@ -246,6 +264,8 @@ export interface PluginManifest {
   /** Pure MCP Tool objects exposed to the host. Each `tool.name` must match `^[a-zA-Z_][a-zA-Z0-9_]*$`; use `_meta.ui.visibility` to declare model and/or app reachability. */
   tools: Tool[];
 
+  operationGovernance?: Record<string, PluginToolOperationPolicy>;
+
   /** One-line summary (1-280 chars) of what the plugin does. **Required** since v3.0.0 — the LLM uses this in the inactive-plugin catalogue to decide whether to surface the plugin to the user. */
   description: string;
 
@@ -258,6 +278,12 @@ export interface PluginManifest {
   uiResources?: PluginUiResourceDecl[];
   /** Skill keywords registered with the host keyword engine. Each entry binds a surface keyword to a `skillId` the plugin handles. @optional */
   keywords?: Array<{ keyword: string; skillId: string }>;
+
+  skills?: PluginContributionDeclaration[];
+
+  hooks?: PluginContributionDeclaration[];
+
+  mcpServers?: PluginContributionDeclaration[];
 
   /** Free-form capability tags declared by the plugin (for example `"calendar"`, `"email"`). Hosts may gate features on these. @optional */
   capabilities?: string[];
@@ -333,6 +359,10 @@ export interface PluginOnboardingSpec {
   };
 }
 
+export interface PluginContributionDeclaration {
+  id: string;
+  path: string;
+}
 /**
  * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
  * rendered as a typed form in the host's `PluginConfigTab`.

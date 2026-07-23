@@ -25,7 +25,6 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Compatibility: plugins that publish the new manifest field must require
 `lvis-app >= 0.5.7`; older hosts reject unknown top-level manifest fields.
-
 ## v11.0.0 — 2026-07-19
 
 ### Removed (BREAKING)

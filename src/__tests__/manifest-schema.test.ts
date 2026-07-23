@@ -265,6 +265,89 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
+  it("accepts explicit bundled contributions and Host-only operation governance", () => {
+    const readTool = pureTool({
+      name: "attendance_read",
+      inputSchema: {
+        type: "object",
+        properties: { operation: { type: "string", enum: ["today"] } },
+        required: ["operation"],
+        additionalProperties: false,
+      },
+    });
+    const writeTool = pureTool({
+      name: "attendance_write",
+      inputSchema: {
+        type: "object",
+        properties: { operation: { type: "string", enum: ["clock"] } },
+        required: ["operation"],
+        additionalProperties: false,
+      },
+    });
+    const { valid, errors } = check({
+      ...BASE,
+      tools: [readTool, writeTool],
+      skills: [{ id: "attendance", path: "skills/attendance" }],
+      hooks: [{ id: "audit_hook", path: "hooks/audit.json" }],
+      mcpServers: [{ id: "attendance_mcp", path: "mcp/attendance.json" }],
+      operationGovernance: {
+        attendance_read: {
+          discriminant: "operation",
+          appAllowed: ["today"],
+          operations: { today: { kind: "read", minimumRisk: "read" } },
+        },
+        attendance_write: {
+          discriminant: "operation",
+          appAllowed: ["clock"],
+          operations: {
+            clock: {
+              kind: "write",
+              minimumRisk: "network",
+              requiresRead: {
+                tool: "attendance_read",
+                operations: ["today"],
+                maxAgeMs: 60_000,
+              },
+            },
+          },
+        },
+      },
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("rejects contribution metadata outside the strict id/path declaration", () => {
+    const { valid, rawErrors } = check({
+      ...BASE,
+      tools: [],
+      skills: [{ id: "attendance", path: "skills/attendance", trusted: true }],
+    });
+    expect(valid).toBe(false);
+    expect(rawErrors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        keyword: "additionalProperties",
+        params: expect.objectContaining({ additionalProperty: "trusted" }),
+      }),
+    ]));
+  });
+
+  it("rejects undeclared fields in an operation rule", () => {
+    const { valid } = check({
+      ...BASE,
+      tools: [pureTool()],
+      operationGovernance: {
+        t_ping: {
+          discriminant: "operation",
+          appAllowed: ["ping"],
+          operations: {
+            ping: { kind: "read", minimumRisk: "read", confirmed: true },
+          },
+        },
+      },
+    });
+    expect(valid).toBe(false);
+  });
+
   it("rejects the removed toolSchemas map even alongside empty tools:[]", () => {
     const { valid } = check({ ...BASE, tools: [], toolSchemas: {} });
     expect(valid).toBe(false);
