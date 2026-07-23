@@ -55,7 +55,9 @@ const BASE = {
   description: "Fixture manifest for schema tests.",
 };
 
-const pureTool = (over: Record<string, unknown> = {}) => ({
+const pureTool = (
+  over: Record<string, unknown> = {},
+): Record<string, unknown> & { _meta: Record<string, unknown> } => ({
   name: "t_ping",
   description: "Ping tool that returns a status object.",
   inputSchema: { type: "object", properties: {} },
