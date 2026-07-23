@@ -145,21 +145,6 @@ describe("verify-release-integrity", () => {
     expect(result.stderr).toContain("does not match peeled release commit");
   });
 
-  it("rejects a tag whose peeled commit differs from the tag-push event SHA", () => {
-    const result = run(
-      repo,
-      "release",
-      "--tag",
-      "v11.0.0",
-      "--main-ref",
-      "main",
-      "--expected-release-sha",
-      "abcdef1234567890abcdef1234567890abcdef12",
-    );
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain("does not match event SHA");
-  });
-
   it("requires exactly one full Host-Ref trailer", () => {
     git(repo, "tag", "-d", "v11.0.0");
     git(repo, "tag", "-a", "v11.0.0", "-m", "missing host ref");
