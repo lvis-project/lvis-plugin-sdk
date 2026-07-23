@@ -53,20 +53,12 @@ jobs:
           fi
 
       - name: Extract changelog section
-        id: changelog
         run: |
           TAG="${{ steps.tag.outputs.name }}"
-          if [ -f CHANGELOG.md ]; then
-            # Extract the section for this tag between two h2 headings
-            NOTES=$(awk "/^## \[?${TAG#v}\]?/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
-            if [ -z "$NOTES" ]; then
-              NOTES="See commit history for changes in this release."
-            fi
-          else
-            NOTES="See commit history for changes in this release."
-          fi
-          # Write to file to avoid quoting issues
-          echo "$NOTES" > /tmp/release-notes.md
+          node scripts/extract-release-notes.mjs \
+            --tag "$TAG" \
+            --changelog CHANGELOG.md \
+            --output /tmp/release-notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b  # v3.0.1

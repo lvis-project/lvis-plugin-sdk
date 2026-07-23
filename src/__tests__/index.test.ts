@@ -116,6 +116,19 @@ describe("PluginManifest — schema validation", () => {
         allowPrivateNetworks: true,
         reasoning: "On-prem API access.",
       },
+      onboarding: {
+        firstTask: {
+          priority: 10,
+          locales: {
+            en: {
+              headline: "Try the plugin",
+              body: "Prefill a visible prompt without invoking a tool.",
+              actionLabel: "Prefill",
+              composerPrompt: "Help me use this plugin",
+            },
+          },
+        },
+      },
     };
     const { valid, errors } = validateManifest(full);
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);

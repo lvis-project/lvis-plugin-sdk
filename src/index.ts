@@ -248,6 +248,8 @@ export interface PluginManifest {
 
   /** One-line summary (1-280 chars) of what the plugin does. **Required** since v3.0.0 — the LLM uses this in the inactive-plugin catalogue to decide whether to surface the plugin to the user. */
   description: string;
+
+  onboarding?: PluginOnboardingSpec;
   /** Arbitrary JSON configuration merged into `PluginRuntimeContext.config` at startup. Treat as untrusted user data. @optional */
   config?: Record<string, unknown>;
   /** Sidebar / panel UI extensions contributed by this plugin. @optional */
@@ -313,6 +315,22 @@ export interface PluginManifest {
   author?: string;
   /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */
   uiSlots?: string[];
+}
+
+export interface PluginFirstTaskCopy {
+  headline: string;
+  body: string;
+  actionLabel: string;
+  composerPrompt: string;
+}
+
+export interface PluginOnboardingSpec {
+  firstTask?: {
+
+    priority: number;
+
+    locales: Record<string, PluginFirstTaskCopy>;
+  };
 }
 
 /**
@@ -440,6 +458,18 @@ export interface PluginRegistryEntry {
   enabled?: boolean;
   bundleRefs?: string[];
   approvedPluginAccess?: PluginAccessSpec;
+  pendingUpdate?: {
+    kind: "marketplace" | "local-dev";
+    previousManifestFileSha256: string | null;
+    previousReceiptRaw: string | null;
+    recoveryBackupDir?: string;
+    recoveryBackupMode?: "rename" | "copy";
+  };
+
+  pendingCleanup?: Array<{
+    kind: "obsolete-artifact" | "obsolete-local-backup";
+    path: string;
+  }>;
 }
 
 /**
