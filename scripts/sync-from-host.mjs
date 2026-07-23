@@ -165,6 +165,15 @@ function hasDefaultModifier(stmt) {
   return stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword);
 }
 
+// Host persistence/catalog DTOs are deliberately not plugin-author contracts.
+// Exclude whole declarations instead of rewriting their fields in the SDK.
+const HOST_INTERNAL_DECLARATIONS = new Set([
+  "PluginRegistryEntryInstallSource",
+  "PluginRegistryEntry",
+  "PluginRegistry",
+  "PluginMarketplaceItem",
+]);
+
 function extract(srcPath) {
   const text = fs.readFileSync(srcPath, "utf8");
   const sf = ts.createSourceFile(srcPath, text, ts.ScriptTarget.ES2022, true);
@@ -205,6 +214,14 @@ function extract(srcPath) {
       process.exit(1);
     }
 
+    if (
+      "name" in stmt &&
+      stmt.name &&
+      HOST_INTERNAL_DECLARATIONS.has(stmt.name.text)
+    ) {
+      continue;
+    }
+
     const leading = ts.getLeadingCommentRanges(text, stmt.pos) ?? [];
     const commentText = leading.map((r) => text.slice(r.pos, r.end)).join("\n");
     // stmt.getStart(sf) skips leading trivia (comments/whitespace) so we don't
@@ -216,27 +233,6 @@ function extract(srcPath) {
   return chunks.join("\n\n") + "\n";
 }
 
-/**
- * Hand-maintained twins of host types that live OUTSIDE `src/plugins/types.ts`
- * (`shared/assistant-context.ts` and `shared/marketplace-package-assets.ts`),
- * which the extractor does not read. `PluginMarketplaceItem` references these
- * two types. Plugin-authoring UI resource types live in Host `plugins/types.ts`
- * and are extracted normally so TypeScript and manifest schema cannot diverge.
- */
-const HOST_SHARED_TYPE_TWINS = `export type MarketplacePackageType =
-  | "plugin"
-  | "mcp"
-  | "agent"
-  | "skill"
-  | "provider"
-  | "theme"
-  | "language-pack";
-
-export type MarketplacePackageAsset =
-  | ({ type: "provider"; providerId: string } & Record<string, unknown>)
-  | ({ type: "theme"; bundleId: string } & Record<string, unknown>)
-  | ({ type: "language-pack"; locale: string } & Record<string, unknown>);`;
-
 function render(body) {
   // NOTE: `sanitizeForPublic` only preserves the first 5 lines as the banner —
   // keep this header at or under that, or it gets truncated mid-sentence.
@@ -245,8 +241,6 @@ function render(body) {
 // @lvis/plugin-sdk — public surface of the LVIS plugin contract, mirrored from
 // the host. The SDK adds no logic of its own: the host owns manifest validation,
 // and the only runtime values below are the host's own error classes + codes.
-
-${HOST_SHARED_TYPE_TWINS}
 
 ${body}`;
 }
@@ -405,23 +399,6 @@ const JSDOC_CATALOG = {
       page: `/** Path (relative to the plugin root) of the HTML page to load for \`embedded-page\`. @optional */`,
     },
   },
-  PluginRegistryEntry: {
-    leading: `/**
- * Entry in the host's local plugin registry. The registry records which
- * plugins are installed, where their manifests live, and whether they are
- * currently enabled.
- *
- * Note: host-internal install-source bookkeeping (\`_devLinked\`,
- * \`installSource\`) is intentionally stripped from the SDK public surface —
- * see \`stripHostInternalRegistryFields()\` in \`scripts/sync-from-host.mjs\`.
- * Plugins should not branch on those fields.
- */`,
-    fields: {
-      id: `/** Plugin identifier, matching \`PluginManifest.id\`. */`,
-      manifestPath: `/** Absolute or host-relative filesystem path to the plugin's \`manifest.json\`. */`,
-      enabled: `/** Whether the plugin should be loaded at host startup. Defaults to \`true\` when omitted. @optional */`,
-    },
-  },
   PluginConfigSchema: {
     leading: `/**
  * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
@@ -451,35 +428,6 @@ const JSDOC_CATALOG = {
       pattern: `/** Regex the string value must match. @optional */`,
       format: `/** UI/storage hint. \`"secret"\` routes the value through \`hostApi.setSecret\` / \`getSecret\` instead of cleartext config. \`"uri"\`, \`"email"\`, \`"date-time"\` enable typed inputs. @optional */`,
       items: `/** Item schema for \`type: "array"\` properties. @optional */`,
-    },
-  },
-  PluginRegistry: {
-    leading: `/**
- * Persisted collection of installed plugins. Serialized to disk by the host
- * and read at boot time to determine which plugins to load.
- */`,
-    fields: {
-      version: `/** Schema version of this registry file. Increment on breaking layout changes. */`,
-      plugins: `/** Installed plugins, in the order the host should consider them. */`,
-    },
-  },
-  PluginMarketplaceItem: {
-    leading: `/**
- * Catalog entry describing a plugin available for installation through the
- * host marketplace. This is the user-facing summary of a plugin before it is
- * downloaded — not the full manifest.
- */`,
-    fields: {
-      id: `/** Plugin identifier, matching the \`PluginManifest.id\` the plugin will declare once installed. */`,
-      name: `/** Human-readable display name. */`,
-      description: `/** Marketing description shown in the marketplace UI. */`,
-      packageSpec: `/** Installable package specifier (for example an npm spec or tarball URL) used to acquire the plugin artifact. */`,
-      packageName: `/** Canonical package name (for example the npm package name) used to identify updates. */`,
-      tools: `/** Preview list of legacy tool names from the marketplace catalog. This is distinct from the installed manifest's MCP \`Tool[]\` wire contract. */`,
-      version: `/** Marketplace plugin version represented by this catalog entry. @optional */`,
-      defaultConfig: `/** Default configuration seeded into the plugin on first install. Users may override this. @optional */`,
-      ui: `/** UI extensions the plugin will contribute once installed. @optional */`,
-      publisher: `/** Display string identifying the publisher. @optional */`,
     },
   },
   PluginHostApi: {
@@ -903,146 +851,11 @@ function enrichWithJsDoc(text, catalog) {
   return out;
 }
 
-function normalizeSdkTypeOnlySurface(text) {
-  let out = text
-    .replace(/^export type DeploymentMode = "managed" \| "user";\r?\n+/m, "")
-    .replace(/^export type PluginDeliveryMode = "marketplace" \| "bundle";\r?\n+/m, "")
-    .replace(
-      /^\s*deployment\?: DeploymentMode;\r?\n/gm,
-      "",
-    )
-    .replace(
-      /^\s*deliveryMode\?: PluginDeliveryMode;\r?\n/gm,
-      "",
-    );
-
-  out = out.replace(
-    /^export class PluginStorageError extends Error \{\r?\n(?:.*\r?\n)*?^\}\r?\n+/m,
-    "",
-  );
-
-  if (out.includes("BufferEncoding")) {
-    out = out.replace(/\bBufferEncoding\b/g, "StorageEncoding");
-    if (!out.includes("export type StorageEncoding")) {
-      const storageEncoding = `/**
- * Supported text encodings for PluginStorage read/write operations.
- * Defined explicitly to avoid a dependency on @types/node in the SDK public surface.
- */
-export type StorageEncoding =
-  | "utf-8"
-  | "utf8"
-  | "ascii"
-  | "base64"
-  | "base64url"
-  | "hex"
-  | "latin1"
-  | "binary";
-
-`;
-      out = out.replace(/^export interface PluginStorage/m, storageEncoding + "export interface PluginStorage");
-    }
-  }
-
-  out = stripHostInternalRegistryFields(out);
-  out = restrictMarketplaceChannelToStable(out);
-  out = ensurePluginMarketplaceCatalogFields(out);
-
-  return out;
-}
-
-/**
- * M8 — strip host-internal install bookkeeping (`_devLinked`,
- * `installSource`) from the public `PluginRegistryEntry`. Plugins should
- * never branch on those values. Also strips the legacy `installedBy`
- * @deprecated alias for the same reason.
- */
-function stripHostInternalRegistryFields(text) {
-  return text
-    .replace(/^[ \t]+installedBy\?:\s*InstallPolicy;\s*\r?\n/gm, "")
-    .replace(/^[ \t]+_devLinked\?:\s*boolean;\s*\r?\n/gm, "")
-    .replace(/^[ \t]+installSource\?:\s*PluginRegistryEntryInstallSource;\s*\r?\n/gm, "")
-    // Without `installSource` consumers no longer need the union; drop the
-    // type alias too so the SDK doesn't ship a dangling export. Match the
-    // declaration line by name + RHS shape rather than a hard-coded literal
-    // union so this stays correct as host adds/removes install sources
-    // (e.g. lvis-app PR #487 dropped `"dev-link"` and the old regex went
-    // stale, leaving the type stuck in the SDK surface).
-    .replace(
-      /^export type PluginRegistryEntryInstallSource = [^;]+;\r?\n+/m,
-      "",
-    );
-}
-
-/**
- * M11 — PR #62 locked the marketplace publish channel to stable-only
- * SemVer (no pre-release / build-metadata suffixes). Until pre-release
- * support comes back for canary, the catalog `channel` field must drop
- * the `"canary"` literal so plugin-side type narrowing matches the
- * publish gate. Reintroduce `"canary"` here in lock-step with whatever
- * change loosens the SemVer regex.
- */
-function restrictMarketplaceChannelToStable(text) {
-  return text.replace(
-    /channel\?: "stable" \| "canary";/g,
-    'channel?: "stable";',
-  );
-}
-
-function findInterfaceBounds(text, interfaceName) {
-  const declaration = `export interface ${interfaceName} {`;
-  const declarationStart = text.indexOf(declaration);
-  if (declarationStart < 0) {
-    throw new Error(`${interfaceName} declaration is missing from the generated SDK surface.`);
-  }
-
-  const braceStart = text.indexOf("{", declarationStart);
-  let depth = 0;
-  for (let index = braceStart; index < text.length; index++) {
-    if (text[index] === "{") depth++;
-    if (text[index] === "}") depth--;
-    if (depth === 0) {
-      return { braceStart, braceEnd: index };
-    }
-  }
-
-  throw new Error(`${interfaceName} declaration is not structurally balanced in the generated SDK surface.`);
-}
-
-function insertInterfaceFields(text, interfaceName, fields) {
-  const { braceEnd } = findInterfaceBounds(text, interfaceName);
-  return `${text.slice(0, braceEnd)}${fields.join("\n")}\n${text.slice(braceEnd)}`;
-}
-
-function interfaceHasField(text, interfaceName, fieldName) {
-  const { braceStart, braceEnd } = findInterfaceBounds(text, interfaceName);
-  const body = text.slice(braceStart + 1, braceEnd);
-  const escaped = fieldName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`^\\s*${escaped}(?:\\?)?\\s*:`, "m").test(body);
-}
-
-function ensurePluginMarketplaceCatalogFields(text) {
-  const fields = [
-    ["tools", "  /** Preview list of legacy tool names from the marketplace catalog. This is distinct from the installed manifest MCP Tool array. */\n  tools: string[];"],
-    ["defaultConfig", "  /** Default configuration seeded into the plugin on first install. Users may override this. @optional */\n  defaultConfig?: Record<string, unknown>;"],
-    ["ui", "  /** UI extensions the plugin will contribute once installed. @optional */\n  ui?: PluginUiExtension[];"],
-    ["keywords", "  /** Skill keywords published by the catalog entry. @optional */\n  keywords?: Array<{ keyword: string; skillId: string }>;"],
-    ["emittedEvents", "  /** Event names this catalog entry may emit. @optional */\n  emittedEvents?: string[];"],
-    ["notificationEvents", "  /** Notification metadata mirrored from the installable manifest. @optional */\n  notificationEvents?: Array<{\n    event: string;\n    titleField?: string;\n    bodyField?: string;\n    bypassFocusGate?: boolean;\n  }>;"],
-  ];
-  const missing = fields
-    .filter(([name]) => !interfaceHasField(text, "PluginMarketplaceItem", name))
-    .map(([, declaration]) => declaration);
-
-  return missing.length === 0
-    ? text
-    : insertInterfaceFields(text, "PluginMarketplaceItem", missing);
-}
-
 try {
   const { typesPath, source } = resolveHostSources();
   const rendered = render(extract(typesPath));
   const sanitized = sanitizeForPublic(rendered);
-  const output = normalizeSdkTypeOnlySurface(enrichWithJsDoc(sanitized, JSDOC_CATALOG))
+  const output = enrichWithJsDoc(sanitized, JSDOC_CATALOG)
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .replace(/^[ \t]+$/gm, "")
