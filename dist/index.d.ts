@@ -252,7 +252,7 @@ export interface PluginFirstTaskCopy {
 }
 export interface PluginOnboardingSpec {
     firstTask?: {
-        priority?: number;
+        priority: number;
         locales: Record<string, PluginFirstTaskCopy>;
     };
 }
