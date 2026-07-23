@@ -30,6 +30,16 @@ var MissingPluginDependenciesError = class extends Error {
     this.name = "MissingPluginDependenciesError";
   }
 };
+var PluginStorageError = class extends Error {
+  pluginId;
+  attemptedPath;
+  constructor(message, pluginId, attemptedPath) {
+    super(`[plugin-storage:${pluginId}] ${message}: ${attemptedPath}`);
+    this.name = "PluginStorageError";
+    this.pluginId = pluginId;
+    this.attemptedPath = attemptedPath;
+  }
+};
 var PluginStorageEncryptionUnavailableError = class extends Error {
   code = "encryption-unavailable";
   pluginId;
@@ -46,5 +56,6 @@ export {
   IncompatibleAppVersionError,
   MissingDependenciesError,
   MissingPluginDependenciesError,
-  PluginStorageEncryptionUnavailableError
+  PluginStorageEncryptionUnavailableError,
+  PluginStorageError
 };

@@ -1,14 +1,3 @@
-export type MarketplacePackageType = "plugin" | "mcp" | "agent" | "skill" | "provider" | "theme" | "language-pack";
-export type MarketplacePackageAsset = ({
-    type: "provider";
-    providerId: string;
-} & Record<string, unknown>) | ({
-    type: "theme";
-    bundleId: string;
-} & Record<string, unknown>) | ({
-    type: "language-pack";
-    locale: string;
-} & Record<string, unknown>);
 export interface PluginUiResourceDecl {
     uri: string;
     csp?: {
@@ -367,48 +356,6 @@ export interface PluginUiExtension {
         alwaysOnTop?: boolean;
     };
 }
-/**
- * Entry in the host's local plugin registry. The registry records which
- * plugins are installed, where their manifests live, and whether they are
- * currently enabled.
- *
- * Note: host-internal install-source bookkeeping (`_devLinked`,
- * `installSource`) is intentionally stripped from the SDK public surface —
- * see `stripHostInternalRegistryFields()` in `scripts/sync-from-host.mjs`.
- * Plugins should not branch on those fields.
- */
-export interface PluginRegistryEntry {
-    /** Plugin identifier, matching `PluginManifest.id`. */
-    id: string;
-    /** Absolute or host-relative filesystem path to the plugin's `manifest.json`. */
-    manifestPath: string;
-    manifestSha256?: string;
-    /** Whether the plugin should be loaded at host startup. Defaults to `true` when omitted. @optional */
-    enabled?: boolean;
-    bundleRefs?: string[];
-    approvedPluginAccess?: PluginAccessSpec;
-    pendingUpdate?: {
-        kind: "marketplace" | "local-dev";
-        previousManifestFileSha256: string | null;
-        previousReceiptRaw: string | null;
-        recoveryBackupDir?: string;
-        recoveryBackupMode?: "rename" | "copy";
-    };
-    pendingCleanup?: Array<{
-        kind: "obsolete-artifact" | "obsolete-local-backup";
-        path: string;
-    }>;
-}
-/**
- * Persisted collection of installed plugins. Serialized to disk by the host
- * and read at boot time to determine which plugins to load.
- */
-export interface PluginRegistry {
-    /** Schema version of this registry file. Increment on breaking layout changes. */
-    version: number;
-    /** Installed plugins, in the order the host should consider them. */
-    plugins: PluginRegistryEntry[];
-}
 export interface SignatureEnvelope {
     version: 1;
     iat: number;
@@ -468,60 +415,10 @@ export interface McpAuthMetadata extends McpOAuthMetadata {
     mode: "none" | "api-key" | "sso" | "oauth";
     transport?: "stdio" | "http";
 }
-/**
- * Catalog entry describing a plugin available for installation through the
- * host marketplace. This is the user-facing summary of a plugin before it is
- * downloaded — not the full manifest.
- */
-export interface PluginMarketplaceItem {
-    /** Plugin identifier, matching the `PluginManifest.id` the plugin will declare once installed. */
-    id: string;
-    slug?: string;
-    /** Human-readable display name. */
-    name: string;
-    /** Marketing description shown in the marketplace UI. */
-    description: string;
-    /** Installable package specifier (for example an npm spec or tarball URL) used to acquire the plugin artifact. */
-    packageSpec: string;
-    /** Canonical package name (for example the npm package name) used to identify updates. */
-    packageName: string;
-    /** Marketplace plugin version represented by this catalog entry. @optional */
-    version?: string;
-    artifactSha256?: string;
-    channel?: "stable";
-    capabilities?: string[];
-    auth?: PluginAuthSpec;
-    networkAccess?: PluginManifest["networkAccess"];
-    installPolicy?: InstallPolicy;
-    dependencies?: Array<string | DependencySpec>;
-    pluginAccess?: PluginAccessSpec;
-    /** Display string identifying the publisher. @optional */
-    publisher?: string;
-    requires?: RequiresSpec;
-    pluginType?: MarketplacePackageType;
-    packageAsset?: MarketplacePackageAsset;
-    mcpRuntime?: McpRuntimeSpec;
-    mcpAuth?: McpAuthMetadata;
-    /** Preview list of legacy tool names from the marketplace catalog. This is distinct from the installed manifest MCP Tool array. */
-    tools: string[];
-    /** Default configuration seeded into the plugin on first install. Users may override this. @optional */
-    defaultConfig?: Record<string, unknown>;
-    /** UI extensions the plugin will contribute once installed. @optional */
-    ui?: PluginUiExtension[];
-    /** Skill keywords published by the catalog entry. @optional */
-    keywords?: Array<{
-        keyword: string;
-        skillId: string;
-    }>;
-    /** Event names this catalog entry may emit. @optional */
-    emittedEvents?: string[];
-    /** Notification metadata mirrored from the installable manifest. @optional */
-    notificationEvents?: Array<{
-        event: string;
-        titleField?: string;
-        bodyField?: string;
-        bypassFocusGate?: boolean;
-    }>;
+export declare class PluginStorageError extends Error {
+    readonly pluginId: string;
+    readonly attemptedPath: string;
+    constructor(message: string, pluginId: string, attemptedPath: string);
 }
 export declare class PluginStorageEncryptionUnavailableError extends Error {
     readonly code = "encryption-unavailable";

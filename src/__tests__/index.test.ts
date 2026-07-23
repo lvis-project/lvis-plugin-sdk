@@ -10,6 +10,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv from "ajv";
@@ -46,29 +47,31 @@ import type {
   ConversationTriggerResult,
   MissingDependenciesError as MissingDepsErrorType,
   PluginLifecycleEvent,
-  PluginMarketplaceItem,
 } from "../index.js";
 
 import { MissingDependenciesError } from "../index.js";
 
-describe("PluginMarketplaceItem — host catalog compatibility", () => {
-  it("retains host catalog fields that are independent of the pure manifest wire contract", () => {
-    const item: PluginMarketplaceItem = {
-      id: "marketplace-fixture",
-      name: "Marketplace Fixture",
-      description: "A fixture that locks the marketplace type surface.",
-      packageSpec: "@lvis/marketplace-fixture",
-      packageName: "@lvis/marketplace-fixture",
-      tools: ["fixture_ping"],
-      defaultConfig: { enabled: true },
-      ui: [],
-      keywords: [{ keyword: "fixture", skillId: "fixture-skill" }],
-      emittedEvents: ["fixture.ready"],
-      notificationEvents: [{ event: "fixture.ready", titleField: "title" }],
-    };
+describe("generated SDK contract ownership", () => {
+  it("excludes whole Host-internal DTOs without semantic rewrites or field synthesis", () => {
+    const generated = readFileSync(join(__dirname, "../index.ts"), "utf8");
+    const generator = readFileSync(
+      join(__dirname, "../../scripts/sync-from-host.mjs"),
+      "utf8",
+    );
 
-    expect(item.tools).toEqual(["fixture_ping"]);
-    expect(item.defaultConfig).toEqual({ enabled: true });
+    expect(generated).not.toMatch(/\bPluginMarketplaceItem\b/);
+    expect(generated).not.toMatch(/\bPluginRegistryEntry\b/);
+    expect(generated).not.toMatch(/\bMarketplacePackageType\b/);
+    expect(generated).not.toMatch(/\bMarketplacePackageAsset\b/);
+    for (const forbidden of [
+      "HOST_SHARED_TYPE_TWINS",
+      "normalizeSdkTypeOnlySurface",
+      "restrictMarketplaceChannelToStable",
+      "ensurePluginMarketplaceCatalogFields",
+      "stripHostInternalRegistryFields",
+    ]) {
+      expect(generator).not.toContain(forbidden);
+    }
   });
 });
 
@@ -1320,43 +1323,6 @@ describe("PluginManifest — packageName field (M9)", () => {
   });
 });
 
-// ─── PluginRegistryEntry public surface (M8) ──────────────────────────────
-describe("PluginRegistryEntry — public surface excludes host-internal fields (M8)", () => {
-  // _devLinked + installSource are host-internal bookkeeping. The SDK
-  // strips them from the public interface so plugin code cannot branch
-  // on them.
-  it("PluginRegistryEntryInstallSource type is no longer exported", async () => {
-    // Type-only import — checked at compile time. Runtime JS module has
-    // no symbols for type aliases. Use a string source check as a
-    // belt-and-braces safeguard against accidental re-exposure: the
-    // JSDoc on PluginRegistryEntry MAY mention the stripped fields by
-    // name (so plugin authors know not to expect them), so we look for
-    // the actual property/type-alias declarations rather than the bare
-    // identifiers.
-    const { readFileSync } = await import("node:fs");
-    const { fileURLToPath } = await import("node:url");
-    const here = dirname(fileURLToPath(import.meta.url));
-    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
-    expect(indexSrc).not.toMatch(/^\s*_devLinked\?:/m);
-    expect(indexSrc).not.toMatch(/^\s*installSource\?:/m);
-    expect(indexSrc).not.toMatch(/^\s*installedBy\?:/m);
-    expect(indexSrc).not.toMatch(/^export type PluginRegistryEntryInstallSource\b/m);
-  });
-});
-
-// ─── PluginMarketplaceItem channel restriction (M11) ──────────────────────
-describe("PluginMarketplaceItem — channel restricted to stable (M11)", () => {
-  it("source surface no longer mentions canary channel", async () => {
-    const { readFileSync } = await import("node:fs");
-    const { fileURLToPath } = await import("node:url");
-    const here = dirname(fileURLToPath(import.meta.url));
-    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
-    expect(indexSrc).not.toContain('"canary"');
-    // and the field is still present, just narrower
-    expect(indexSrc).toMatch(/channel\?:\s*"stable";/);
-  });
-});
-
 // ─── PluginLifecycleEventPayload removed (M12) ────────────────────────────
 describe("PluginLifecycleEventPayload — removed (M12)", () => {
   it("source surface no longer exports the type", async () => {
@@ -1442,6 +1408,7 @@ describe("Tool surface — v6 MCP contract", () => {
         "MissingDependenciesError",
         "MissingPluginDependenciesError",
         "PluginStorageEncryptionUnavailableError",
+        "PluginStorageError",
       ].sort(),
     );
     expect(indexSrc).not.toMatch(/compileManifestValidator/);
