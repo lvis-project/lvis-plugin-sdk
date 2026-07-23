@@ -7,6 +7,13 @@ import { fileURLToPath } from "node:url";
 
 const SEMVER_TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const FULL_SHA = /^[0-9a-f]{40}$/;
+const OPTIONS_BY_COMMAND = Object.freeze({
+  release: new Set([
+    "repo", "tag", "main-ref", "expected-release-sha", "package",
+    "expected-host-ref", "output", "summary", "provenance",
+  ]),
+  host: new Set(["repo", "host-ref", "main-ref", "summary"]),
+});
 
 function fail(message) {
   throw new Error(message);
@@ -26,6 +33,8 @@ function git(repo, args, { allowFailure = false } = {}) {
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
+  const allowed = OPTIONS_BY_COMMAND[command];
+  if (!allowed) fail("Usage: verify-release-integrity.mjs <release|host> [options]");
   const options = {};
   for (let index = 0; index < rest.length; index += 1) {
     const key = rest[index];
@@ -34,7 +43,10 @@ function parseArgs(argv) {
     if (value === undefined || value.startsWith("--")) {
       fail(`Missing value for ${key}`);
     }
-    options[key.slice(2)] = value;
+    const name = key.slice(2);
+    if (!allowed.has(name)) fail(`Unknown option for ${command}: ${key}`);
+    if (Object.prototype.hasOwnProperty.call(options, name)) fail(`Duplicate option: ${key}`);
+    options[name] = value;
     index += 1;
   }
   return { command, options };
@@ -56,8 +68,11 @@ function assertAncestor(repo, ancestor, mainRef, label) {
   const result = git(repo, ["merge-base", "--is-ancestor", ancestor, mainRef], {
     allowFailure: true,
   });
-  if (result.status !== 0) {
+  if (result.status === 1) {
     fail(`${label} ${ancestor} is not an ancestor of ${mainRef}`);
+  }
+  if (result.status !== 0) {
+    fail((result.stderr || result.stdout || `git merge-base failed with status ${result.status}`).trim());
   }
 }
 
@@ -207,8 +222,7 @@ if (isMain) {
   try {
     const { command, options } = parseArgs(process.argv.slice(2));
     if (command === "release") verifyRelease(options);
-    else if (command === "host") verifyHost(options);
-    else fail("Usage: verify-release-integrity.mjs <release|host> [options]");
+    else verifyHost(options);
   } catch (error) {
     console.error(`RELEASE INTEGRITY ERROR: ${error.message}`);
     process.exit(1);
