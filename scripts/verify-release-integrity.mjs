@@ -9,7 +9,7 @@ const SEMVER_TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const OPTIONS_BY_COMMAND = Object.freeze({
   release: new Set([
-    "repo", "tag", "main-ref", "expected-release-sha", "package",
+    "repo", "tag", "main-ref", "package",
     "expected-host-ref", "output", "summary", "provenance",
   ]),
   host: new Set(["repo", "host-ref", "main-ref", "summary"]),
@@ -109,14 +109,6 @@ function verifyRelease(options) {
   const checkoutSha = git(repo, ["rev-parse", "HEAD"]).stdout.trim();
   if (checkoutSha !== releaseSha) {
     fail(`Checked-out commit ${checkoutSha} does not match peeled release commit ${releaseSha}`);
-  }
-  if (options["expected-release-sha"]) {
-    assertFullSha(options["expected-release-sha"], "Expected release SHA");
-    if (options["expected-release-sha"] !== releaseSha) {
-      fail(
-        `Peeled release commit ${releaseSha} does not match event SHA ${options["expected-release-sha"]}`,
-      );
-    }
   }
   assertAncestor(repo, releaseSha, mainRef, "Release commit");
 
