@@ -123,8 +123,17 @@ jobs:
           RELEASE_TAG: ${{ steps.integrity.outputs.tag }}
         run: |
           set -euo pipefail
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+          set +e
+          RELEASE_LOOKUP=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 2>&1)
+          RELEASE_STATUS=$?
+          set -e
+          if [ "$RELEASE_STATUS" -eq 0 ]; then
             echo "::error::GitHub Release $RELEASE_TAG already exists; immutable releases cannot be updated in place"
+            exit 1
+          fi
+          if ! printf '%s' "$RELEASE_LOOKUP" | grep -q 'HTTP 404'; then
+            echo "::error::Could not prove GitHub Release $RELEASE_TAG is absent"
+            printf '%s\n' "$RELEASE_LOOKUP"
             exit 1
           fi
 

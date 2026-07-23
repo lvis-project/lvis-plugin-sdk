@@ -85,6 +85,23 @@ describe("verify-release-integrity", () => {
     expect(result.stderr).toContain("strict SemVer");
   });
 
+  it("rejects unknown and duplicate command options", () => {
+    const unknown = run(repo, "release", "--tag", "v11.0.0", "--bogus", "value");
+    expect(unknown.status).toBe(1);
+    expect(unknown.stderr).toContain("Unknown option for release: --bogus");
+
+    const duplicate = run(
+      repo,
+      "release",
+      "--tag",
+      "v11.0.0",
+      "--tag",
+      "v11.0.0",
+    );
+    expect(duplicate.status).toBe(1);
+    expect(duplicate.stderr).toContain("Duplicate option: --tag");
+  });
+
   it("rejects a tag whose peeled commit is not on main", () => {
     git(repo, "switch", "--orphan", "side");
     fs.writeFileSync(path.join(repo, "package.json"), '{"version":"11.0.0"}\n');
@@ -95,6 +112,20 @@ describe("verify-release-integrity", () => {
     const result = run(repo, "release", "--tag", "v11.0.2", "--main-ref", "main");
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("is not an ancestor of main");
+  });
+
+  it("reports an invalid main ref as a git error instead of an ancestry result", () => {
+    const result = run(
+      repo,
+      "release",
+      "--tag",
+      "v11.0.0",
+      "--main-ref",
+      "refs/heads/missing",
+    );
+    expect(result.status).toBe(1);
+    expect(result.stderr).not.toContain("is not an ancestor");
+    expect(result.stderr).toMatch(/fatal:|valid object|unknown revision/i);
   });
 
   it("rejects a package version mismatch", () => {
