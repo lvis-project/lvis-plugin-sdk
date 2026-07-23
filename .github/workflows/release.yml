@@ -1,25 +1,19 @@
 name: release
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Existing annotated tag to release (e.g. v11.0.0)'
-        required: true
-        type: string
-      host_ref:
-        description: 'Optional expected 40-character lvis-app SHA; must match the tag Host-Ref trailer'
-        required: false
-        type: string
+  # repository_dispatch always loads this privileged workflow from the default
+  # branch. A mutable branch cannot replace the code receiving contents:write.
+  repository_dispatch:
+    types: [release-sdk]
 
 concurrency:
-  group: release-${{ inputs.tag }}
+  group: release-${{ github.event.client_payload.tag }}
   cancel-in-progress: false
 
 jobs:
   release:
     name: Create GitHub Release
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    if: github.repository == 'lvis-project/lvis-plugin-sdk'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -28,7 +22,7 @@ jobs:
       - name: Resolve requested tag
         id: tag
         env:
-          DISPATCH_TAG: ${{ inputs.tag }}
+          DISPATCH_TAG: ${{ github.event.client_payload.tag }}
         run: |
           set -euo pipefail
           printf 'name=%s\n' "$DISPATCH_TAG" >> "$GITHUB_OUTPUT"
@@ -52,7 +46,7 @@ jobs:
         id: integrity
         env:
           RELEASE_TAG: ${{ steps.tag.outputs.name }}
-          EXPECTED_HOST_REF: ${{ inputs.host_ref }}
+          EXPECTED_HOST_REF: ${{ github.event.client_payload.host_ref }}
         run: |
           set -euo pipefail
           args=(
@@ -76,6 +70,7 @@ jobs:
           ref: ${{ steps.integrity.outputs.host_ref }}
           path: .release-host
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Verify Host commit belongs to Host main
         env:

@@ -5,9 +5,10 @@ name: validate-plugin-manifests
 # ajv-cli. Catches the "SDK schema tightened, plugin manifest still has the
 # old shape" class of break.
 #
-# Runs on every PR that touches the SDK schema, on push to main, and
-# nightly so a plugin-side merge that drifts from the SDK schema gets
-# noticed within 24h instead of at the next plugin release.
+# Runs only from trusted default-branch workflow code: on push to main,
+# nightly, or repository_dispatch. Pull requests exercise the SDK's local
+# schema tests but never receive the private plugin roster or GitHub App
+# credentials.
 #
 # Matrix invariant: every entry MUST be a current, reachable plugin repo.
 # A renamed/archived/deleted repo returns 404 and FAILS the job (see the
@@ -21,18 +22,17 @@ name: validate-plugin-manifests
 # plugin roster: `gh secret set PLUGIN_MANIFEST_REPOS --repo lvis-project/lvis-plugin-sdk`.
 
 on:
-  pull_request:
-    paths:
-      - 'schemas/plugin-manifest.schema.json'
-      - 'scripts/sync-schema-from-host.mjs'
-      - '.github/workflows/validate-plugin-manifests.yml'
   push:
     branches: [main]
     paths:
       - 'schemas/plugin-manifest.schema.json'
   schedule:
     - cron: '37 4 * * *' # nightly ~04:37 UTC, after drift-check (03:17)
-  workflow_dispatch: {}
+  repository_dispatch:
+    types: [validate-plugin-manifests]
+
+permissions:
+  contents: read
 
 concurrency:
   group: validate-plugin-manifests-${{ github.event_name }}-${{ github.ref }}
