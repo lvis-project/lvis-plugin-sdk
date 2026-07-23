@@ -668,17 +668,18 @@ export interface PluginHostApi {
 
     onChange<T = unknown>(key: string, callback: (value: T | undefined) => void): () => void;
   };
+
   /**
-   * Register skill keywords with the host's keyword engine. When the user
-   * types or says one of the registered keywords the host routes the request
-   * to the associated `skillId`, which the plugin must handle via a tool
-   * dispatch.
+   * Register discovery keywords for plugin-owned Skills. A match may preload
+   * the associated Skill into model context; it never invokes a Tool and does
+   * not create a keyword-to-tool alias. Callable surfaces remain the pure Tool
+   * objects declared in the manifest.
    *
-   * @param keywords - Keyword/skill pairs to register. Calling again appends;
+   * @param keywords - Keyword/Skill pairs to register. Calling again appends;
    *                   duplicate keywords are deduplicated by the host.
    * @example
    * hostApi.registerKeywords([
-   *   { keyword: "weather", skillId: "forecast.today" },
+   *   { keyword: "weather", skillId: "forecast-today" },
    * ]);
    */
   registerKeywords(keywords: Array<{ keyword: string; skillId: string }>): void;
