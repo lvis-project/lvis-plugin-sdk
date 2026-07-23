@@ -14,7 +14,7 @@ const MANIFEST_WORKFLOW = fs.readFileSync(
 );
 
 describe("release workflow trust bootstrap", () => {
-  it("only releases from default-branch repository dispatch", () => {
+  it("only releases from a trusted default-branch repository dispatch", () => {
     expect(WORKFLOW).not.toMatch(/push:\s*\n\s+tags:/);
     expect(WORKFLOW).not.toContain("workflow_dispatch:");
     expect(WORKFLOW).toContain("repository_dispatch:");
@@ -22,6 +22,18 @@ describe("release workflow trust bootstrap", () => {
     expect(WORKFLOW).toContain("github.event.client_payload.tag");
     expect(WORKFLOW).toContain(
       "if: github.repository == 'lvis-project/lvis-plugin-sdk'",
+    );
+  });
+
+  it("proves tag protection before candidate code can execute", () => {
+    expect(WORKFLOW).toContain(
+      "node .release-control/scripts/verify-release-integrity.mjs protection",
+    );
+    expect(WORKFLOW.indexOf("Verify active release-tag ruleset")).toBeLessThan(
+      WORKFLOW.indexOf("Checkout candidate tag without executing it"),
+    );
+    expect(WORKFLOW.indexOf("Verify active release-tag ruleset")).toBeLessThan(
+      WORKFLOW.indexOf("working-directory: .release-candidate"),
     );
   });
 
@@ -36,10 +48,19 @@ describe("release workflow trust bootstrap", () => {
       WORKFLOW.indexOf("working-directory: .release-candidate"),
     );
   });
+  it("never persists checkout credentials, including the exact Host checkout", () => {
+    const checkoutBlocks = WORKFLOW.split(/\n(?=\s+- name:|\s+- uses:)/)
+      .filter((block) => block.includes("actions/checkout@"));
+    expect(checkoutBlocks).toHaveLength(3);
+    for (const block of checkoutBlocks) {
+      expect(block).toContain("persist-credentials: false");
+    }
 
-  it("does not persist write-capable credentials in any checkout", () => {
-    expect(WORKFLOW.match(/uses: actions\/checkout@/g)).toHaveLength(3);
-    expect(WORKFLOW.match(/persist-credentials: false/g)).toHaveLength(3);
+    const hostCheckout = WORKFLOW.slice(
+      WORKFLOW.indexOf("- name: Checkout exact Host contract commit"),
+      WORKFLOW.indexOf("- name: Verify Host commit belongs to Host main"),
+    );
+    expect(hostCheckout).toContain("persist-credentials: false");
   });
 });
 
