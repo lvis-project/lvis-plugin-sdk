@@ -376,6 +376,8 @@ const JSDOC_CATALOG = {
       publisher: `/** Display string identifying the plugin publisher (for example an organization or author). @optional */`,
       packageName: `/** npm package name persisted by the host marketplace service for rollback support. Authored by the marketplace publish pipeline — plugin authors should not set this manually. @optional */`,
       python: `/** Optional Python runtime co-deployment metadata. When \`managedBy\` is \`"lvis-app"\` the host installs the locked requirements file at install time; \`"self"\` lets the plugin manage its own venv. @optional */`,
+      author: `/** Plugin author — individual maintainer name or contact (distinct from \`publisher\`). @optional */`,
+      uiSlots: `/** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in \`ui[].slot\`. @optional */`,
       startupTimeoutMs: `/** Maximum time in milliseconds the host will wait for \`RuntimePlugin.start\` to resolve. Plugins exceeding this are considered failed. @optional */`,
     },
   },
@@ -943,10 +945,6 @@ export type StorageEncoding =
 
   out = stripHostInternalRegistryFields(out);
   out = restrictMarketplaceChannelToStable(out);
-  out = ensurePluginManifestPython(out);
-  out = ensurePluginManifestPackageName(out);
-  out = ensurePluginManifestAuthor(out);
-  out = ensurePluginManifestUiSlots(out);
   out = ensurePluginMarketplaceCatalogFields(out);
 
   return out;
@@ -988,67 +986,6 @@ function restrictMarketplaceChannelToStable(text) {
     /channel\?: "stable" \| "canary";/g,
     'channel?: "stable";',
   );
-}
-
-/**
- * Host `types.ts` is missing the `python?` block that the host's
- * JSON Schema (and pageindex's published `plugin.json`) already accept.
- * Inject it into `PluginManifest` so plugin authors get type-checking
- * parity with what the schema validates. Idempotent — skips when already
- * present.
- */
-function ensurePluginManifestPython(text) {
-  if (/python\?:\s*\{/m.test(text)) return text;
-  return insertPluginManifestField(
-    text,
-    `  python?: {\n    managedBy?: "lvis-app" | "self";\n    requirementsLock?: string;\n    interpreter?: string;\n  };`,
-  );
-}
-
-/**
- * M9 — schema accepts `packageName` on installed manifests (the
- * marketplace publish pipeline writes it for rollback support) but the
- * host TS interface doesn't declare it. Inject it on the SDK side so
- * plugin authors validating their own \`plugin.json\` don't see a TS error
- * if they want to surface the field. Idempotent.
- */
-function ensurePluginManifestPackageName(text) {
-  if (/^\s*packageName\?:\s*string;/m.test(text)) return text;
-  return insertPluginManifestField(text, "  packageName?: string;");
-}
-
-/**
- * Schema-master sync — author + uiSlots TS surface.
- *
- * `author` (individual maintainer) lives in the SDK schema even though
- * the host's plugin.schema.json doesn't carry it after the schema prune.
- * Plugin authors expect a credit field; `publisher` (organization) and
- * `author` (individual) are intentionally distinct. Inject on the SDK
- * side so manifest typings surface it.
- *
- * `uiSlots` is the top-level slot-name advertisement (distinct from
- * the per-extension `ui[].slot` binding). Marketplace metadata only.
- *
- * Both are idempotent — only inject when missing.
- */
-function ensurePluginManifestAuthor(text) {
-  if (/^\s*author\?:\s*string;/m.test(text)) return text;
-  return insertPluginManifestField(
-    text,
-    "  /** Plugin author — individual maintainer name or contact (distinct from `publisher`). */\n  author?: string;",
-  );
-}
-
-function ensurePluginManifestUiSlots(text) {
-  if (/^\s*uiSlots\?:\s*string\[\];/m.test(text)) return text;
-  return insertPluginManifestField(
-    text,
-    "  /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */\n  uiSlots?: string[];",
-  );
-}
-
-function insertPluginManifestField(text, field) {
-  return insertInterfaceFields(text, "PluginManifest", [field]);
 }
 
 function findInterfaceBounds(text, interfaceName) {

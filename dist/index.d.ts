@@ -241,23 +241,25 @@ export interface PluginManifest {
     requires?: RequiresSpec;
     /** Display string identifying the plugin publisher (for example an organization or author). @optional */
     publisher?: string;
+    /** npm package name persisted by the host marketplace service for rollback support. Authored by the marketplace publish pipeline — plugin authors should not set this manually. @optional */
+    packageName?: string;
     /** Maximum time in milliseconds the host will wait for `RuntimePlugin.start` to resolve. Plugins exceeding this are considered failed. @optional */
     startupTimeoutMs?: number;
     configSchema?: PluginConfigSchema;
     icon?: string;
     iconText?: string;
-    hostSecrets?: {
-        read?: string[];
-    };
+    /** Optional Python runtime co-deployment metadata. When `managedBy` is `"lvis-app"` the host installs the locked requirements file at install time; `"self"` lets the plugin manage its own venv. @optional */
     python?: {
         managedBy?: "lvis-app" | "self";
         requirementsLock?: string;
         interpreter?: string;
     };
-    packageName?: string;
-    /** Plugin author — individual maintainer name or contact (distinct from `publisher`). */
+    hostSecrets?: {
+        read?: string[];
+    };
+    /** Plugin author — individual maintainer name or contact (distinct from `publisher`). @optional */
     author?: string;
-    /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. */
+    /** Top-level advertisement of UI slot names this plugin participates in. Marketplace metadata only — actual extension binding lives in `ui[].slot`. @optional */
     uiSlots?: string[];
 }
 export interface PluginFirstTaskCopy {

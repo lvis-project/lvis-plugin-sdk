@@ -338,10 +338,33 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     ]));
   });
 
-  it("rejects undeclared fields in an operation rule", () => {
-    const tool = pureTool();
-    tool._meta = {
-      ...tool._meta,
+  it("rejects removed appAllowed policy and undeclared operation-rule fields", () => {
+    const policyTool = pureTool();
+    policyTool._meta = {
+      ...policyTool._meta,
+      "lvisai/operationPolicy": {
+        discriminant: "operation",
+        appAllowed: ["ping"],
+        operations: {
+          ping: { kind: "read", minimumRisk: "read" },
+        },
+      },
+    };
+    const policyResult = check({
+      ...BASE,
+      tools: [policyTool],
+    });
+    expect(policyResult.valid).toBe(false);
+    expect(policyResult.rawErrors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        keyword: "additionalProperties",
+        params: expect.objectContaining({ additionalProperty: "appAllowed" }),
+      }),
+    ]));
+
+    const ruleTool = pureTool();
+    ruleTool._meta = {
+      ...ruleTool._meta,
       "lvisai/operationPolicy": {
         discriminant: "operation",
         operations: {
@@ -349,20 +372,33 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
         },
       },
     };
-    const { valid } = check({
+    expect(check({
       ...BASE,
-      tools: [tool],
-    });
-    expect(valid).toBe(false);
+      tools: [ruleTool],
+    }).valid).toBe(false);
   });
 
-  it("rejects a parallel top-level operation policy map", () => {
-    const { valid } = check({
-      ...BASE,
-      tools: [pureTool()],
-      operationGovernance: {},
-    });
-    expect(valid).toBe(false);
+  it("rejects retired parallel top-level UI and operation policy fields", () => {
+    for (const field of [
+      "uiTool",
+      "uiTools",
+      "uiAction",
+      "uiActions",
+      "operationGovernance",
+    ]) {
+      const { valid, rawErrors } = check({
+        ...BASE,
+        tools: [pureTool()],
+        [field]: {},
+      });
+      expect(valid, field).toBe(false);
+      expect(rawErrors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          keyword: "additionalProperties",
+          params: expect.objectContaining({ additionalProperty: field }),
+        }),
+      ]));
+    }
   });
 
   it("rejects the removed toolSchemas map even alongside empty tools:[]", () => {
