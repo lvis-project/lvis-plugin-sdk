@@ -900,8 +900,10 @@ export type PluginToolHandler = (payload?: unknown) => Promise<unknown> | unknow
  * hooks and the map of tool handlers the host can dispatch to.
  */
 export interface RuntimePlugin {
-    /** Invoked once after construction. Perform asynchronous setup here (opening connections, restoring state, etc.). @optional */
+    /** Invoked while the Host prepares a hidden candidate generation. Limit this hook to reversible, side-effect-free setup. @optional */
     start?: () => Promise<void> | void;
+    /** Invoked after the immutable generation becomes active. Start network discovery, restore persisted sessions, and schedule timers here. A failure degrades the active generation and does not roll the durable pointer back. @optional */
+    onPublished?: () => Promise<void> | void;
     /** Invoked during host shutdown or plugin unload. Release resources and flush state. @optional */
     stop?: () => Promise<void> | void;
     /**

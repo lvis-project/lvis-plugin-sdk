@@ -15,7 +15,8 @@ import type {
 } from "@lvis/plugin-sdk";
 
 const createPlugin: RuntimePluginFactory = async ({ hostApi, log }) => ({
-  async start() { log("ready"); },
+  async start() { log("candidate prepared"); },
+  async onPublished() { log("active generation ready"); },
   handlers: {
     my_plugin_ping: async () => ({ ok: true }),
   },
@@ -31,7 +32,7 @@ Consume the SDK as a Git dependency pinned to a release tag:
 ```json
 {
   "devDependencies": {
-    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v5.22.0"
+    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v11.2.0"
   }
 }
 ```
@@ -48,10 +49,13 @@ No submodule is required.
 
 ## Plugin anatomy
 
-A plugin has two artifacts:
+A plugin archive has two required members and may include declared contributions:
 
 1. **`plugin.json`** — declarative manifest parsed by the host before the runtime loads.
 2. **Entry module** (`entry` field in manifest) — exports a `RuntimePluginFactory` as default.
+3. Optional **Skills, Hooks, and MCP descriptors** at the exact relative paths
+   declared by `skills[]`, `hooks[]`, and `mcpServers[]`. These files are part of
+   the same signed/versioned archive and lifecycle as the runtime.
 
 ### Minimal `plugin.json`
 
@@ -62,7 +66,11 @@ A plugin has two artifacts:
   "version": "1.0.0",
   "description": "One-line summary (required, 1-280 chars). The LLM reads this.",
   "entry": "dist/index.js",
-  "tools": ["my_plugin_ping"]
+  "tools": [{
+    "name": "my_plugin_ping",
+    "description": "Return plugin health.",
+    "inputSchema": { "type": "object", "properties": {} }
+  }]
 }
 ```
 
@@ -75,16 +83,16 @@ A plugin has two artifacts:
 | `version` | `string` | SemVer. |
 | `description` | `string` | **Required** since v3.0.0. 1-280 chars. LLM-visible. |
 | `entry` | `string` | Path relative to plugin root; default export must be `RuntimePluginFactory`. |
-| `tools` | `string[]` | Tool names exposed to host LLM. Pattern: `^[a-zA-Z_][a-zA-Z0-9_]*$` — **dots and hyphens are rejected**. |
-| `toolSchemas` | `Record<string, ToolSchema>` | Per-tool description, `category`, `pathFields`, `writesToOwnSandbox`, input JSON Schema. |
+| `tools` | `Tool[]` | Typed MCP Tool objects. Names use `^[a-zA-Z_][a-zA-Z0-9_]*$`; `_meta.ui.visibility` controls model/app exposure. |
+| `operationGovernance` | `Record<string, PluginToolOperationPolicy>` | Host-only Read/Write operation policy, app allowlist, risk floor, and read-before-write rule by tool name. |
+| `skills` / `hooks` / `mcpServers` | `Array<{id, path}>` | Signed plugin-owned contributions activated and retired atomically with the runtime generation. |
 | `capabilities` | `string[]` | Capability tags (e.g. `"meeting-recorder"`, `"host:overlay"`). Hosts gate features on these. |
-| `keywords` | `Array<{keyword, skillId}>` | Skill keywords registered with host keyword engine. |
+| `keywords` | `Array<{keyword, skillId}>` | Optional discovery keywords for a declared Skill; not a direct tool-dispatch alias. |
 | `eventSubscriptions` | `string[] \| EventSubscription[]` | Events the plugin listens to via `hostApi.onEvent`. |
 | `emittedEvents` | `string[]` | Events the plugin emits via `hostApi.emitEvent`. Declare all emitted events here. |
 | `notificationEvents` | `Array<{event, titleField?, bodyField?, bypassFocusGate?}>` | Events surfaced as host OS notifications. |
 | `ui` | `PluginUiExtension[]` | Sidebar/panel UI extensions. Currently `slot: "sidebar"` only. |
-| `uiActions` | `Record<string, PluginUiActionSpec>` | Runtime methods the UI may invoke directly. UI-only methods belong here and need not appear in `tools`. |
-| `auth` | `PluginAuthSpec` | Declarative auth contract for OAuth/cookie flows. `statusTool`/`loginTool`/`logoutTool` must appear in `uiActions` and must **NOT** appear in `tools[]` — auth is a host-managed lifecycle, not LLM-callable; the host rejects a manifest that lists an auth tool in `tools[]`. |
+| `auth` | `PluginAuthSpec` | Declarative auth contract for the plugin's trusted panel. Auth tools remain app-only and are not model-visible. |
 | `configSchema` | `PluginConfigSchema` | JSON Schema draft-07 subset; `format: "secret"` routes values through the encrypted keychain. |
 | `dependencies` | `Array<string \| DependencySpec>` | Plugin-level dependencies (other plugin ids). |
 | `pluginAccess` | `PluginAccessSpec` | Cross-plugin event subscription grants; use request/response events instead of direct tool calls. |
@@ -92,22 +100,13 @@ A plugin has two artifacts:
 | `startupTimeoutMs` | `number` | Max ms host waits for `start()` to resolve. |
 | `python` | `{managedBy?, requirementsLock?, interpreter?}` | Python co-deployment metadata for plugins with Python workers. |
 
-### Tool category + path fields
+### Tool operations and path fields
 
-`toolSchemas[name].category` is deprecated and optional. The host classifies
-permission risk from host-owned invocation signals; plugin-declared categories
-are accepted for backward compatibility, but new manifests should omit them.
-
-| Category | Meaning |
-|---|---|
-| `"read"` | Read-only access |
-| `"write"` | Write access to plugin's own sandbox |
-| `"shell"` | Shell-level operations |
-| `"network"` | Network I/O |
-
-`pathFields?: string[]` — list of input schema property names that contain filesystem paths. The host uses these to enforce the `~/.lvis/plugins/<pluginId>/` boundary.
-
-`writesToOwnSandbox?: boolean` — self-attestation that write paths stay inside `~/.lvis/plugins/<pluginId>/`. The host verifies this at call time and downgrades the approval tier to LOW when true.
+The Host classifies risk. A plugin may add `operationGovernance[toolName]` to a
+single discriminated Read or Write tool so the Host can enforce app-visible
+operations, minimum risk, and fresh read-before-write grants. Filesystem argument
+names belong in `tool._meta["lvisai/pathFields"]`; the Host validates them against
+the plugin's scoped storage boundary.
 
 ## `PluginRuntimeContext`
 
@@ -182,7 +181,8 @@ interface PluginHostApi {
 
 ```ts
 interface RuntimePlugin {
-  start?: () => Promise<void> | void;  // async setup — connections, state restore
+  start?: () => Promise<void> | void;  // hidden candidate: reversible preparation only
+  onPublished?: () => Promise<void> | void; // active generation: network/session/timers
   stop?: () => Promise<void> | void;   // flush state, release resources
   handlers: Record<string, PluginToolHandler>; // keys must match manifest.tools
 }
@@ -218,7 +218,7 @@ timer — omitting the event means the UI never refreshes after login.
 ## Schema source-of-truth (US-A1)
 
 `schemas/plugin-manifest.schema.json` is a **byte-equality copy** of
-`lvis-app/schemas/plugin.schema.json`. A plugin that passes SDK validation will
+`lvis-app/schemas/plugin-manifest.schema.json`. A plugin that passes SDK validation will
 pass host validation and vice versa.
 
 - The host repo (`lvis-app`) is the canonical source of truth.
@@ -228,7 +228,7 @@ pass host validation and vice versa.
 - To regenerate locally:
 
   ```bash
-  LVIS_HOST_SCHEMA_PATH=/path/to/lvis-app/schemas/plugin.schema.json \
+  LVIS_HOST_SCHEMA_PATH=/path/to/lvis-app/schemas/plugin-manifest.schema.json \
     bun run sync:schema-from-host
   ```
 
