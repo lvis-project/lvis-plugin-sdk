@@ -7,6 +7,25 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v11.1.0 — 2026-07-23
+
+### Added
+- `PluginManifest.onboarding.firstTask` and its localized copy types, mirrored
+  from the host. The declaration is inert metadata: it can supply bounded copy
+  and a visible composer prefill, but cannot name a tool, IPC channel, arguments,
+  or auto-submit behavior.
+- The mirrored manifest schema now validates the same optional onboarding block,
+  including a required English fallback, normalized locale tags, bounded priority,
+  complete localized copy, and strict unknown-field rejection.
+
+### Changed
+- Resynchronized the generated host type surface, including the already-hosted
+  pending plugin update and cleanup registry state types, and rebuilt the frozen
+  declaration artifacts.
+
+Compatibility: plugins that publish the new manifest field must require
+`lvis-app >= 0.5.7`; older hosts reject unknown top-level manifest fields.
+
 ## v11.0.0 — 2026-07-19
 
 ### Removed (BREAKING)
