@@ -9,22 +9,19 @@ export type MarketplacePackageAsset = ({
     type: "language-pack";
     locale: string;
 } & Record<string, unknown>);
-export interface McpUiResourceCsp {
-    connectDomains?: string[];
-    resourceDomains?: string[];
-    frameDomains?: string[];
-    baseUriDomains?: string[];
-}
-export interface McpUiResourcePermissions {
-    camera?: Record<string, never>;
-    microphone?: Record<string, never>;
-    geolocation?: Record<string, never>;
-    clipboardWrite?: Record<string, never>;
-}
 export interface PluginUiResourceDecl {
     uri: string;
-    csp?: McpUiResourceCsp;
-    permissions?: McpUiResourcePermissions;
+    csp?: {
+        connectDomains?: string[];
+        resourceDomains?: string[];
+        frameDomains?: string[];
+        baseUriDomains?: string[];
+    };
+    permissions?: {
+        camera?: Record<string, never>;
+        microphone?: Record<string, never>;
+        geolocation?: Record<string, never>;
+    };
 }
 export type InstallPolicy = "admin" | "user";
 export type GovernedRiskFloor = "read" | "write" | "network" | "shell";

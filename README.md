@@ -84,7 +84,6 @@ A plugin archive has two required members and may include declared contributions
 | `description` | `string` | **Required** since v3.0.0. 1-280 chars. LLM-visible. |
 | `entry` | `string` | Path relative to plugin root; default export must be `RuntimePluginFactory`. |
 | `tools` | `Tool[]` | Typed MCP Tool objects. Names use `^[a-zA-Z_][a-zA-Z0-9_]*$`; `_meta.ui.visibility` controls model/app exposure. |
-| `operationGovernance` | `Record<string, PluginToolOperationPolicy>` | Host-only Read/Write operation policy, app allowlist, risk floor, and read-before-write rule by tool name. |
 | `skills` / `hooks` / `mcpServers` | `Array<{id, path}>` | Signed plugin-owned contributions activated and retired atomically with the runtime generation. |
 | `capabilities` | `string[]` | Capability tags (e.g. `"meeting-recorder"`, `"host:overlay"`). Hosts gate features on these. |
 | `keywords` | `Array<{keyword, skillId}>` | Optional discovery keywords for a declared Skill; not a direct tool-dispatch alias. |
@@ -102,11 +101,13 @@ A plugin archive has two required members and may include declared contributions
 
 ### Tool operations and path fields
 
-The Host classifies risk. A plugin may add `operationGovernance[toolName]` to a
-single discriminated Read or Write tool so the Host can enforce app-visible
-operations, minimum risk, and fresh read-before-write grants. Filesystem argument
-names belong in `tool._meta["lvisai/pathFields"]`; the Host validates them against
-the plugin's scoped storage boundary.
+The Host classifies risk. A discriminated Read or Write tool may colocate a
+signed restriction in `tool._meta["lvisai/operationPolicy"]`. The policy can
+narrow app-visible operations, raise the minimum risk floor, and require a fresh
+read before a write; it cannot create a second tool/action surface or relax Host
+policy. Filesystem argument names belong in
+`tool._meta["lvisai/pathFields"]`; the Host validates them against the plugin's
+scoped storage boundary.
 
 ## `PluginRuntimeContext`
 
