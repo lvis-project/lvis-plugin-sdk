@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## Unreleased
+
+### Changed
+- `src/index.ts` is now a mechanical copy of the Host-owned
+  `src/plugins/public-contract.ts`. Declaration selection, public/private
+  boundaries, and JSDoc moved to `lvis-app`; the SDK generator no longer strips
+  or synthesizes documentation.
+- `PluginManifest.keywords` and `PluginHostApi.registerKeywords` are marked
+  deprecated with the current truthful behavior: a match preloads the exact
+  model-visible Tool schema and never invokes the Tool. Bundled instruction
+  discovery belongs to `manifest.skills`.
+
 ## v11.2.0 — 2026-07-23
 
 ### Added
