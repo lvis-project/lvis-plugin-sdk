@@ -363,6 +363,7 @@ export interface PluginContributionDeclaration {
   id: string;
   path: string;
 }
+
 /**
  * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
  * rendered as a typed form in the host's `PluginConfigTab`.
