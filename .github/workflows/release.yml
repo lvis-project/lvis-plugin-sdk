@@ -17,6 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      tag: ${{ steps.integrity.outputs.tag }}
+      release_sha: ${{ steps.integrity.outputs.release_sha }}
+      host_ref: ${{ steps.integrity.outputs.host_ref }}
 
     steps:
       - name: Resolve requested tag
@@ -190,6 +194,20 @@ jobs:
             args+=(--expected-host-ref "$EXPECTED_HOST_REF")
           fi
           node .release-control/scripts/verify-release-integrity.mjs "${args[@]}"
+
+      - name: Bind privileged release to verified build inputs
+        env:
+          BUILD_TAG: ${{ needs.build.outputs.tag }}
+          BUILD_RELEASE_SHA: ${{ needs.build.outputs.release_sha }}
+          BUILD_HOST_REF: ${{ needs.build.outputs.host_ref }}
+          RELEASE_TAG: ${{ steps.integrity.outputs.tag }}
+          RELEASE_SHA: ${{ steps.integrity.outputs.release_sha }}
+          HOST_REF: ${{ steps.integrity.outputs.host_ref }}
+        run: |
+          set -euo pipefail
+          test "$RELEASE_TAG" = "$BUILD_TAG"
+          test "$RELEASE_SHA" = "$BUILD_RELEASE_SHA"
+          test "$HOST_REF" = "$BUILD_HOST_REF"
 
       - name: Checkout exact Host contract commit
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0

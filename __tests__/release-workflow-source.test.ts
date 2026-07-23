@@ -83,6 +83,11 @@ describe("release workflow trust bootstrap", () => {
 
     expect(release).toContain("needs: build");
     expect(release).toContain("permissions:\n      contents: write");
+    expect(build).toContain("release_sha: ${{ steps.integrity.outputs.release_sha }}");
+    expect(build).toContain("host_ref: ${{ steps.integrity.outputs.host_ref }}");
+    expect(release).toContain("Bind privileged release to verified build inputs");
+    expect(release).toContain("needs.build.outputs.release_sha");
+    expect(release).toContain("needs.build.outputs.host_ref");
     expect(release).not.toContain("working-directory: .release-candidate");
     expect(release).not.toContain("oven-sh/setup-bun");
     expect(release).not.toMatch(/\b(?:bun|npm|npx|pnpm|yarn)\s+(?:run|install|test|build|publish)\b/u);
