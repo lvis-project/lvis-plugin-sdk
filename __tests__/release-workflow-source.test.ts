@@ -13,6 +13,15 @@ const MANIFEST_WORKFLOW = fs.readFileSync(
   "utf8",
 );
 
+function jobBlock(name: string): string {
+  const start = WORKFLOW.indexOf(`  ${name}:\n`);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const next = WORKFLOW.slice(start + 1).search(/\n  [a-zA-Z0-9_-]+:\n/u);
+  return next < 0
+    ? WORKFLOW.slice(start)
+    : WORKFLOW.slice(start, start + 1 + next);
+}
+
 describe("release workflow trust bootstrap", () => {
   it("only releases from a trusted default-branch repository dispatch", () => {
     expect(WORKFLOW).not.toMatch(/push:\s*\n\s+tags:/);
@@ -51,7 +60,7 @@ describe("release workflow trust bootstrap", () => {
   it("never persists checkout credentials, including the exact Host checkout", () => {
     const checkoutBlocks = WORKFLOW.split(/\n(?=\s+- name:|\s+- uses:)/)
       .filter((block) => block.includes("actions/checkout@"));
-    expect(checkoutBlocks).toHaveLength(3);
+    expect(checkoutBlocks).toHaveLength(6);
     for (const block of checkoutBlocks) {
       expect(block).toContain("persist-credentials: false");
     }
@@ -61,6 +70,25 @@ describe("release workflow trust bootstrap", () => {
       WORKFLOW.indexOf("- name: Verify Host commit belongs to Host main"),
     );
     expect(hostCheckout).toContain("persist-credentials: false");
+  });
+
+  it("runs candidate code only in the read-only build job", () => {
+    const build = jobBlock("build");
+    const release = jobBlock("release");
+
+    expect(build).toContain("permissions:\n      contents: read");
+    expect(build).toContain("working-directory: .release-candidate");
+    expect(build).toContain("bun run test");
+    expect(build).toContain("bun run build");
+
+    expect(release).toContain("needs: build");
+    expect(release).toContain("permissions:\n      contents: write");
+    expect(release).not.toContain("working-directory: .release-candidate");
+    expect(release).not.toContain("oven-sh/setup-bun");
+    expect(release).not.toMatch(/\b(?:bun|npm|npx|pnpm|yarn)\s+(?:run|install|test|build|publish)\b/u);
+    expect(release).toContain(
+      "node .release-control/scripts/verify-release-integrity.mjs",
+    );
   });
 });
 
