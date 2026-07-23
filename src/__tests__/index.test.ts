@@ -1412,7 +1412,7 @@ describe("Tool surface — v6 MCP contract", () => {
       ].sort(),
     );
     expect(indexSrc).not.toMatch(/compileManifestValidator/);
-    expect(indexSrc).not.toMatch(/\bajv\b/i);
+    expect(indexSrc).not.toMatch(/^import\s/m);
   });
 });
 

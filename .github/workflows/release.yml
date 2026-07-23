@@ -106,7 +106,7 @@ jobs:
 
       - name: Verify source contract drift against exact Host commit
         env:
-          LVIS_HOST_TYPES_PATH: ${{ github.workspace }}/.release-host/src/plugins/types.ts
+          LVIS_HOST_CONTRACT_PATH: ${{ github.workspace }}/.release-host/src/plugins/public-contract.ts
         run: bun run check:drift
 
       - name: Verify schema drift against exact Host commit
