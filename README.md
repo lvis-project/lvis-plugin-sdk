@@ -96,8 +96,11 @@ A plugin archive has two required members and may include declared contributions
 | `dependencies` | `Array<string \| DependencySpec>` | Plugin-level dependencies (other plugin ids). |
 | `pluginAccess` | `PluginAccessSpec` | Cross-plugin event subscription grants; use request/response events instead of direct tool calls. |
 | `publisher` | `string` | Non-empty string. Required for marketplace submissions. |
+| `packageName` | `string` | Marketplace-persisted package identity used for rollback; the publish pipeline owns this value. |
+| `author` | `string` | Optional individual maintainer credit, distinct from the publishing organization. |
+| `uiSlots` | `string[]` | Marketplace-only slot advertisement; actual extension bindings remain in `ui[].slot`. |
 | `startupTimeoutMs` | `number` | Max ms host waits for `start()` to resolve. |
-| `python` | `{managedBy?, requirementsLock?, interpreter?}` | Python co-deployment metadata for plugins with Python workers. |
+| `python` | `{managedBy?, requirementsLock?, interpreter?}` | Canonical Python co-deployment metadata; legacy parallel lockfile aliases are unsupported. |
 
 ### Tool operations and path fields
 
