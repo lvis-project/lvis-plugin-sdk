@@ -317,11 +317,10 @@ MCP auth metadata types added:
 - `McpRuntimeSpec.http.apiKeyHeader?` / `allowPrivateNetworks?` / `oauth?: McpOAuthMetadata`
 - `interface McpOAuthMetadata` — MCP 2025-06-18 + RFC 8414/7591 fields
 - `interface McpAuthMetadata extends McpOAuthMetadata` — `mode` discriminator
-- `PluginMarketplaceItem.mcpAuth?: McpAuthMetadata`
 
-**Schema gap (known)**: types are synced; `schemas/plugin-manifest.schema.json`
-will be updated via `bun run sync:schema` after the host schema PR merges.
-Until then, adding `mcpAuth` to `plugin.json` will be rejected by `additionalProperties: false`.
+Marketplace catalog DTOs remain Host-internal and are not exported by the
+plugin-author SDK. Manifest/runtime auth metadata is generated directly from
+the Host contract.
 
 ### v5.0.0 Migration Guide — LvisHostThemeEvent v2 (BREAKING)
 
