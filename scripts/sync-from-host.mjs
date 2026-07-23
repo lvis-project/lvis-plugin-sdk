@@ -781,7 +781,8 @@ const JSDOC_CATALOG = {
  * hooks and the map of tool handlers the host can dispatch to.
  */`,
     fields: {
-      start: `/** Invoked once after construction. Perform asynchronous setup here (opening connections, restoring state, etc.). @optional */`,
+      start: `/** Invoked while the Host prepares a hidden candidate generation. Limit this hook to reversible, side-effect-free setup. @optional */`,
+      onPublished: `/** Invoked after the immutable generation becomes active. Start network discovery, restore persisted sessions, and schedule timers here. A failure degrades the active generation and does not roll the durable pointer back. @optional */`,
       stop: `/** Invoked during host shutdown or plugin unload. Release resources and flush state. @optional */`,
       handlers: `/**
  * Map of tool name to handler. Keys must match entries in

@@ -839,16 +839,26 @@ describe("RuntimePlugin + RuntimePluginFactory", () => {
     expect(plugin.stop).toBeUndefined();
   });
 
-  it("RuntimePlugin with start/stop lifecycle hooks", () => {
+  it("RuntimePlugin separates hidden preparation, post-publish startup, and stop", async () => {
     let started = false;
+    let published = false;
     let stopped = false;
     const plugin: RuntimePlugin = {
       start: async () => { started = true; },
+      onPublished: async () => { published = true; },
       stop: async () => { stopped = true; },
       handlers: { noop: () => null },
     };
     expect(plugin.start).toBeTypeOf("function");
+    expect(plugin.onPublished).toBeTypeOf("function");
     expect(plugin.stop).toBeTypeOf("function");
+    await plugin.start?.();
+    expect(started).toBe(true);
+    expect(published).toBe(false);
+    await plugin.onPublished?.();
+    expect(published).toBe(true);
+    await plugin.stop?.();
+    expect(stopped).toBe(true);
   });
 
   it("RuntimePluginFactory is callable and returns a RuntimePlugin", async () => {
