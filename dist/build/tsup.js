@@ -1,7 +1,9 @@
-// src/build/tsup.ts
+// src/index.ts
 var HOST_EXTERNAL_MODULES = ["electron"];
 var HOST_BROWSER_EXTERNAL_MODULES = ["react", "react-dom"];
 var BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
+
+// src/build/tsup.ts
 function defineLvisPluginConfig(overrides = {}) {
   if (Array.isArray(overrides)) {
     return overrides.map(applyDefaults);
