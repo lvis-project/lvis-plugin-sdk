@@ -275,16 +275,29 @@ Marketplace signing keys are intentionally not part of this SDK:
 
 - `v2.0.0+` tags are immutable release points.
 - Pin a specific tag: `github:lvis-project/lvis-plugin-sdk#vX.Y.Z`.
-- Each tag push triggers the `release.yml` workflow which creates a GitHub Release with automated release notes.
+- Each release tag must be annotated and contain exactly one
+  `Host-Ref: <40-character lvis-app commit SHA>` trailer. The release workflow
+  proves both the SDK tag commit and that Host commit belong to their respective
+  `main` histories before it can publish.
+- Each tag push triggers `release.yml`, which runs unit tests, typecheck, build,
+  source/schema/dist drift checks against that exact Host commit, and then creates
+  a public GitHub Release with a provenance JSON asset.
 - Semver: patch for fixes, minor for additive type changes, major for breaking contract changes.
 
 ## Releasing a new version
 
 1. Bump `version` in `package.json` following semver.
 2. Commit: `chore: release vX.Y.Z`
-3. Push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
-4. The `release` workflow creates the GitHub Release automatically.
-5. Notify downstream plugin authors to update their `#vX.Y.Z` pin.
+3. Resolve the exact Host contract commit already merged to `lvis-app/main`:
+   `git -C ../lvis-app rev-parse origin/main`.
+4. Create an annotated tag whose trailer binds the SDK release to that contract:
+   `git tag -a vX.Y.Z -m "Release vX.Y.Z" -m "Host-Ref: <40-character SHA>"`.
+5. Push the tag: `git push origin vX.Y.Z`.
+6. The `release` workflow verifies the annotated tag, peeled commit, main ancestry,
+   package version, exact Host ref, tests/build, and all drift gates before creating
+   the public GitHub Release.
+7. Verify the release notes and attached `lvis-sdk-release-provenance.json`, then
+   notify downstream plugin authors to update their `#vX.Y.Z` pin.
 
 ## Changelog highlights
 
