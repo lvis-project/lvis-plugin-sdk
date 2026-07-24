@@ -7,6 +7,20 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v12.0.0 — 2026-07-24
+
+### Removed (BREAKING)
+- Removed `PluginManifest.keywords` and `PluginHostApi.registerKeywords`.
+  Keyword matching was a Host-owned Tool-schema preload mechanism, not Skill
+  discovery, and is no longer part of the plugin contract.
+
+### Migration
+- Put model-facing instructions in signed, manifest-declared
+  `skills/*/SKILL.md` bundle members.
+- Keep callable operations in `manifest.tools` and invoke them only through the
+  normal Host Tool path. Do not add keyword aliases or plugin-side routing
+  shims.
+
 ## v11.2.0 — 2026-07-24
 
 ### Added
