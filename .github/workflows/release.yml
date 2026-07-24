@@ -1,64 +1,272 @@
 name: release
 
 on:
-  push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag to release (e.g. v2.1.0) — must already exist on main'
-        required: true
-        type: string
+  # repository_dispatch always loads this privileged workflow from the default
+  # branch. A mutable branch cannot replace the code receiving contents:write.
+  repository_dispatch:
+    types: [release-sdk]
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.client_payload.tag }}
   cancel-in-progress: false
 
 jobs:
+  build:
+    name: Verify release candidate
+    if: github.repository == 'lvis-project/lvis-plugin-sdk'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.integrity.outputs.tag }}
+      release_sha: ${{ steps.integrity.outputs.release_sha }}
+      host_ref: ${{ steps.integrity.outputs.host_ref }}
+
+    steps:
+      - name: Resolve requested tag
+        id: tag
+        env:
+          DISPATCH_TAG: ${{ github.event.client_payload.tag }}
+        run: |
+          set -euo pipefail
+          printf 'name=%s\n' "$DISPATCH_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout trusted release control
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          path: .release-control
+          persist-credentials: false
+
+      - name: Verify active release-tag ruleset
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          node .release-control/scripts/verify-release-integrity.mjs protection \
+            --repository "$GITHUB_REPOSITORY" \
+            --tag "$RELEASE_TAG" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout candidate tag without executing it
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ steps.tag.outputs.name }}
+          path: .release-candidate
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify annotated tag and SDK release commit
+        id: integrity
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.name }}
+          EXPECTED_HOST_REF: ${{ github.event.client_payload.host_ref }}
+        run: |
+          set -euo pipefail
+          args=(
+            release
+            --repo .release-candidate
+            --tag "$RELEASE_TAG"
+            --main-ref origin/main
+            --output "$GITHUB_OUTPUT"
+            --summary "$GITHUB_STEP_SUMMARY"
+            --provenance /tmp/lvis-sdk-release-provenance.json
+          )
+          if [ -n "$EXPECTED_HOST_REF" ]; then
+            args+=(--expected-host-ref "$EXPECTED_HOST_REF")
+          fi
+          node .release-control/scripts/verify-release-integrity.mjs "${args[@]}"
+
+      - name: Checkout exact Host contract commit
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          repository: lvis-project/lvis-app
+          ref: ${{ steps.integrity.outputs.host_ref }}
+          path: .release-host
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify Host commit belongs to Host main
+        env:
+          HOST_REF: ${{ steps.integrity.outputs.host_ref }}
+        run: |
+          node .release-control/scripts/verify-release-integrity.mjs host \
+            --repo .release-host \
+            --host-ref "$HOST_REF" \
+            --main-ref origin/main \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
+        with:
+          bun-version: '1.1.38'
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+        working-directory: .release-candidate
+
+      - name: Run unit tests
+        run: bun run test
+        working-directory: .release-candidate
+
+      - name: Typecheck
+        run: bunx tsc --noEmit
+        working-directory: .release-candidate
+
+      - name: Build
+        run: bun run build
+        working-directory: .release-candidate
+
+      - name: Verify source contract drift against exact Host commit
+        env:
+          LVIS_HOST_CONTRACT_PATH: ${{ github.workspace }}/.release-host/src/plugins/public-contract.ts
+        run: bun run check:drift
+        working-directory: .release-candidate
+
+      - name: Verify schema drift against exact Host commit
+        env:
+          LVIS_HOST_SCHEMA_PATH: ${{ github.workspace }}/.release-host/schemas/plugin-manifest.schema.json
+        run: bun run check:schema-drift
+        working-directory: .release-candidate
+
+      - name: Verify committed dist
+        run: bun run check:dist-drift
+        working-directory: .release-candidate
+
   release:
     name: Create GitHub Release
+    needs: build
+    if: github.repository == 'lvis-project/lvis-plugin-sdk'
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Resolve tag
+      - name: Resolve requested tag
         id: tag
+        env:
+          DISPATCH_TAG: ${{ github.event.client_payload.tag }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          fi
+          set -euo pipefail
+          printf 'name=%s\n' "$DISPATCH_TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout at tag
+      - name: Checkout trusted release control
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          path: .release-control
+          persist-credentials: false
+
+      - name: Verify active release-tag ruleset
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          node .release-control/scripts/verify-release-integrity.mjs protection \
+            --repository "$GITHUB_REPOSITORY" \
+            --tag "$RELEASE_TAG" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout candidate tag without executing it
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           ref: ${{ steps.tag.outputs.name }}
+          path: .release-candidate
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Read version from package.json
-        id: pkg
+      - name: Verify annotated tag and SDK release commit
+        id: integrity
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.name }}
+          EXPECTED_HOST_REF: ${{ github.event.client_payload.host_ref }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          args=(
+            release
+            --repo .release-candidate
+            --tag "$RELEASE_TAG"
+            --main-ref origin/main
+            --output "$GITHUB_OUTPUT"
+            --summary "$GITHUB_STEP_SUMMARY"
+            --provenance /tmp/lvis-sdk-release-provenance.json
+          )
+          if [ -n "$EXPECTED_HOST_REF" ]; then
+            args+=(--expected-host-ref "$EXPECTED_HOST_REF")
+          fi
+          node .release-control/scripts/verify-release-integrity.mjs "${args[@]}"
 
-      - name: Validate tag matches package version
+      - name: Bind privileged release to verified build inputs
+        env:
+          BUILD_TAG: ${{ needs.build.outputs.tag }}
+          BUILD_RELEASE_SHA: ${{ needs.build.outputs.release_sha }}
+          BUILD_HOST_REF: ${{ needs.build.outputs.host_ref }}
+          RELEASE_TAG: ${{ steps.integrity.outputs.tag }}
+          RELEASE_SHA: ${{ steps.integrity.outputs.release_sha }}
+          HOST_REF: ${{ steps.integrity.outputs.host_ref }}
         run: |
-          TAG="${{ steps.tag.outputs.name }}"
-          PKG_VERSION="${{ steps.pkg.outputs.version }}"
-          if [ "$TAG" != "v$PKG_VERSION" ]; then
-            echo "::error::Tag $TAG does not match package.json version $PKG_VERSION"
+          set -euo pipefail
+          test "$RELEASE_TAG" = "$BUILD_TAG"
+          test "$RELEASE_SHA" = "$BUILD_RELEASE_SHA"
+          test "$HOST_REF" = "$BUILD_HOST_REF"
+
+      - name: Checkout exact Host contract commit
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          repository: lvis-project/lvis-app
+          ref: ${{ steps.integrity.outputs.host_ref }}
+          path: .release-host
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify Host commit belongs to Host main
+        env:
+          HOST_REF: ${{ steps.integrity.outputs.host_ref }}
+        run: |
+          node .release-control/scripts/verify-release-integrity.mjs host \
+            --repo .release-host \
+            --host-ref "$HOST_REF" \
+            --main-ref origin/main \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Refuse to mutate an existing GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.integrity.outputs.tag }}
+        run: |
+          set -euo pipefail
+          set +e
+          RELEASE_LOOKUP=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 2>&1)
+          RELEASE_STATUS=$?
+          set -e
+          if [ "$RELEASE_STATUS" -eq 0 ]; then
+            echo "::error::GitHub Release $RELEASE_TAG already exists; immutable releases cannot be updated in place"
+            exit 1
+          fi
+          if ! printf '%s' "$RELEASE_LOOKUP" | grep -q 'HTTP 404'; then
+            echo "::error::Could not prove GitHub Release $RELEASE_TAG is absent"
+            printf '%s\n' "$RELEASE_LOOKUP"
             exit 1
           fi
 
       - name: Extract changelog section
+        id: changelog
+        env:
+          RELEASE_TAG: ${{ steps.integrity.outputs.tag }}
+          RELEASE_SHA: ${{ steps.integrity.outputs.release_sha }}
+          HOST_REF: ${{ steps.integrity.outputs.host_ref }}
         run: |
-          TAG="${{ steps.tag.outputs.name }}"
-          node scripts/extract-release-notes.mjs \
+          set -euo pipefail
+          TAG="$RELEASE_TAG"
+          node .release-control/scripts/extract-release-notes.mjs \
             --tag "$TAG" \
-            --changelog CHANGELOG.md \
+            --changelog .release-candidate/CHANGELOG.md \
             --output /tmp/release-notes.md
+          {
+            printf '\n'
+            printf '## Release provenance\n\n'
+            printf -- "- SDK commit: \`%s\`\n" "$RELEASE_SHA"
+            printf -- "- Host contract commit: \`%s\`\n" "$HOST_REF"
+          } >> /tmp/release-notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b  # v3.0.1
@@ -66,6 +274,7 @@ jobs:
           tag_name: ${{ steps.tag.outputs.name }}
           name: ${{ steps.tag.outputs.name }}
           body_path: /tmp/release-notes.md
+          files: /tmp/lvis-sdk-release-provenance.json
           draft: false
           prerelease: false
           make_latest: true

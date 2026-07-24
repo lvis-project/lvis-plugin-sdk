@@ -7,6 +7,33 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v11.2.0 — 2026-07-24
+
+### Added
+- `RuntimePlugin.onPublished()` runs after the Host has durably selected the
+  plugin's immutable generation. Plugins should defer network discovery,
+  persisted-session recovery, and timers to this hook so hidden update
+  candidates remain side-effect free.
+
+### Changed
+- `src/index.ts` is now a mechanical copy of the Host-owned
+  `src/plugins/public-contract.ts`. Declaration selection, public/private
+  boundaries, and JSDoc moved to `lvis-app`; the SDK generator no longer strips
+  or synthesizes documentation.
+- `PluginManifest.keywords` and `PluginHostApi.registerKeywords` are marked
+  deprecated with the current truthful behavior: a match preloads the exact
+  model-visible Tool schema and never invokes the Tool. Bundled instruction
+  discovery belongs to `manifest.skills`.
+- Packaging guidance now treats manifest-declared `skills`, `hooks`, and
+  `mcpServers` as signed plugin archive members alongside `dist/` and
+  `plugin.json`.
+- Composite operation restrictions are colocated on each Tool as
+  `_meta["lvisai/operationPolicy"]`. The unreleased top-level
+  `operationGovernance`/`appAllowed` side-map shape was removed so
+  manifest==wire and the single-Tool contract remain intact.
+- `RequiresSpec.capabilities` is optional, matching the JSON schema and allowing
+  a plugin to declare only `requires.minAppVersion`.
+
 ## v11.1.0 — 2026-07-23
 
 ### Added
@@ -25,7 +52,6 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Compatibility: plugins that publish the new manifest field must require
 `lvis-app >= 0.5.7`; older hosts reject unknown top-level manifest fields.
-
 ## v11.0.0 — 2026-07-19
 
 ### Removed (BREAKING)
