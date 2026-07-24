@@ -918,7 +918,6 @@ describe("PluginHostApi — interface contract (structural)", () => {
         set: async (_key, _value) => {},
         onChange: (_key, _cb) => () => {},
       },
-      registerKeywords: (_) => {},
       emitEvent: (_type, _data) => {},
       onEvent: (_type, _handler) => () => {},
       getInstalledPluginIds: () => [],
@@ -949,7 +948,6 @@ describe("PluginHostApi — interface contract (structural)", () => {
         respond: async (_requestId: string, _choice, _nonce?: string, _hmac?: string) => {},
       },
     };
-    expect(api.registerKeywords).toBeTypeOf("function");
     expect(api.emitEvent).toBeTypeOf("function");
     expect(api.storage).toBeDefined();
   });
