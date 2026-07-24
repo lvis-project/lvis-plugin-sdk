@@ -1,7 +1,4 @@
 // src/index.ts
-var HOST_EXTERNAL_MODULES = ["electron"];
-var HOST_BROWSER_EXTERNAL_MODULES = ["react", "react-dom"];
-var BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
 var MissingDependenciesError = class extends Error {
   missing;
   constructor(missing) {
@@ -55,9 +52,6 @@ var PluginStorageEncryptionUnavailableError = class extends Error {
   }
 };
 export {
-  BUNDLE_EVERYTHING_REGEX,
-  HOST_BROWSER_EXTERNAL_MODULES,
-  HOST_EXTERNAL_MODULES,
   INCOMPATIBLE_APP_VERSION_CODE,
   IncompatibleAppVersionError,
   MissingDependenciesError,

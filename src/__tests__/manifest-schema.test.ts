@@ -385,7 +385,6 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
       "uiAction",
       "uiActions",
       "operationGovernance",
-      "keywords",
     ]) {
       const { valid, rawErrors } = check({
         ...BASE,
@@ -400,6 +399,14 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
         }),
       ]));
     }
+  });
+
+  it("accepts the deprecated keyword-to-Tool preload contract while Host migration remains active", () => {
+    expect(check({
+      ...BASE,
+      tools: [pureTool()],
+      keywords: [{ keyword: "ping", skillId: "t_ping" }],
+    }).valid).toBe(true);
   });
 
   it("rejects the removed toolSchemas map even alongside empty tools:[]", () => {
