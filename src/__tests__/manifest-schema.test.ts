@@ -401,12 +401,19 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     }
   });
 
-  it("accepts the deprecated keyword-to-Tool preload contract while Host migration remains active", () => {
-    expect(check({
+  it("rejects the retired keyword-to-Tool preload contract", () => {
+    const { valid, rawErrors } = check({
       ...BASE,
       tools: [pureTool()],
       keywords: [{ keyword: "ping", skillId: "t_ping" }],
-    }).valid).toBe(true);
+    });
+    expect(valid).toBe(false);
+    expect(rawErrors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        keyword: "additionalProperties",
+        params: expect.objectContaining({ additionalProperty: "keywords" }),
+      }),
+    ]));
   });
 
   it("rejects the removed toolSchemas map even alongside empty tools:[]", () => {
