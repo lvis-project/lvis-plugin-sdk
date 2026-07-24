@@ -25,8 +25,9 @@ describe("generated Host contract mirror", () => {
     const source = await readFile(INDEX_URL, "utf8");
 
     expect(source).toContain("`tools` is the only callable surface.");
-    expect(source).not.toMatch(/\bkeywords\??:/);
-    expect(source).not.toContain("registerKeywords");
+    expect(source).toMatch(/\bkeywords\?: Array<\{ keyword: string; skillId: string \}>;/);
+    expect(source).toContain("registerKeywords(keywords:");
+    expect(source).toContain("@deprecated Owner: `lvis-app` plugin runtime.");
     for (const declaration of [
       "PluginRegistryEntryInstallSource",
       "PluginRegistryEntry",

@@ -6,24 +6,6 @@
  * The SDK generator copies this module mechanically; it must not add policy,
  * declarations, aliases, or documentation.
  */
-/**
- * Modules supplied by the Host process and therefore excluded from plugin
- * runtime bundles. The Host owns this value; SDK build helpers consume the
- * mechanically mirrored constant without adding policy.
- */
-export declare const HOST_EXTERNAL_MODULES: readonly ["electron"];
-/**
- * Browser packages tracked by the Host build policy. Current plugin UI bundles
- * remain self-contained because {@link BUNDLE_EVERYTHING_REGEX} takes
- * precedence in the build helper; these names are retained as the explicit
- * Host-owned boundary for a future shared-browser-runtime contract.
- */
-export declare const HOST_BROWSER_EXTERNAL_MODULES: readonly ["react", "react-dom"];
-/**
- * Host-owned match-all policy used to bundle every dependency not explicitly
- * supplied by the Host.
- */
-export declare const BUNDLE_EVERYTHING_REGEX: RegExp;
 /** One signed first-party `ui://` resource declaration. */
 export interface PluginUiResourceDecl {
     uri: string;
@@ -278,6 +260,21 @@ export interface PluginManifest {
      * (own-namespace-only, declared-only, host-computed CSP). @optional
      */
     uiResources?: PluginUiResourceDecl[];
+    /**
+     * Keyword-to-tool preload entries. `skillId` must exactly name a
+     * model-visible entry in `tools[]`. When user input matches `keyword`, the
+     * Host adds that Tool to the model-visible turn scope; matching never invokes
+     * the Tool directly.
+     *
+     * @deprecated Owner: `lvis-app` plugin runtime. Migrate instruction discovery
+     * to bundled `manifest.skills`; this legacy field only preloads Tool schemas.
+     * Remove after every supported plugin has migrated to bundled
+     * `manifest.skills` and no active manifest declares `keywords`.
+     */
+    keywords?: Array<{
+        keyword: string;
+        skillId: string;
+    }>;
     /** Plugin-owned instruction bundles, rooted at a directory containing SKILL.md. */
     skills?: PluginContributionDeclaration[];
     /** Plugin-owned declarative Hook configuration files. Presence does not grant trust. */
@@ -879,6 +876,21 @@ export interface PluginHostApi {
          */
         onChange<T = unknown>(key: string, callback: (value: T | undefined) => void): () => void;
     };
+    /**
+     * Register keyword-to-tool preload entries. A matching keyword may add the
+     * exact model-visible Tool named by `skillId` to the current turn's model
+     * scope. It never invokes the Tool directly. Unknown, app-only, or otherwise
+     * out-of-scope tool names do not preload anything.
+     *
+     * @deprecated Owner: `lvis-app` plugin runtime. Migrate instruction discovery
+     * to bundled `manifest.skills`; this legacy method only preloads Tool schemas.
+     * Remove after every supported plugin has migrated to bundled
+     * `manifest.skills` and no active manifest declares `keywords`.
+     */
+    registerKeywords(keywords: Array<{
+        keyword: string;
+        skillId: string;
+    }>): void;
     emitEvent(eventType: string, data?: unknown): void;
     /**
      * Subscribes to a host event. Returns an `unsubscribe()` disposer so callers

@@ -7,7 +7,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## Unreleased
+## v11.2.0 — 2026-07-24
+
+### Added
+- `RuntimePlugin.onPublished()` runs after the Host has durably selected the
+  plugin's immutable generation. Plugins should defer network discovery,
+  persisted-session recovery, and timers to this hook so hidden update
+  candidates remain side-effect free.
 
 ### Changed
 - `src/index.ts` is now a mechanical copy of the Host-owned
@@ -18,16 +24,6 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   deprecated with the current truthful behavior: a match preloads the exact
   model-visible Tool schema and never invokes the Tool. Bundled instruction
   discovery belongs to `manifest.skills`.
-
-## v11.2.0 — 2026-07-23
-
-### Added
-- `RuntimePlugin.onPublished()` runs after the Host has durably selected the
-  plugin's immutable generation. Plugins should defer network discovery,
-  persisted-session recovery, and timers to this hook so hidden update
-  candidates remain side-effect free.
-
-### Changed
 - Packaging guidance now treats manifest-declared `skills`, `hooks`, and
   `mcpServers` as signed plugin archive members alongside `dist/` and
   `plugin.json`.
