@@ -63,9 +63,9 @@ describe("generated SDK contract ownership", () => {
     expect(generated).not.toMatch(/\bPluginRegistryEntry\b/);
     expect(generated).not.toMatch(/\bMarketplacePackageType\b/);
     expect(generated).not.toMatch(/\bMarketplacePackageAsset\b/);
-    expect(generated).not.toMatch(/\bHOST_EXTERNAL_MODULES\b/);
-    expect(generated).not.toMatch(/\bHOST_BROWSER_EXTERNAL_MODULES\b/);
-    expect(generated).not.toMatch(/\bBUNDLE_EVERYTHING_REGEX\b/);
+    expect(generated).toMatch(/\bHOST_EXTERNAL_MODULES\b/);
+    expect(generated).toMatch(/\bHOST_BROWSER_EXTERNAL_MODULES\b/);
+    expect(generated).toMatch(/\bBUNDLE_EVERYTHING_REGEX\b/);
     for (const forbidden of [
       "HOST_SHARED_TYPE_TWINS",
       "normalizeSdkTypeOnlySurface",
@@ -921,7 +921,6 @@ describe("PluginHostApi — interface contract (structural)", () => {
         set: async (_key, _value) => {},
         onChange: (_key, _cb) => () => {},
       },
-      registerKeywords: (_keywords) => {},
       emitEvent: (_type, _data) => {},
       onEvent: (_type, _handler) => () => {},
       getInstalledPluginIds: () => [],
@@ -952,7 +951,6 @@ describe("PluginHostApi — interface contract (structural)", () => {
         respond: async (_requestId: string, _choice, _nonce?: string, _hmac?: string) => {},
       },
     };
-    expect(api.registerKeywords).toBeTypeOf("function");
     expect(api.emitEvent).toBeTypeOf("function");
     expect(api.storage).toBeDefined();
   });
@@ -1399,9 +1397,10 @@ describe("Tool surface — v6 MCP contract", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
     // The surface is a mirror of the host contract. Runtime values are allowed
-    // ONLY where the Host itself declares one: error values plugins inspect.
-    // Build-helper policy values belong to the separate `./build` subpath.
-    // Anything else means the generated SDK contract grew independent behavior.
+    // ONLY where the Host itself declares one: inspectable error values and the
+    // Host-owned bundling-policy constants consumed by the separate `./build`
+    // helper. Anything else means the generated SDK contract grew independent
+    // behavior.
     const valueExports = [...indexSrc.matchAll(/^export (?:function|const|let|var|class) (\w+)/gm)]
       .map((m) => m[1]);
     expect(valueExports.sort()).toEqual(
@@ -1412,6 +1411,9 @@ describe("Tool surface — v6 MCP contract", () => {
         "MissingPluginDependenciesError",
         "PluginStorageEncryptionUnavailableError",
         "PluginStorageError",
+        "HOST_EXTERNAL_MODULES",
+        "HOST_BROWSER_EXTERNAL_MODULES",
+        "BUNDLE_EVERYTHING_REGEX",
       ].sort(),
     );
     expect(indexSrc).not.toMatch(/compileManifestValidator/);
