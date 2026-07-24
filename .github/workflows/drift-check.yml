@@ -1,15 +1,9 @@
 name: drift-check
 on:
-  pull_request:
-    paths:
-      - 'src/index.ts'
-      - 'schemas/plugin-manifest.schema.json'
-      - 'scripts/sync-from-host.mjs'
-      - 'scripts/sync-schema-from-host.mjs'
-      - '.github/workflows/drift-check.yml'
   schedule:
     - cron: '17 3 * * *'   # nightly ~03:17 UTC
-  workflow_dispatch: {}
+  repository_dispatch:
+    types: [sdk-drift-sync]
 concurrency:
   group: drift-check-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
@@ -39,9 +33,9 @@ jobs:
           bun-version: '1.1.38'
       - name: Install
         run: bun install --frozen-lockfile
-      - name: Run sync against host types
+      - name: Run sync against Host public contract
         env:
-          LVIS_HOST_TYPES_PATH: ${{ github.workspace }}/.host/src/plugins/types.ts
+          LVIS_HOST_CONTRACT_PATH: ${{ github.workspace }}/.host/src/plugins/public-contract.ts
           LVIS_HOST_REPO_URL: https://github.com/lvis-project/lvis-app.git
         run: node scripts/sync-from-host.mjs
 
@@ -56,11 +50,10 @@ jobs:
           LVIS_HOST_SCHEMA_PATH: ${{ github.workspace }}/.host/schemas/plugin-manifest.schema.json
         run: node scripts/sync-schema-from-host.mjs
       # The second run must produce byte-identical output, guarding against
-      # oscillating JSDoc-strip passes that would otherwise flap drift-check
-      # on every PR.
+      # any accidental non-determinism in the mechanical copy.
       - name: Verify sync-from-host is idempotent
         env:
-          LVIS_HOST_TYPES_PATH: ${{ github.workspace }}/.host/src/plugins/types.ts
+          LVIS_HOST_CONTRACT_PATH: ${{ github.workspace }}/.host/src/plugins/public-contract.ts
         run: |
           set -euo pipefail
           for f in src/index.ts; do
@@ -79,7 +72,7 @@ jobs:
         id: diff
         run: |
           # Both mirrors of the host contract: the public type surface
-          # (src/index.ts, from the host's src/plugins/types.ts) and the manifest
+          # (src/index.ts, from the Host's public-contract.ts) and the manifest
           # schema (schemas/plugin-manifest.schema.json, from the host file of the
           # same name). A host-side change the SDK author forgets to regenerate
           # would otherwise pass green and ship a stale contract to plugins.
@@ -88,14 +81,8 @@ jobs:
           else
             echo "drift=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Fail on drift (PR mode)
-        if: github.event_name == 'pull_request' && steps.diff.outputs.drift == 'true'
-        run: |
-          echo "::error::Drift detected between SDK and host SoT. Run 'bun run sync:from-host' and 'bun run sync:schema-from-host' locally, then commit the result."
-          git --no-pager diff -- src/index.ts schemas/plugin-manifest.schema.json | head -300
-          exit 1
       - name: Open PR on drift
-        if: github.event_name != 'pull_request' && steps.diff.outputs.drift == 'true'
+        if: steps.diff.outputs.drift == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -112,10 +99,10 @@ jobs:
           base: main
           delete-branch: true
       - name: Open issue on workflow failure
-        if: failure() && github.event_name != 'pull_request'
+        if: failure()
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
           script: |
             const title = `drift-check failed on ${context.sha.slice(0,7)}`;
-            const body = `Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\nLikely causes:\n- HOST_READ_TOKEN expired/revoked\n- Host repo types.ts moved\n- Network or checkout failure`;
+            const body = `Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\nLikely causes:\n- Host public-contract.ts moved\n- Network or checkout failure`;
             await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body, labels: ['ci','drift-check'] });

@@ -55,7 +55,9 @@ const BASE = {
   description: "Fixture manifest for schema tests.",
 };
 
-const pureTool = (over: Record<string, unknown> = {}) => ({
+const pureTool = (
+  over: Record<string, unknown> = {},
+): Record<string, unknown> & { _meta: Record<string, unknown> } => ({
   name: "t_ping",
   description: "Ping tool that returns a status object.",
   inputSchema: { type: "object", properties: {} },
@@ -263,6 +265,148 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
   it("accepts an empty tools:[] (minItems:0 — template / MCP-server manifests)", () => {
     const { valid, errors } = check({ ...BASE, tools: [] });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("accepts explicit bundled contributions and colocated operation restrictions", () => {
+    const readTool = pureTool({
+      name: "attendance_read",
+      inputSchema: {
+        type: "object",
+        properties: { operation: { type: "string", enum: ["today"] } },
+        required: ["operation"],
+        additionalProperties: false,
+      },
+    });
+    const writeTool = pureTool({
+      name: "attendance_write",
+      inputSchema: {
+        type: "object",
+        properties: { operation: { type: "string", enum: ["clock"] } },
+        required: ["operation"],
+        additionalProperties: false,
+      },
+    });
+    readTool._meta = {
+      ...readTool._meta,
+      "lvisai/operationPolicy": {
+        discriminant: "operation",
+        operations: {
+          today: { kind: "read", minimumRisk: "read", appVisible: true },
+        },
+      },
+    };
+    writeTool._meta = {
+      ...writeTool._meta,
+      "lvisai/operationPolicy": {
+        discriminant: "operation",
+        operations: {
+          clock: {
+            kind: "write",
+            minimumRisk: "network",
+            appVisible: true,
+            requiresRead: {
+              tool: "attendance_read",
+              operations: ["today"],
+              maxAgeMs: 60_000,
+            },
+          },
+        },
+      },
+    };
+    const { valid, errors } = check({
+      ...BASE,
+      tools: [readTool, writeTool],
+      skills: [{ id: "attendance", path: "skills/attendance" }],
+      hooks: [{ id: "audit_hook", path: "hooks/audit.json" }],
+      mcpServers: [{ id: "attendance_mcp", path: "mcp/attendance.json" }],
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("rejects contribution metadata outside the strict id/path declaration", () => {
+    const { valid, rawErrors } = check({
+      ...BASE,
+      tools: [],
+      skills: [{ id: "attendance", path: "skills/attendance", trusted: true }],
+    });
+    expect(valid).toBe(false);
+    expect(rawErrors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        keyword: "additionalProperties",
+        params: expect.objectContaining({ additionalProperty: "trusted" }),
+      }),
+    ]));
+  });
+
+  it("rejects removed appAllowed policy and undeclared operation-rule fields", () => {
+    const policyTool = pureTool();
+    policyTool._meta = {
+      ...policyTool._meta,
+      "lvisai/operationPolicy": {
+        discriminant: "operation",
+        appAllowed: ["ping"],
+        operations: {
+          ping: { kind: "read", minimumRisk: "read" },
+        },
+      },
+    };
+    const policyResult = check({
+      ...BASE,
+      tools: [policyTool],
+    });
+    expect(policyResult.valid).toBe(false);
+    expect(policyResult.rawErrors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        keyword: "additionalProperties",
+        params: expect.objectContaining({ additionalProperty: "appAllowed" }),
+      }),
+    ]));
+
+    const ruleTool = pureTool();
+    ruleTool._meta = {
+      ...ruleTool._meta,
+      "lvisai/operationPolicy": {
+        discriminant: "operation",
+        operations: {
+          ping: { kind: "read", minimumRisk: "read", confirmed: true },
+        },
+      },
+    };
+    expect(check({
+      ...BASE,
+      tools: [ruleTool],
+    }).valid).toBe(false);
+  });
+
+  it("rejects retired parallel top-level UI and operation policy fields", () => {
+    for (const field of [
+      "uiTool",
+      "uiTools",
+      "uiAction",
+      "uiActions",
+      "operationGovernance",
+    ]) {
+      const { valid, rawErrors } = check({
+        ...BASE,
+        tools: [pureTool()],
+        [field]: {},
+      });
+      expect(valid, field).toBe(false);
+      expect(rawErrors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          keyword: "additionalProperties",
+          params: expect.objectContaining({ additionalProperty: field }),
+        }),
+      ]));
+    }
+  });
+
+  it("accepts the deprecated keyword-to-Tool preload contract while Host migration remains active", () => {
+    expect(check({
+      ...BASE,
+      tools: [pureTool()],
+      keywords: [{ keyword: "ping", skillId: "t_ping" }],
+    }).valid).toBe(true);
   });
 
   it("rejects the removed toolSchemas map even alongside empty tools:[]", () => {
