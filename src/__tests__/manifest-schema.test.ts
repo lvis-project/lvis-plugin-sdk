@@ -385,6 +385,7 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
       "uiAction",
       "uiActions",
       "operationGovernance",
+      "keywords",
     ]) {
       const { valid, rawErrors } = check({
         ...BASE,
