@@ -9,6 +9,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## v12.0.0 — 2026-07-24
 
+### Added
+- `PluginToolOperationRule.successfulResultStatuses` mirrors the Host-owned
+  fail-closed contract for structured read results. When declared, only a
+  top-level string `status` in that allowlist may mint freshness for a later
+  read-backed write.
+
 ### Removed (BREAKING)
 - Removed `PluginManifest.keywords` and `PluginHostApi.registerKeywords`.
   Keyword matching was a Host-owned Tool-schema preload mechanism, not Skill
