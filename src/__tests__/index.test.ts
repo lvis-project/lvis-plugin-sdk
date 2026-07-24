@@ -10,6 +10,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv from "ajv";
@@ -46,29 +47,34 @@ import type {
   ConversationTriggerResult,
   MissingDependenciesError as MissingDepsErrorType,
   PluginLifecycleEvent,
-  PluginMarketplaceItem,
 } from "../index.js";
 
 import { MissingDependenciesError } from "../index.js";
 
-describe("PluginMarketplaceItem — host catalog compatibility", () => {
-  it("retains host catalog fields that are independent of the pure manifest wire contract", () => {
-    const item: PluginMarketplaceItem = {
-      id: "marketplace-fixture",
-      name: "Marketplace Fixture",
-      description: "A fixture that locks the marketplace type surface.",
-      packageSpec: "@lvis/marketplace-fixture",
-      packageName: "@lvis/marketplace-fixture",
-      tools: ["fixture_ping"],
-      defaultConfig: { enabled: true },
-      ui: [],
-      keywords: [{ keyword: "fixture", skillId: "fixture-skill" }],
-      emittedEvents: ["fixture.ready"],
-      notificationEvents: [{ event: "fixture.ready", titleField: "title" }],
-    };
+describe("generated SDK contract ownership", () => {
+  it("excludes whole Host-internal DTOs without semantic rewrites or field synthesis", () => {
+    const generated = readFileSync(join(__dirname, "../index.ts"), "utf8");
+    const generator = readFileSync(
+      join(__dirname, "../../scripts/sync-from-host.mjs"),
+      "utf8",
+    );
 
-    expect(item.tools).toEqual(["fixture_ping"]);
-    expect(item.defaultConfig).toEqual({ enabled: true });
+    expect(generated).not.toMatch(/\bPluginMarketplaceItem\b/);
+    expect(generated).not.toMatch(/\bPluginRegistryEntry\b/);
+    expect(generated).not.toMatch(/\bMarketplacePackageType\b/);
+    expect(generated).not.toMatch(/\bMarketplacePackageAsset\b/);
+    expect(generated).not.toMatch(/\bHOST_EXTERNAL_MODULES\b/);
+    expect(generated).not.toMatch(/\bHOST_BROWSER_EXTERNAL_MODULES\b/);
+    expect(generated).not.toMatch(/\bBUNDLE_EVERYTHING_REGEX\b/);
+    for (const forbidden of [
+      "HOST_SHARED_TYPE_TWINS",
+      "normalizeSdkTypeOnlySurface",
+      "restrictMarketplaceChannelToStable",
+      "ensurePluginMarketplaceCatalogFields",
+      "stripHostInternalRegistryFields",
+    ]) {
+      expect(generator).not.toContain(forbidden);
+    }
   });
 });
 
@@ -102,8 +108,18 @@ describe("PluginManifest — schema validation", () => {
       capabilities: ["calendar-source", "mail-source"],
       eventSubscriptions: ["meeting:started", "meeting:ended"],
       emittedEvents: ["plugin:event:fired"],
-      keywords: [{ keyword: "example", skillId: "example-skill" }],
+      skills: [{ id: "example_skill", path: "skills/example" }],
+      hooks: [{ id: "example_hooks", path: "hooks/hooks.json" }],
+      mcpServers: [{ id: "example_mcp", path: "mcp/servers.json" }],
       publisher: "Example Corp",
+      packageName: "@example/comprehensive-plugin",
+      author: "Example Maintainer",
+      uiSlots: ["sidebar"],
+      python: {
+        managedBy: "lvis-app",
+        requirementsLock: "python-requirements.lock",
+        interpreter: "python3",
+      },
       startupTimeoutMs: 5000,
       installPolicy: "admin",
       dependencies: ["dep-plugin"],
@@ -839,16 +855,26 @@ describe("RuntimePlugin + RuntimePluginFactory", () => {
     expect(plugin.stop).toBeUndefined();
   });
 
-  it("RuntimePlugin with start/stop lifecycle hooks", () => {
+  it("RuntimePlugin separates hidden preparation, post-publish startup, and stop", async () => {
     let started = false;
+    let published = false;
     let stopped = false;
     const plugin: RuntimePlugin = {
       start: async () => { started = true; },
+      onPublished: async () => { published = true; },
       stop: async () => { stopped = true; },
       handlers: { noop: () => null },
     };
     expect(plugin.start).toBeTypeOf("function");
+    expect(plugin.onPublished).toBeTypeOf("function");
     expect(plugin.stop).toBeTypeOf("function");
+    await plugin.start?.();
+    expect(started).toBe(true);
+    expect(published).toBe(false);
+    await plugin.onPublished?.();
+    expect(published).toBe(true);
+    await plugin.stop?.();
+    expect(stopped).toBe(true);
   });
 
   it("RuntimePluginFactory is callable and returns a RuntimePlugin", async () => {
@@ -895,7 +921,7 @@ describe("PluginHostApi — interface contract (structural)", () => {
         set: async (_key, _value) => {},
         onChange: (_key, _cb) => () => {},
       },
-      registerKeywords: (_) => {},
+      registerKeywords: (_keywords) => {},
       emitEvent: (_type, _data) => {},
       onEvent: (_type, _handler) => () => {},
       getInstalledPluginIds: () => [],
@@ -1302,43 +1328,6 @@ describe("PluginManifest — packageName field (M9)", () => {
   });
 });
 
-// ─── PluginRegistryEntry public surface (M8) ──────────────────────────────
-describe("PluginRegistryEntry — public surface excludes host-internal fields (M8)", () => {
-  // _devLinked + installSource are host-internal bookkeeping. The SDK
-  // strips them from the public interface so plugin code cannot branch
-  // on them.
-  it("PluginRegistryEntryInstallSource type is no longer exported", async () => {
-    // Type-only import — checked at compile time. Runtime JS module has
-    // no symbols for type aliases. Use a string source check as a
-    // belt-and-braces safeguard against accidental re-exposure: the
-    // JSDoc on PluginRegistryEntry MAY mention the stripped fields by
-    // name (so plugin authors know not to expect them), so we look for
-    // the actual property/type-alias declarations rather than the bare
-    // identifiers.
-    const { readFileSync } = await import("node:fs");
-    const { fileURLToPath } = await import("node:url");
-    const here = dirname(fileURLToPath(import.meta.url));
-    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
-    expect(indexSrc).not.toMatch(/^\s*_devLinked\?:/m);
-    expect(indexSrc).not.toMatch(/^\s*installSource\?:/m);
-    expect(indexSrc).not.toMatch(/^\s*installedBy\?:/m);
-    expect(indexSrc).not.toMatch(/^export type PluginRegistryEntryInstallSource\b/m);
-  });
-});
-
-// ─── PluginMarketplaceItem channel restriction (M11) ──────────────────────
-describe("PluginMarketplaceItem — channel restricted to stable (M11)", () => {
-  it("source surface no longer mentions canary channel", async () => {
-    const { readFileSync } = await import("node:fs");
-    const { fileURLToPath } = await import("node:url");
-    const here = dirname(fileURLToPath(import.meta.url));
-    const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
-    expect(indexSrc).not.toContain('"canary"');
-    // and the field is still present, just narrower
-    expect(indexSrc).toMatch(/channel\?:\s*"stable";/);
-  });
-});
-
 // ─── PluginLifecycleEventPayload removed (M12) ────────────────────────────
 describe("PluginLifecycleEventPayload — removed (M12)", () => {
   it("source surface no longer exports the type", async () => {
@@ -1404,17 +1393,15 @@ describe("Tool surface — v6 MCP contract", () => {
     expect(indexSrc).not.toMatch(/RawPluginManifest|normalizeManifest|NormalizedManifest/);
   });
 
-  it("adds no logic of its own — value exports are host error classes, nothing else", async () => {
+  it("adds no logic of its own — value exports come only from the Host contract", async () => {
     const { readFileSync } = await import("node:fs");
     const { fileURLToPath } = await import("node:url");
     const here = dirname(fileURLToPath(import.meta.url));
     const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
     // The surface is a mirror of the host contract. Runtime values are allowed
-    // ONLY where the host itself declares one (error classes plugins `instanceof`,
-    // and the code string that names them). Anything else means the SDK grew
-    // behavior again — which is precisely what ph2 moved into the host, whose
-    // `runtime/manifest-validation.ts` is now the only thing that compiles the
-    // manifest schema.
+    // ONLY where the Host itself declares one: error values plugins inspect.
+    // Build-helper policy values belong to the separate `./build` subpath.
+    // Anything else means the generated SDK contract grew independent behavior.
     const valueExports = [...indexSrc.matchAll(/^export (?:function|const|let|var|class) (\w+)/gm)]
       .map((m) => m[1]);
     expect(valueExports.sort()).toEqual(
@@ -1424,10 +1411,11 @@ describe("Tool surface — v6 MCP contract", () => {
         "MissingDependenciesError",
         "MissingPluginDependenciesError",
         "PluginStorageEncryptionUnavailableError",
+        "PluginStorageError",
       ].sort(),
     );
     expect(indexSrc).not.toMatch(/compileManifestValidator/);
-    expect(indexSrc).not.toMatch(/\bajv\b/i);
+    expect(indexSrc).not.toMatch(/^import\s/m);
   });
 });
 
