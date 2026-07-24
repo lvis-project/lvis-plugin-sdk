@@ -18,7 +18,8 @@
     "./schemas/*": "./schemas/*"
   },
   "files": [
-    "src",
+    "src/index.ts",
+    "src/build/tsup.ts",
     "schemas",
     "dist"
   ],
