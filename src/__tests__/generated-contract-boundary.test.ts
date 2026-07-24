@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 const INDEX_URL = new URL("../index.ts", import.meta.url);
+const MANIFEST_SCHEMA_URL = new URL("../../schemas/plugin-manifest.schema.json", import.meta.url);
 const SYNC_SCRIPT_URL = new URL("../../scripts/sync-from-host.mjs", import.meta.url);
 
 describe("generated Host contract mirror", () => {
@@ -21,14 +22,21 @@ describe("generated Host contract mirror", () => {
     expect(script).toContain("src/plugins/public-contract.ts");
   });
 
-  it("publishes the Host contract without removed routing or Host-private DTO declarations", async () => {
-    const source = await readFile(INDEX_URL, "utf8");
+  it("publishes no retired keyword-routing contract or Host-private DTOs", async () => {
+    const [source, schemaSource] = await Promise.all([
+      readFile(INDEX_URL, "utf8"),
+      readFile(MANIFEST_SCHEMA_URL, "utf8"),
+    ]);
+    const manifestSchema = JSON.parse(schemaSource) as {
+      properties?: Record<string, unknown>;
+    };
 
     expect(source).toContain("`tools` is the only callable surface.");
     expect(source).not.toMatch(
       /\bkeywords\?: Array<\{ keyword: string; skillId: string \}>;/,
     );
     expect(source).not.toContain("registerKeywords(keywords:");
+    expect(manifestSchema.properties).not.toHaveProperty("keywords");
     for (const declaration of [
       "PluginRegistryEntryInstallSource",
       "PluginRegistryEntry",
