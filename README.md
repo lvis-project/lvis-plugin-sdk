@@ -16,12 +16,13 @@ the Host source boundary.
 
 ## Install
 
-Pin a released Git tag:
+Pin the immutable Git tag matching the contract you need. For the keyword-retired
+v12 contract, use `v12.0.0` after its release tag is available:
 
 ```json
 {
   "devDependencies": {
-    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v11.2.0"
+    "@lvis/plugin-sdk": "github:lvis-project/lvis-plugin-sdk#v12.0.0"
   }
 }
 ```
