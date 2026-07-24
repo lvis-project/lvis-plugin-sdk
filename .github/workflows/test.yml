@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/**'
       - 'dist/**'
+      - 'schemas/**'
       - '__tests__/**'
       - 'scripts/**'
       - 'package.json'
@@ -19,6 +20,7 @@ on:
     paths:
       - 'src/**'
       - 'dist/**'
+      - 'schemas/**'
       - '__tests__/**'
       - 'scripts/**'
       - 'package.json'
