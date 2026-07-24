@@ -21,11 +21,12 @@ describe("generated Host contract mirror", () => {
     expect(script).toContain("src/plugins/public-contract.ts");
   });
 
-  it("publishes Host deprecation docs without Host-private DTO declarations", async () => {
+  it("publishes the Host contract without removed routing or Host-private DTO declarations", async () => {
     const source = await readFile(INDEX_URL, "utf8");
 
-    expect(source).toContain("@deprecated Owner: `lvis-app` plugin runtime.");
-    expect(source).toContain("no active manifest declares `keywords`");
+    expect(source).toContain("`tools` is the only callable surface.");
+    expect(source).not.toMatch(/\bkeywords\??:/);
+    expect(source).not.toContain("registerKeywords");
     for (const declaration of [
       "PluginRegistryEntryInstallSource",
       "PluginRegistryEntry",
@@ -33,7 +34,10 @@ describe("generated Host contract mirror", () => {
       "PluginMarketplaceItem",
     ]) {
       expect(source).not.toMatch(
-        new RegExp(`^export (?:interface|type|class|const|enum) ${declaration}\\b`, "m"),
+        new RegExp(
+          `^export (?:interface|type|class|const|enum) ${declaration}\\b`,
+          "m",
+        ),
       );
     }
   });
