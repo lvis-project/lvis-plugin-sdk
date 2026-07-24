@@ -1,18 +1,28 @@
 import type { Options } from "tsup";
-import {
-  BUNDLE_EVERYTHING_REGEX,
-  HOST_BROWSER_EXTERNAL_MODULES,
-  HOST_EXTERNAL_MODULES,
-} from "../index.js";
 
-// Build-helper exports are direct references to the mechanically mirrored Host
-// values above. This module owns composition only, never contract policy or
-// duplicate constants.
-export {
-  BUNDLE_EVERYTHING_REGEX,
-  HOST_BROWSER_EXTERNAL_MODULES,
-  HOST_EXTERNAL_MODULES,
-} from "../index.js";
+/**
+ * Modules supplied by the Host process and therefore excluded from plugin
+ * runtime bundles.
+ *
+ * This packaging policy belongs to the SDK build helper, not the mechanically
+ * mirrored Host public API in `../index.js`. Keeping it here lets the generated
+ * API remain byte-for-byte identical to `lvis-app/public-contract.ts` while the
+ * build subpath exposes the constants that plugin build tests rely on.
+ */
+export const HOST_EXTERNAL_MODULES = ["electron"] as const;
+
+/**
+ * Browser packages tracked by the build helper for a future shared browser
+ * runtime. Current plugin UI bundles remain self-contained because
+ * {@link BUNDLE_EVERYTHING_REGEX} takes precedence in tsup.
+ */
+export const HOST_BROWSER_EXTERNAL_MODULES = ["react", "react-dom"] as const;
+
+/**
+ * Match every dependency not explicitly supplied by the Host so marketplace
+ * bundles remain self-contained.
+ */
+export const BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
 
 /**
  * Build a tsup configuration for an LVIS marketplace plugin.
