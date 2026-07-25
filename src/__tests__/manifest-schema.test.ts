@@ -291,7 +291,12 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
       "lvisai/operationPolicy": {
         discriminant: "operation",
         operations: {
-          today: { kind: "read", minimumRisk: "read", appVisible: true },
+          today: {
+            kind: "read",
+            minimumRisk: "read",
+            appVisible: true,
+            successfulResultStatuses: ["success"],
+          },
         },
       },
     };
@@ -321,6 +326,24 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
       mcpServers: [{ id: "attendance_mcp", path: "mcp/attendance.json" }],
     });
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it("rejects an empty successful-result status contract", () => {
+    const readTool = pureTool();
+    readTool._meta = {
+      ...readTool._meta,
+      "lvisai/operationPolicy": {
+        discriminant: "operation",
+        operations: {
+          ping: {
+            kind: "read",
+            minimumRisk: "read",
+            successfulResultStatuses: [],
+          },
+        },
+      },
+    };
+    expect(check({ ...BASE, tools: [readTool] }).valid).toBe(false);
   });
 
   it("rejects contribution metadata outside the strict id/path declaration", () => {
