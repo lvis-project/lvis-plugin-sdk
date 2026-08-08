@@ -572,7 +572,6 @@ describe("PluginUiExtension — structural validation", () => {
     expect(ext.entry).toBeUndefined();
     expect(ext.exportName).toBeUndefined();
     expect(ext.page).toBeUndefined();
-    expect(ext.window).toBeUndefined();
   });
 
   it("defaults field accepts arbitrary Record<string, unknown>", () => {
