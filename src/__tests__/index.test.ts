@@ -385,20 +385,19 @@ describe("PluginManifest — schema validation", () => {
   });
 });
 
-// ─── window placement is host-decided (appMode), not plugin-declared ───────
-// View placement (inline vs detached) is owned solely by the host's appMode
-// (chat detaches, action stays inline). The removed `window.defaultMode`
-// field let plugins declare placement; the schema now rejects it.
-describe("PluginManifest — window has no defaultMode (host-decided placement)", () => {
+// ─── UI placement is host-owned, not plugin-declared ─────────────────────
+// Plugin UI renders through host viewport surfaces. The retired `window`
+// block is rejected instead of being accepted and ignored.
+describe("PluginManifest — UI placement is host-owned", () => {
   const BASE: PluginManifest = {
-    id: "detach-plugin",
-    name: "Detach Plugin",
+    id: "viewport-plugin",
+    name: "Viewport Plugin",
     version: "1.0.0",
     entry: "dist/index.js",
     tools: [
       {
-        name: "detach_ping",
-        description: "Check detached window support.",
+        name: "viewport_ping",
+        description: "Check viewport support.",
         inputSchema: { type: "object", properties: {} },
       },
     ],
@@ -411,40 +410,39 @@ describe("PluginManifest — window has no defaultMode (host-decided placement)"
         title: "Panel",
         entry: "dist/panel.js",
         exportName: "Panel",
-        window: { width: 480, height: 640 },
       },
     ],
   };
 
-  it("accepts a UI extension whose window omits defaultMode", () => {
+  it("accepts a UI extension without window hints", () => {
     const { valid, errors } = validateManifest(BASE);
     expect(valid).toBe(true);
     expect(errors).toEqual([]);
   });
 
-  it("rejects a UI extension that still declares window.defaultMode", () => {
+  it("rejects a UI extension that still declares window hints", () => {
     const manifest = {
       ...BASE,
       ui: [
         {
           ...BASE.ui![0],
-          window: { width: 480, height: 640, defaultMode: "detached" },
+          window: { width: 480, height: 640 },
         },
       ],
     };
     const { valid, errors } = validateManifest(manifest);
     expect(valid).toBe(false);
-    expect(errors.join(" ")).toMatch(/additional propert|defaultMode/i);
+    expect(errors.join(" ")).toMatch(/additional propert|window/i);
   });
 
-  it("PluginUiExtension.window is optional", () => {
+  it("PluginUiExtension needs no placement field", () => {
     const ext: PluginUiExtension = {
-      id: "no-window",
+      id: "viewport-only",
       slot: "sidebar",
       kind: "info-card",
       title: "Card",
     };
-    expect(ext.window).toBeUndefined();
+    expect(ext).not.toHaveProperty("window");
   });
 });
 
@@ -574,7 +572,6 @@ describe("PluginUiExtension — structural validation", () => {
     expect(ext.entry).toBeUndefined();
     expect(ext.exportName).toBeUndefined();
     expect(ext.page).toBeUndefined();
-    expect(ext.window).toBeUndefined();
   });
 
   it("defaults field accepts arbitrary Record<string, unknown>", () => {

@@ -8,12 +8,25 @@ import { verifyTagProtection } from "../scripts/verify-release-integrity.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SCRIPT = path.join(ROOT, "scripts/verify-release-integrity.mjs");
+const LOCAL_GIT_ENV_VARS = execFileSync(
+  "git",
+  ["-C", ROOT, "rev-parse", "--local-env-vars"],
+  { encoding: "utf8" },
+).trim().split(/\r?\n/).filter(Boolean);
+
+function isolatedGitEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  for (const name of LOCAL_GIT_ENV_VARS) {
+    delete env[name];
+  }
+  return env;
+}
 
 function git(repo: string, ...args: string[]): string {
   return execFileSync("git", ["-C", repo, ...args], {
     encoding: "utf8",
     env: {
-      ...process.env,
+      ...isolatedGitEnv(),
       GIT_AUTHOR_NAME: "Release Test",
       GIT_AUTHOR_EMAIL: "release-test@example.com",
       GIT_COMMITTER_NAME: "Release Test",
@@ -25,6 +38,7 @@ function git(repo: string, ...args: string[]): string {
 function run(repo: string, ...args: string[]) {
   return spawnSync(process.execPath, [SCRIPT, ...args, "--repo", repo], {
     encoding: "utf8",
+    env: isolatedGitEnv(),
   });
 }
 
@@ -36,6 +50,7 @@ describe("verify-release-integrity", () => {
   beforeEach(() => {
     repo = fs.mkdtempSync(path.join(os.tmpdir(), "sdk-release-test-"));
     git(repo, "init", "-b", "main");
+    git(repo, "config", "core.hooksPath", path.join(repo, ".no-hooks"));
     fs.writeFileSync(
       path.join(repo, "package.json"),
       `${JSON.stringify({ name: "@lvis/plugin-sdk", version: "11.0.0" })}\n`,

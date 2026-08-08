@@ -111,6 +111,32 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
+  it("rejects retired ui[] detached-window hints", () => {
+    const { valid, rawErrors } = check({
+      ...BASE,
+      tools: [],
+      ui: [
+        {
+          id: "main",
+          slot: "sidebar",
+          kind: "embedded-page",
+          title: "Main",
+          page: "main",
+          window: { width: 640 },
+        },
+      ],
+    });
+    expect(valid).toBe(false);
+    expect(rawErrors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          keyword: "additionalProperties",
+          params: expect.objectContaining({ additionalProperty: "window" }),
+        }),
+      ]),
+    );
+  });
+
   it.each([
     ["missing priority", { locales: validFirstTask.locales }],
     ["missing English fallback", {
