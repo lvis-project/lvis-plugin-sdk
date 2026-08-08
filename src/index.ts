@@ -563,21 +563,6 @@ export interface PluginUiExtension {
   entry?: string;
   exportName?: string;
   page?: string;
-  /**
-   * Detached-window geometry hints. Used only when the host opens this
-   * extension in a magnetic-snap BrowserWindow; the decision to detach is
-   * owned solely by the app's mode (appMode: chat detaches, work stays
-   * inline), NOT by the plugin. Width/height are initial defaults; saved
-   * user bounds still win.
-   */
-  window?: {
-    width?: number;
-    height?: number;
-    minWidth?: number;
-    minHeight?: number;
-    resizable?: boolean;
-    alwaysOnTop?: boolean;
-  };
 }
 
 /**
@@ -1545,7 +1530,8 @@ export interface RuntimePlugin {
   start?: () => Promise<void> | void;
   /**
    * Runs only after this plugin's immutable Host generation is the active
-   * pointer. Network discovery, persisted-session recovery, timers, and other
+   * pointer and any predecessor has completed retirement. Network discovery,
+   * persisted-session recovery, write-capable workers, timers, and other
    * externally observable startup work belong here rather than in `start`,
    * which may execute while a replacement candidate is still hidden.
    * Failures are reported as degraded post-publish startup and never roll the
