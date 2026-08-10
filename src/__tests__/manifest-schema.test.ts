@@ -82,6 +82,14 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     expect(() => compileSchema()).not.toThrow();
   });
 
+  it("rejects terminal CR/LF in format-constrained manifest fields", () => {
+    expect(check({ ...BASE, id: "ms-graph\n" }).valid).toBe(false);
+    expect(check({
+      ...BASE,
+      requires: { minAppVersion: "1.0.0\r" },
+    }).valid).toBe(false);
+  });
+
   // ── accepts ────────────────────────────────────────────────────────────
   it("accepts a full pure manifest (ms-graph migrated shape)", () => {
     const manifest = {
