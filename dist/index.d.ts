@@ -780,7 +780,11 @@ export type PluginLifecycleEvent = {
  * the bound `pluginId`.)
  */
 export interface PluginWorkerSpec {
-    /** Stable per-worker id — names the control dir + the reviewer registry key. */
+    /**
+     * Stable per-worker id — names the control dir + reviewer registry key.
+     * Must match `[a-z0-9][a-z0-9._-]{0,127}`; uppercase and other invalid
+     * ids fail closed so case-insensitive filesystems cannot alias workers.
+     */
     readonly workerId: string;
     /** The worker executable to spawn (absolute path or PATH-resolved name). */
     readonly command: string;
@@ -1040,8 +1044,8 @@ export interface PluginHostApi {
      * Resolves once the window has loaded or been closed; rejects only on a
      * hard load failure (not on user close).
      *
-     * **Required (not `?`-optional)** unlike `openExternalUrl?` /
-     * `showOverlay?` / `getAppPreference?`. Convention: HostApi methods are
+     * **Required (not `?`-optional)** unlike `hostFetch?` / `spawnWorker?` /
+     * `getAppPreference?`. Convention: HostApi methods are
      * declared required when the SDK + host wiring land in the same release
      * window (lockstep shipping); methods are declared optional only when
      * the SDK legitimately ships ahead of host adoption. Declaring this
@@ -1195,23 +1199,6 @@ export interface PluginHostApi {
      * Usage pattern:
      *   await context.hostApi.agentApproval.respond(approvalId, choice, nonce, hmac)
      */
-    /**
-     * Overlay extensibility — show an overlay card from a plugin.
-     * Returns an OverlayHandle with a dismiss() disposer.
-     * `host:overlay` capability must be declared in manifest.capabilities[].
-     *
-     * running=true shows spinner + "진행 중…"; false (default) shows summary + actions.
-     */
-    showOverlay?: (input: {
-        title: string;
-        summary: string;
-        running?: boolean;
-        primaryActionLabel?: string;
-        onPrimaryAction?: () => void;
-        onDismiss?: () => void;
-    }) => {
-        dismiss(): void;
-    };
     agentApproval: {
         /**
          * Request an approval via the §8 ApprovalGate on behalf of this plugin.
