@@ -217,10 +217,10 @@ export interface EventSubscription {
 /* ============================================================================
  * Plugin Contract v6 (#885) — pure MCP `Tool` object surface.
  *
- * These types define the v6 "manifest == wire" tool contract. Phase R removed the
- * legacy triple — a `string[]` tool list plus separate `toolSchemas` and per-tool
- * app-action maps — entirely:
- * `PluginManifest.tools` is now `Tool[]` and every host consumer reads surface
+ * These types define the v6 "manifest == wire" tool contract. There is no legacy
+ * triple — no `string[]` tool list, no separate `toolSchemas`, no per-tool
+ * app-action map:
+ * `PluginManifest.tools` is `Tool[]` and every host consumer reads surface
  * visibility off each tool's `_meta.ui.visibility` (materialized once at manifest
  * load by `parsePluginJson`). The SDK public surface (`@lvis/plugin-sdk`) mirrors
  * these via `sync-from-host`.
@@ -400,7 +400,7 @@ export interface PluginManifest {
   startupTimeoutMs?: number;
 
   /**
-   * §9.2 Track B — declarative settings schema. When present, the host
+   * §9.2 — declarative settings schema. When present, the host
    * renders a typed configuration form in `PluginConfigTab` (string →
    * TextInput, number → NumberInput, boolean → Switch, enum → Select,
    * array of strings → TagInput, `format: "secret"` → masked SecretInput
@@ -487,7 +487,7 @@ export interface PluginContributionDeclaration {
 }
 
 /**
- * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
+ * §9.2 — declarative settings schema. JSON Schema draft-07 subset
  * (the same dialect a tool's `inputSchema` uses) with one UI/storage hint:
  * `format: "secret"` routes the field through
  * `hostApi.setSecret` / `getSecret` so the cleartext `pluginConfigs`
@@ -566,7 +566,7 @@ export interface PluginUiExtension {
 }
 
 /**
- * S2 — Signature envelope sidecar served by `/api/v1/plugins/{slug}/download.sig`.
+ * Signature envelope sidecar served by `/api/v1/plugins/{slug}/download.sig`.
  * Matches the server's §0.1 dual-sign format.
  */
 export interface SignatureEnvelope {
@@ -583,7 +583,7 @@ export interface SignatureEnvelope {
   }>;
 }
 
-/** S2 — result of verifying a {@link SignatureEnvelope} against a tarball. */
+/** Result of verifying a {@link SignatureEnvelope} against a tarball. */
 export interface VerifyResult {
   ok: boolean;
   key_id?: string;
@@ -591,7 +591,7 @@ export interface VerifyResult {
 }
 
 /**
- * S14 — dependency specification extracted from plugin manifest's `requires` block.
+ * Dependency specification extracted from plugin manifest's `requires` block.
  * Capabilities are kebab-case tags matching `^[a-z][a-z0-9-]*$`.
  *
  * NOTE: This interface is the host-side source of truth that the SDK's
@@ -619,7 +619,7 @@ export interface RequiresSpec {
 }
 
 /**
- * S14 — thrown by marketplace install preflight when required capabilities
+ * Thrown by marketplace install preflight when required capabilities
  * are not satisfied by currently-installed plugins.
  */
 export class MissingDependenciesError extends Error {
@@ -965,7 +965,7 @@ export interface PluginHostApi {
    */
   storage: PluginStorage;
   /**
-   * §9.2 Track B — typed access to this plugin's saved config. Reads return
+   * §9.2 — typed access to this plugin's saved config. Reads return
    * the merged `manifest.config` defaults + saved overrides, scoped strictly
    * to the calling plugin's id (plugin A cannot read plugin B's config).
    * Writes persist via the same `setPluginConfig` IPC bridge used by the
@@ -1025,7 +1025,17 @@ export interface PluginHostApi {
    * test plugin trigger downstream cascades against marketplace expectations.
    */
   onPluginsChanged(handler: (event: PluginLifecycleEvent) => void): () => void;
-  getSecret(key: string): string | null;
+  /**
+   * Read an allow-listed secret.
+   *
+   * Async because a plugin will run in its own process, and a synchronous
+   * answer cannot cross one: `SharedArrayBuffer` + `Atomics.wait` shares memory
+   * between THREADS, not processes, and pushing a snapshot into the child would
+   * hand it the secrets up front — the opposite of what the gate is for. The
+   * host implementation stays synchronous internally; it is the SIGNATURE that
+   * has to survive the boundary.
+   */
+  getSecret(key: string): Promise<string | null>;
 
   /**
    * #893 Stage 2 — Host-managed LLM key resolver. Mirrors the SDK's
