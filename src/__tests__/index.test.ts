@@ -922,7 +922,7 @@ describe("PluginHostApi — interface contract (structural)", () => {
       onEvent: (_type, _handler) => () => {},
       getInstalledPluginIds: () => [],
       onPluginsChanged: (_handler) => () => {},
-      getSecret: (_key) => null,
+      getSecret: async (_key) => null,
       callLlm: async (_prompt, _opts) => "",
       logEvent: (_level, _msg, _data) => {},
       onShutdown: (_handler) => {},
@@ -966,12 +966,15 @@ describe("PluginHostApi — interface contract (structural)", () => {
     expect(unsubscribes).toHaveLength(1);
   });
 
-  it("PluginHostApi.getSecret returns string or null", () => {
+  it("PluginHostApi.getSecret resolves to string or null", async () => {
+    // Async since the Host reads the keychain — a caller that forgets to await
+    // gets a Promise where it expected a key, which is how a saved provider key
+    // once read as absent.
     const api: Pick<PluginHostApi, "getSecret"> = {
-      getSecret: (key) => key === "found-key" ? "secret-value" : null,
+      getSecret: async (key) => key === "found-key" ? "secret-value" : null,
     };
-    expect(api.getSecret("found-key")).toBe("secret-value");
-    expect(api.getSecret("missing-key")).toBeNull();
+    await expect(api.getSecret("found-key")).resolves.toBe("secret-value");
+    await expect(api.getSecret("missing-key")).resolves.toBeNull();
   });
 
   it("PluginHostApi.getInstalledPluginIds returns string[]", () => {

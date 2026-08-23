@@ -300,15 +300,23 @@ export interface PluginManifest {
      * `host-allow-list.ts`). Deny-by-default: absent or empty ⇒ no egress is
      * permitted. `reasoning` is a human-readable justification surfaced to the
      * user at install for broad grants.
+     *
+     * The loopback literals `localhost`, `127.0.0.1` and `::1` may be declared
+     * here (exact literals only — `foo.localhost` goes through the normal rules).
+     * Declaring one is what lets a plugin reach a local endpoint the user
+     * configured, cleartext http included, since those bytes never leave the
+     * machine; the host still proves the name resolves to loopback before
+     * allowing it, and the grant extends to nothing else.
      */
     networkAccess?: {
         allowedDomains: string[];
         reasoning?: string;
         /**
          * Declarative, user-approved governance opt-in for reaching private-network
-         * allow-listed hosts through host-mediated egress or an explicitly
-         * documented browser/direct intranet exception. Loopback/link-local/metadata
-         * addresses remain denied by host guards where applicable.
+         * (RFC1918 / ULA) allow-listed hosts through host-mediated egress or an
+         * explicitly documented browser/direct intranet exception. Link-local and
+         * metadata addresses remain denied by host guards; loopback is a separate
+         * axis this flag neither grants nor requires — see `allowedDomains` above.
          */
         allowPrivateNetworks?: boolean;
     };
@@ -343,7 +351,7 @@ export interface PluginManifest {
      */
     startupTimeoutMs?: number;
     /**
-     * §9.2 Track B — declarative settings schema. When present, the host
+     * §9.2 — declarative settings schema. When present, the host
      * renders a typed configuration form in `PluginConfigTab` (string →
      * TextInput, number → NumberInput, boolean → Switch, enum → Select,
      * array of strings → TagInput, `format: "secret"` → masked SecretInput
@@ -426,7 +434,7 @@ export interface PluginContributionDeclaration {
     path: string;
 }
 /**
- * §9.2 Track B — declarative settings schema. JSON Schema draft-07 subset
+ * §9.2 — declarative settings schema. JSON Schema draft-07 subset
  * (the same dialect a tool's `inputSchema` uses) with one UI/storage hint:
  * `format: "secret"` routes the field through
  * `hostApi.setSecret` / `getSecret` so the cleartext `pluginConfigs`
@@ -507,7 +515,7 @@ export interface PluginUiExtension {
     page?: string;
 }
 /**
- * S2 — Signature envelope sidecar served by `/api/v1/plugins/{slug}/download.sig`.
+ * Signature envelope sidecar served by `/api/v1/plugins/{slug}/download.sig`.
  * Matches the server's §0.1 dual-sign format.
  */
 export interface SignatureEnvelope {
@@ -523,14 +531,14 @@ export interface SignatureEnvelope {
         sig: string;
     }>;
 }
-/** S2 — result of verifying a {@link SignatureEnvelope} against a tarball. */
+/** Result of verifying a {@link SignatureEnvelope} against a tarball. */
 export interface VerifyResult {
     ok: boolean;
     key_id?: string;
     reason?: string;
 }
 /**
- * S14 — dependency specification extracted from plugin manifest's `requires` block.
+ * Dependency specification extracted from plugin manifest's `requires` block.
  * Capabilities are kebab-case tags matching `^[a-z][a-z0-9-]*$`.
  *
  * NOTE: This interface is the host-side source of truth that the SDK's
@@ -557,7 +565,7 @@ export interface RequiresSpec {
     minAppVersion?: string;
 }
 /**
- * S14 — thrown by marketplace install preflight when required capabilities
+ * Thrown by marketplace install preflight when required capabilities
  * are not satisfied by currently-installed plugins.
  */
 export declare class MissingDependenciesError extends Error {
@@ -852,7 +860,7 @@ export interface PluginHostApi {
      */
     storage: PluginStorage;
     /**
-     * §9.2 Track B — typed access to this plugin's saved config. Reads return
+     * §9.2 — typed access to this plugin's saved config. Reads return
      * the merged `manifest.config` defaults + saved overrides, scoped strictly
      * to the calling plugin's id (plugin A cannot read plugin B's config).
      * Writes persist via the same `setPluginConfig` IPC bridge used by the
@@ -909,7 +917,17 @@ export interface PluginHostApi {
      * test plugin trigger downstream cascades against marketplace expectations.
      */
     onPluginsChanged(handler: (event: PluginLifecycleEvent) => void): () => void;
-    getSecret(key: string): string | null;
+    /**
+     * Read an allow-listed secret.
+     *
+     * Async because a plugin will run in its own process, and a synchronous
+     * answer cannot cross one: `SharedArrayBuffer` + `Atomics.wait` shares memory
+     * between THREADS, not processes, and pushing a snapshot into the child would
+     * hand it the secrets up front — the opposite of what the gate is for. The
+     * host implementation stays synchronous internally; it is the SIGNATURE that
+     * has to survive the boundary.
+     */
+    getSecret(key: string): Promise<string | null>;
     /**
      * #893 Stage 2 — Host-managed LLM key resolver. Mirrors the SDK's
      * `PluginHostApi.resolveApiKey` (optional, may be undefined on older host
