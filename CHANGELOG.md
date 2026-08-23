@@ -7,6 +7,25 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v12.1.0 — 2026-08-24
+
+### Added
+- `PluginManifest.networkAccess.allowedDomains` accepts the loopback literals
+  `localhost`, `127.0.0.1` and `::1` (exact literals only — `foo.localhost`
+  still goes through the ordinary one-dot rules). Declaring one is how a plugin
+  reaches an endpoint the user runs on their own machine: a local
+  OpenAI-compatible server such as LM Studio or LiteLLM, or an internal proxy.
+  Before this the declaration could not be written at all, so such a setting was
+  denied at `hostApi.hostFetch` no matter what the user configured.
+
+### Changed
+- The declaration is what grants cleartext `http:` to that host — those bytes
+  never leave the machine — and the Host still proves the name resolves only to
+  loopback before allowing it. Loopback is a separate axis from
+  `allowPrivateNetworks`: that flag neither grants it nor is required for it,
+  and a loopback declaration opens neither the LAN nor any other host. The
+  `allowPrivateNetworks` doc now says so.
+
 ## v12.0.0 — 2026-07-24
 
 ### Added
