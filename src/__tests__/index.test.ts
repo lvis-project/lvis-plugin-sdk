@@ -941,6 +941,11 @@ describe("PluginHostApi — interface contract (structural)", () => {
       openAuthPartitionViewer: async (_opts: { url: string; windowTitle?: string }) => {},
       clearAuthPartition: async (_partition: string) => {},
       getAuthPartitionCookies: async (_opts: { partitionSub: string; urls: string[] }) => [],
+      authRedirect: {
+        open: async () => ({ handle: "", redirectUri: "http://localhost:0" }),
+        wait: async (_opts: { handle: string; timeoutMs?: number }) => ({}),
+        close: async (_opts: { handle: string }) => {},
+      },
       triggerConversation: async (_spec) => ({ accepted: true, source: _spec.source }),
       hasRoutineBySource: async (_source: string) => false,
       agentApproval: {
