@@ -7,6 +7,60 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v12.3.0 — 2026-08-25
+
+### Added
+
+- `hostApi.authRedirect` — a host-owned loopback listener that catches ONE OAuth
+  authorization-code redirect (`open` / `wait` / `close`), with
+  `AuthRedirectParams` and `AuthRedirectOpenResult`.
+
+  The authorization-code flow needs something listening at the redirect URI. A
+  plugin loaded in-process opened that socket itself; a plugin loaded in a
+  confined child cannot — on macOS the bind is refused outright, and on Linux it
+  *succeeds* into a private loopback the user's browser is not in, so the sign-in
+  hangs after the password has already been typed.
+
+  The plugin chooses when to open, when to stop waiting, and when to close.
+  Nothing else: not the interface, not the port, not the accepted method, not the
+  response body, and it receives the redirect's query parameters alone. The
+  handle is bound to the calling plugin, and a handle belonging to another plugin
+  is reported as **unknown** rather than forbidden — so these members cannot be
+  used to detect that another plugin has a sign-in in flight.
+
+  The redirect URI is reported as `http://localhost:<port>`, **by host name**:
+  identity providers register loopback redirect URIs by host and allow any port,
+  so `127.0.0.1` would be a different, unregistered URI.
+
+  Shaped to be handed to `@azure/msal-node` as `customLoopbackClient`, which is
+  not a coincidence — it is the same flow.
+
+  Requires host **0.6.4**.
+
+---
+
+## v12.2.0 — 2026-08-24
+
+### Added
+
+- `hostApi.getAuthPartitionCookies` — a gated, audited read of the host-held
+  session cookies for the caller's OWN auth partition, intersected with the
+  manifest's declared domains. For flows that must inject a session into a
+  separate browser context.
+- `networkAccess.authCookiePartition` — manifest opt-in. When declared,
+  `hostFetch` attaches the partition's cookies per URL and **re-scopes them on
+  every redirect hop**, after the cross-origin credential strip. A plugin that
+  declares it and then sends its own `Cookie` header is refused and audited.
+- `openAuthWindow({ retainCookies: true })` — returns cookie names, domains and
+  paths with the **values blanked**: a presence ledger rather than the secret.
+
+  Together these let a plugin drive an authenticated session it never holds the
+  credentials for. Requires host **0.6.4**.
+
+  *(Recorded retroactively — this entry was missing when v12.2.0 shipped.)*
+
+---
+
 ## v12.1.0 — 2026-08-24
 
 ### Added
