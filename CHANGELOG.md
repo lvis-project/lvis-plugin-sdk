@@ -7,6 +7,33 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v12.5.0 — 2026-08-25
+
+### Added
+
+- `PluginRuntimeContext.pluginSocketDir` — the one directory a plugin may bind a
+  Unix-domain socket in, at `<pluginsRoot>/<pluginId>/sockets/`. The host creates
+  it before calling the plugin factory.
+
+  A plugin that has to be REACHED by a process it spawned used to bind loopback
+  TCP. A plugin loaded in a confined child cannot: on macOS the bind is refused
+  outright, and on Linux it succeeds into a network namespace nobody outside is
+  in — which is worse, because the failure then arrives at whoever tries to
+  connect rather than at the bind. A Unix socket is a filesystem object and has
+  neither problem: pass the path to the other process and connect to it there.
+
+  It is a SEPARATE directory from `pluginDataDir` on purpose. Permission to
+  create a socket is not permission to create a file — it is its own ALLOW,
+  scoped on macOS to one directory, and the host has to register that directory
+  with the sandbox before the child is spawned. A socket bound anywhere else,
+  `pluginDataDir` included, is refused with `EPERM`.
+
+  The plugin owns what it creates there, including cleanup: a socket file left
+  by a crashed run makes the next `listen()` fail with `EADDRINUSE`, so unlink
+  before binding.
+
+---
+
 ## v12.4.0 — 2026-08-25
 
 ### Added
