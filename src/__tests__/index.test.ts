@@ -946,6 +946,7 @@ describe("PluginHostApi — interface contract (structural)", () => {
         wait: async (_opts: { handle: string; timeoutMs?: number }) => ({}),
         close: async (_opts: { handle: string }) => {},
       },
+      pickFolders: async () => ({ canceled: false, folders: ["/tmp/picked"] }),
       triggerConversation: async (_spec) => ({ accepted: true, source: _spec.source }),
       hasRoutineBySource: async (_source: string) => false,
       agentApproval: {

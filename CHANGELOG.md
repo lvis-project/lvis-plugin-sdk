@@ -7,6 +7,29 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v12.4.0 — 2026-08-25
+
+### Added
+
+- `hostApi.pickFolders()` — the host's folder chooser, offered to plugins.
+
+  `dialog` is an Electron main API. A plugin that resolves `electron` to reach
+  one method holds main's whole surface, which is what keeps it from being
+  loaded in a confined child at all. This mediates the one method.
+
+  It is an ANSWER, not a grant. A confined child's read confinement is
+  deny-only, so an ordinary user directory was already readable — what the
+  plugin could not do is find out WHICH one the user meant. A picked path
+  carries no new reach: writing to it is still refused unless the host already
+  granted that directory.
+
+  `canceled` is true when the user dismissed the chooser or selected nothing;
+  both mean the same thing and neither is an error. The chooser's title names
+  the calling plugin, decided by the host. A second concurrent chooser from the
+  same plugin is rejected rather than queued.
+
+---
+
 ## v12.3.0 — 2026-08-25
 
 ### Added
