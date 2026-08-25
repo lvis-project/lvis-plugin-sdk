@@ -930,6 +930,17 @@ describe("PluginHostApi — interface contract (structural)", () => {
       logEvent: (_level, _msg, _data) => {},
       onShutdown: (_handler) => {},
       openExternalUrl: async (_url: string) => {},
+      listAudioInputDevices: async () => [],
+      // A stub handle, spelled out rather than cast: the point of this fixture
+      // is that a member's SHAPE drifting fails to compile, and a cast is
+      // exactly what would stop that happening.
+      startAudioCapture: async (_request) => ({
+        captureId: "capture-stub",
+        opened: { microphone: false, systemAudio: false },
+        onFrame: (_listener) => () => {},
+        onEnd: (_listener) => () => {},
+        stop: async () => {},
+      }),
       probePrivateHost: async (_host: string, _opts?: { timeoutMs?: number }) => false,
       // Discriminate on `returnFinalUrl` so each overload branch returns its
       // declared shape — TS catches future signature drift instead of letting
