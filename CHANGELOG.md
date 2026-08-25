@@ -7,6 +7,92 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v12.9.0 — 2026-08-25
+
+### Added
+
+- `PluginHostApi.attachFloatingPanel(request)` — attach one of the plugin's
+  declared `floating` surfaces to the host's floating dock, the single
+  always-on-top window the host owns. Resolves to a `FloatingPanelHandle`.
+
+  THE PLUGIN DOES NOT GET A WINDOW. It gets a slot inside one, with host chrome
+  always around its pixels. Frameless, transparent, always-on-top, where on the
+  screen it sits, and how large the whole dock may grow are all the host's and
+  reach no parameter here. That split is what makes the capability offerable at
+  all: a transparent borderless always-on-top surface a plugin could place and
+  size freely is a clickjacking primitive; one framed by host chrome at
+  host-chosen coordinates is not. The cap is on the WHOLE dock, not per slot —
+  per-slot caps alone would let several slots add up to a full-height overlay.
+
+  A handle rather than an event subscription, for the same reason
+  `startAudioCapture` is one: detach has to reach the ONE plugin whose card went
+  away, and the host's event bus broadcasts to every installed plugin.
+
+  The card is served by the same shell and the same `lvis:plugin:*` bridge a
+  sidebar card gets, so it already has `callTool`, `emitEvent`, config, storage
+  and theme — there is no new message channel and no `context` payload.
+
+  Refused, never silently downgraded: a surface not declared `floating`, a kind
+  the shell cannot paint, or a dock with no room left each reject with a code.
+  `dock-full` is worth retrying; the rest are plugin bugs.
+
+- `PluginHostApi.resizeFloatingPanel(panelId, height)` — the same operation
+  `FloatingPanelHandle.resize` performs, exposed as an addressable member
+  because a handle's method cannot cross a process boundary on its own: the
+  wire carries calls by path, and a handle is a host-side object the child
+  holds a receipt for. Prefer the handle method; this is what it delegates to.
+  `panelId` is checked against the calling plugin's own slots, so naming another
+  plugin's panel is a refusal, not a resize.
+
+- Types `AttachFloatingPanelRequest`, `FloatingPanelHandle`, `DetachReason`.
+
+  `DetachReason` is what separates an orphaned session from a deliberate stop.
+  A recorder that hears `user-closed` has cleanup to do; one that hears nothing
+  keeps recording into a window that is gone.
+
+- Manifest schema: `ui[].slot` now admits `"floating"` beside `"sidebar"`.
+
+  Admission accepts `kind: "embedded-module"` only. That is not a preference —
+  it is what the shell can paint. `embedded-page` is refused everywhere already,
+  and `info-card` need not declare an entry at all; either would produce a
+  transparent always-on-top window with nothing in it.
+
+### Why this exists
+
+It removes an ambient capability rather than adding one. A plugin that wanted a
+floating recorder card previously built its own `BrowserWindow` and its own
+`ipcMain` channels — Electron's main-process API, reached directly. Going
+through the dock is strictly less reach than the version already shipping.
+
+---
+
+## v12.8.0 — 2026-08-25
+
+Backfilled: this version was tagged without a changelog entry.
+
+### Added
+
+- `PluginHostApi.listAudioInputDevices()` — microphones the user could pick.
+  Labels are empty until microphone access has been granted at least once. That
+  is the browser's rule, not this host's, and an empty label means "not yet
+  permitted", never "no device".
+
+- `PluginHostApi.startAudioCapture(request)` — begin capturing audio. The HOST
+  owns the capture: the renderer, the worklet and the loopback wiring are
+  first-party code, and the plugin receives PCM as data.
+
+  A handle rather than an event subscription, because the host's event bus
+  broadcasts to every installed plugin — frames delivered as events would hand
+  all of them the microphone.
+
+  At most one capture runs host-wide, since the microphone and the system mixer
+  are single physical things. A second start is REFUSED rather than queued: a
+  queued recording would begin at a moment nobody chose.
+
+- Types `AudioCaptureDevice`, `AudioCaptureRequest`, `AudioCaptureHandle`.
+
+---
+
 ## v12.7.0 — 2026-08-25
 
 ### Added

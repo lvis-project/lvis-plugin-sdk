@@ -942,6 +942,16 @@ describe("PluginHostApi — interface contract (structural)", () => {
         stop: async () => {},
       }),
       probePrivateHost: async (_host: string, _opts?: { timeoutMs?: number }) => false,
+      // Spelled out for the same reason as `startAudioCapture` above: the handle
+      // is the contract here, and a cast would let its shape drift silently.
+      attachFloatingPanel: async (_request) => ({
+        panelId: "panel-stub",
+        height: 200,
+        resize: async (height: number) => height,
+        detach: async () => {},
+        onDetached: (_listener) => {},
+      }),
+      resizeFloatingPanel: async (_panelId: string, height: number) => height,
       // Discriminate on `returnFinalUrl` so each overload branch returns its
       // declared shape — TS catches future signature drift instead of letting
       // a `as unknown as` cast hide it.
