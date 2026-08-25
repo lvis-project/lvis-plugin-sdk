@@ -950,6 +950,7 @@ describe("PluginHostApi — interface contract (structural)", () => {
         close: async (_opts: { handle: string }) => {},
       },
       pickFolders: async () => ({ canceled: false, folders: ["/tmp/picked"] }),
+      resolveMappedDriveRoot: async (_drive: string) => null,
       triggerConversation: async (_spec) => ({ accepted: true, source: _spec.source }),
       hasRoutineBySource: async (_source: string) => false,
       agentApproval: {

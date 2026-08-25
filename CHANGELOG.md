@@ -7,6 +7,30 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v12.7.0 — 2026-08-25
+
+### Added
+
+- `PluginHostApi.resolveMappedDriveRoot(drive)` — the UNC path behind a Windows
+  mapped drive (`"Z:"` → `"\\\\server\\share"`), or `null` when the drive has no
+  UNC backing.
+
+  Windows exposes no binding for this, so answering it means running
+  `powershell.exe`. Spawning an interpreter is an ambient capability a confined
+  plugin child does not have, and the answer wanted is one string — so the
+  caller supplies a DRIVE LETTER and the host supplies the command. Nothing a
+  plugin passes reaches a shell.
+
+  `null` means an ordinary local disk and is a COMPLETE answer. It never means
+  the lookup failed: that REJECTS. Code building an allow-list has to tell those
+  apart — a drive it could not resolve leaves a root missing with nothing to
+  report, and `catch { return null }` is exactly how that becomes invisible.
+
+  Every non-Windows platform answers `null`; a mapped drive is not a thing
+  there.
+
+---
+
 ## v12.6.0 — 2026-08-25
 
 ### Added
