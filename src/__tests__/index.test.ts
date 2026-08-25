@@ -885,6 +885,7 @@ describe("RuntimePlugin + RuntimePluginFactory", () => {
       pluginRoot: "/tmp/plugin",
       hostRoot: "/tmp/host",
       pluginDataDir: "/tmp/plugin-data",
+      pluginSocketDir: "/tmp/plugin-sockets",
       log: () => {},
       hostApi: {} as PluginHostApi,
     } satisfies PluginRuntimeContext;
