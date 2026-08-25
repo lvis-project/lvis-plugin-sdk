@@ -7,6 +7,36 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v12.6.0 — 2026-08-25
+
+### Added
+
+- `PluginRuntimeContext.userHome` and `PluginRuntimeContext.lvisHome` — the real
+  user home and the host's storage root, as the HOST process reads them.
+
+  A confined child's `HOME` is a throwaway the sandbox substitutes, and for a
+  plugin's own WRITES that substitution is the point. But a plugin also judges
+  paths AGAINST the home — "is this under the user's home", "is this someone
+  else's home", "is this `~/.ssh`" — and the paths it judges came from the USER.
+  Against the throwaway every one of those answers turns to `false`: the
+  blocklist does not error, it reports that it checked and found nothing.
+
+  Use these fields wherever a path is being CLASSIFIED. Keep using `os.homedir()`
+  wherever the home is a write target — that is the case the substitution exists
+  for.
+
+  `lvisHome` is separate rather than derived from `userHome` because `LVIS_HOME`
+  can move the storage root; a plugin that rebuilt `~/.lvis` from the home was
+  already wrong in the main process, before any sandbox existed.
+
+  Neither field is a grant. Knowing where a directory is does not make it
+  reachable — what a confined child may read is still decided by the sandbox.
+
+  Requires a host that sends them; an older host fails the plugin's construction
+  rather than passing `undefined` through.
+
+---
+
 ## v12.5.0 — 2026-08-25
 
 ### Added
