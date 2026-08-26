@@ -513,6 +513,41 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     expect(valid).toBe(true);
   });
 
+  // The portable strings are bounded too. The flat `author` this object
+  // replaced was capped at 256 characters, so an object of unbounded strings
+  // would be strictly looser than what it replaced -- and this manifest is
+  // rendered in the catalog and in editor intellisense.
+  it.each([
+    ["author.name over 256", (d: Record<string, unknown>) => {
+      d.author = { name: "x".repeat(257) };
+    }],
+    ["author.email over 254", (d: Record<string, unknown>) => {
+      d.author = { name: "M", email: `${"x".repeat(250)}@example.com` };
+    }],
+    ["homepage over 2048", (d: Record<string, unknown>) => {
+      d.homepage = `https://example.com/${"x".repeat(2048)}`;
+    }],
+    ["license over 64", (d: Record<string, unknown>) => {
+      d.license = "x".repeat(65);
+    }],
+    ["a keyword over 64", (d: Record<string, unknown>) => {
+      d.keywords = ["x".repeat(65)];
+    }],
+    ["more than 32 keywords", (d: Record<string, unknown>) => {
+      d.keywords = Array.from({ length: 33 }, (_unused, index) => `k${index}`);
+    }],
+    ["a newline in the portable half", (d: Record<string, unknown>) => {
+      d.license = "MIT\nEvil";
+    }],
+  ])("rejects %s", (_label, mutate) => {
+    const document = agentPluginsDocument({ ...BASE, tools: [pureTool()] }) as Record<
+      string,
+      unknown
+    >;
+    mutate(document);
+    expect(checkDocument(document).valid).toBe(false);
+  });
+
   it("rejects author as a bare string (pre-1.0.0 shape)", () => {
     const { valid, errors } = check({ ...BASE, tools: [pureTool()], author: "Example Maintainer" });
     expect(valid).toBe(false);

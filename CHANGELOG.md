@@ -7,6 +7,27 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v13.0.1 — 2026-08-26
+
+Compatibility: lvis-app >= 0.7.0.
+
+### Fixed
+
+- The portable metadata strings the 1.0.0 document introduced are bounded.
+  `author` replaced a flat string capped at 256 characters with an object of
+  three UNBOUNDED strings; `homepage`, `repository`, `license` and `keywords[]`
+  arrived with no limit and no newline guard either, while every field that
+  predates them carries both.
+
+  Caps match the neighbouring fields: `author.name` 256 (what the flat field
+  had), `author.email` 254 (RFC 5321), the URL fields 2048, `license` 64, and
+  32 keywords of 64 characters.
+
+  Schema-only — no type or runtime change, so a plugin that does not declare an
+  author block needs nothing beyond the pin bump. Mirrored byte-for-byte from
+  lvis-app (sha256 344856aa…); found by lvis-marketplace's schema-relaxation
+  guard, fixed at the source rather than approved.
+
 ## v13.0.0 — 2026-08-26
 
 Compatibility: lvis-app >= 0.7.0.
