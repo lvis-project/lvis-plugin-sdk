@@ -2,6 +2,46 @@
 var HOST_EXTERNAL_MODULES = ["electron"];
 var HOST_BROWSER_EXTERNAL_MODULES = ["react", "react-dom"];
 var BUNDLE_EVERYTHING_REGEX = new RegExp(".*");
+var AGENT_PLUGINS_SCHEMA_URL = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json";
+var LVIS_EXTENSION_NAMESPACE = "xyz.lvisai";
+var AGENT_PLUGINS_TOP_LEVEL_FIELDS = [
+  "$schema",
+  "name",
+  "version",
+  "description",
+  "author",
+  "homepage",
+  "repository",
+  "license",
+  "keywords",
+  "extensions"
+];
+function foreignManifestTopLevelFields(document) {
+  if (!document || typeof document !== "object" || Array.isArray(document)) {
+    return [];
+  }
+  return Object.keys(document).filter(
+    (key) => !AGENT_PLUGINS_TOP_LEVEL_FIELDS.includes(key)
+  );
+}
+function flattenAgentPluginsManifest(document) {
+  if (!document || typeof document !== "object" || Array.isArray(document)) {
+    return document;
+  }
+  const top = document;
+  const extensions = top.extensions;
+  const namespaced = extensions && typeof extensions === "object" && !Array.isArray(extensions) ? extensions[LVIS_EXTENSION_NAMESPACE] : void 0;
+  const lvis = namespaced && typeof namespaced === "object" && !Array.isArray(namespaced) ? namespaced : {};
+  const { displayName, ...hostFields } = lvis;
+  const flat = {
+    ...hostFields,
+    id: top.name,
+    version: top.version,
+    description: top.description
+  };
+  if (displayName !== void 0) flat.name = displayName;
+  return flat;
+}
 var MissingDependenciesError = class extends Error {
   missing;
   constructor(missing) {
@@ -55,13 +95,18 @@ var PluginStorageEncryptionUnavailableError = class extends Error {
   }
 };
 export {
+  AGENT_PLUGINS_SCHEMA_URL,
+  AGENT_PLUGINS_TOP_LEVEL_FIELDS,
   BUNDLE_EVERYTHING_REGEX,
   HOST_BROWSER_EXTERNAL_MODULES,
   HOST_EXTERNAL_MODULES,
   INCOMPATIBLE_APP_VERSION_CODE,
   IncompatibleAppVersionError,
+  LVIS_EXTENSION_NAMESPACE,
   MissingDependenciesError,
   MissingPluginDependenciesError,
   PluginStorageEncryptionUnavailableError,
-  PluginStorageError
+  PluginStorageError,
+  flattenAgentPluginsManifest,
+  foreignManifestTopLevelFields
 };

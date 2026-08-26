@@ -1,7 +1,8 @@
 /**
  * Comprehensive test suite for @lvis/plugin-sdk src/index.ts
  *
- * Strategy: The SDK is type-only (no runtime helpers). Tests use the exported
+ * Strategy: The SDK is a mirror of the host contract — types plus the small
+ * set of runtime values the host itself declares. Tests use the exported
  * JSON Schema (plugin-manifest.schema.json) via AJV to validate manifest
  * objects at runtime, and verify interface contracts structurally via
  * well-typed fixture objects.
@@ -14,6 +15,7 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv from "ajv";
+import { agentPluginsDocument } from "./agent-plugins-document.js";
 
 // ─── Schema + AJV setup ───────────────────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -24,7 +26,7 @@ const ajv = new Ajv({ allErrors: true, strict: false });
 const validate = ajv.compile(schema);
 
 function validateManifest(obj: unknown): { valid: boolean; errors: string[] } {
-  const valid = validate(obj) as boolean;
+  const valid = validate(agentPluginsDocument(obj)) as boolean;
   const errors = valid
     ? []
     : (validate.errors ?? []).map((e) => `${e.instancePath} ${e.message}`);
@@ -113,7 +115,6 @@ describe("PluginManifest — schema validation", () => {
       mcpServers: [{ id: "example_mcp", path: "mcp/servers.json" }],
       publisher: "Example Corp",
       packageName: "@example/comprehensive-plugin",
-      author: "Example Maintainer",
       uiSlots: ["sidebar"],
       python: {
         managedBy: "lvis-app",
@@ -1429,10 +1430,13 @@ describe("Tool surface — v6 MCP contract", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const indexSrc = readFileSync(join(here, "..", "index.ts"), "utf8");
     // The surface is a mirror of the host contract. Runtime values are allowed
-    // ONLY where the Host itself declares one: inspectable error values and the
+    // ONLY where the Host itself declares one: inspectable error values, the
     // Host-owned bundling-policy constants consumed by the separate `./build`
-    // helper. Anything else means the generated SDK contract grew independent
-    // behavior.
+    // helper, and the Agent Plugins manifest projection — the host owns where
+    // each field lives in a `plugin.json` document, and plugin repos read their
+    // own manifest in tests and scripts, so mirroring that projection is what
+    // stops each repo from writing its own and disagreeing. Anything else means
+    // the generated SDK contract grew independent behavior.
     const valueExports = [...indexSrc.matchAll(/^export (?:function|const|let|var|class) (\w+)/gm)]
       .map((m) => m[1]);
     expect(valueExports.sort()).toEqual(
@@ -1446,6 +1450,11 @@ describe("Tool surface — v6 MCP contract", () => {
         "HOST_EXTERNAL_MODULES",
         "HOST_BROWSER_EXTERNAL_MODULES",
         "BUNDLE_EVERYTHING_REGEX",
+        "AGENT_PLUGINS_SCHEMA_URL",
+        "LVIS_EXTENSION_NAMESPACE",
+        "AGENT_PLUGINS_TOP_LEVEL_FIELDS",
+        "foreignManifestTopLevelFields",
+        "flattenAgentPluginsManifest",
       ].sort(),
     );
     expect(indexSrc).not.toMatch(/compileManifestValidator/);
