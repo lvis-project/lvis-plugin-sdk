@@ -14,6 +14,8 @@ import { createRequire } from "node:module";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 import type { ValidateFunction } from "ajv";
+import { LVIS_EXTENSION_NAMESPACE } from "../index.js";
+import { agentPluginsDocument } from "./agent-plugins-document.js";
 
 const require = createRequire(import.meta.url);
 
@@ -41,7 +43,12 @@ function check(obj: unknown): {
   errors: string[];
   rawErrors: NonNullable<ValidateFunction["errors"]>;
 } {
-  const valid = validate(obj) as boolean;
+  return checkDocument(agentPluginsDocument(obj));
+}
+
+/** Same gate, for a case that needs to place a field on the document itself. */
+function checkDocument(document: unknown): ReturnType<typeof check> {
+  const valid = validate(document) as boolean;
   const rawErrors = valid ? [] : (validate.errors ?? []);
   const errors = rawErrors.map((e) => `${e.instancePath} ${e.message}`);
   return { valid, errors, rawErrors };
@@ -458,12 +465,18 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     }
   });
 
-  it("rejects the retired keyword-to-Tool preload contract", () => {
-    const { valid, rawErrors } = check({
-      ...BASE,
-      tools: [pureTool()],
-      keywords: [{ keyword: "ping", skillId: "t_ping" }],
-    });
+  // Agent Plugins 1.0.0 introduced a *portable* top-level `keywords` (catalog
+  // tags, string[]) that collides by name with the retired LVIS field (an array
+  // of keyword-to-Tool preload records). An author migrating the old contract
+  // has two places to put it and both have to refuse it, so both are measured.
+  it("rejects the retired keyword-to-Tool preload contract in the LVIS namespace", () => {
+    const document = agentPluginsDocument({ ...BASE, tools: [pureTool()] }) as {
+      extensions: Record<string, Record<string, unknown>>;
+    };
+    document.extensions[LVIS_EXTENSION_NAMESPACE].keywords = [
+      { keyword: "ping", skillId: "t_ping" },
+    ];
+    const { valid, rawErrors } = checkDocument(document);
     expect(valid).toBe(false);
     expect(rawErrors).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -471,6 +484,82 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
         params: expect.objectContaining({ additionalProperty: "keywords" }),
       }),
     ]));
+  });
+
+  it("rejects the retired keyword records in the portable keywords slot", () => {
+    const { valid, errors } = check({
+      ...BASE,
+      tools: [pureTool()],
+      keywords: [{ keyword: "ping", skillId: "t_ping" }],
+    });
+    expect(valid).toBe(false);
+    expect(errors.join(" ")).toContain("/keywords/0");
+  });
+
+  // The portable half of the document belongs to Agent Plugins 1.0.0, not to
+  // LVIS. Nothing else in this file reaches it, so without these the gate only
+  // covers the namespace and would let a malformed spec block through.
+  it("accepts the portable metadata block in its spec shape", () => {
+    const document = agentPluginsDocument({ ...BASE, tools: [pureTool()] }) as Record<string, unknown>;
+    Object.assign(document, {
+      author: { name: "Example Maintainer", email: "maintainer@example.com", url: "https://example.com" },
+      homepage: "https://example.com/plugin",
+      repository: "https://github.com/example/plugin",
+      license: "MIT",
+      keywords: ["email"],
+    });
+    const { valid, errors } = checkDocument(document);
+    expect(errors).toEqual([]);
+    expect(valid).toBe(true);
+  });
+
+  it("rejects author as a bare string (pre-1.0.0 shape)", () => {
+    const { valid, errors } = check({ ...BASE, tools: [pureTool()], author: "Example Maintainer" });
+    expect(valid).toBe(false);
+    expect(errors.join(" ")).toContain("/author");
+  });
+
+  it("rejects an unknown key inside the portable author object", () => {
+    const document = agentPluginsDocument({ ...BASE, tools: [pureTool()] }) as Record<string, unknown>;
+    document.author = { name: "Example Maintainer", github: "example" };
+    const { valid, rawErrors } = checkDocument(document);
+    expect(valid).toBe(false);
+    expect(rawErrors).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        keyword: "additionalProperties",
+        params: expect.objectContaining({ additionalProperty: "github" }),
+      }),
+    ]));
+  });
+
+  it("rejects a document whose $schema is not the 1.0.0 schema URL", () => {
+    const document = agentPluginsDocument({ ...BASE, tools: [pureTool()] }) as Record<string, unknown>;
+    document.$schema = "https://agent-plugins.org/schemas/0.9.0/plugin.schema.json";
+    expect(checkDocument(document).valid).toBe(false);
+  });
+
+  it("rejects a foreign extension namespace that is not an object", () => {
+    const document = agentPluginsDocument({ ...BASE, tools: [pureTool()] }) as {
+      extensions: Record<string, unknown>;
+    };
+    document.extensions["com.example.other"] = "not-an-object";
+    expect(checkDocument(document).valid).toBe(false);
+  });
+
+  it("accepts a foreign extension namespace alongside the LVIS one", () => {
+    const document = agentPluginsDocument({ ...BASE, tools: [pureTool()] }) as {
+      extensions: Record<string, unknown>;
+    };
+    document.extensions["com.example.other"] = { anything: true };
+    const { valid, errors } = checkDocument(document);
+    expect(errors).toEqual([]);
+    expect(valid).toBe(true);
+  });
+
+  it("accepts the portable keywords slot used as the spec defines it", () => {
+    const { valid, errors } = check({ ...BASE, tools: [pureTool()], keywords: ["email", "calendar"] });
+    expect(errors).toEqual([]);
+    expect(valid).toBe(true);
   });
 
   it("rejects the removed toolSchemas map even alongside empty tools:[]", () => {

@@ -7,6 +7,53 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v13.0.0 — 2026-08-26
+
+Compatibility: lvis-app >= 0.7.0.
+
+### Changed — BREAKING
+
+- `plugin.json` is now an **Agent Plugins 1.0.0** document
+  (`https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`). Every field
+  LVIS defines moved under `extensions["xyz.lvisai"]`; the portable half
+  (`name`, `version`, `description`, `author`, `homepage`, `repository`,
+  `license`, `keywords`) stays at the top level and follows the spec's shapes.
+
+  ```jsonc
+  {
+    "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+    "name": "ms-graph",                      // was: "id"
+    "version": "1.0.0",
+    "description": "…",
+    "extensions": {
+      "xyz.lvisai": {
+        "displayName": "LVIS Microsoft 365", // was: top-level "name"
+        "entry": "dist/index.js",
+        "tools": [ /* … */ ]
+      }
+    }
+  }
+  ```
+
+  Two renames are the whole of it: the old `id` is now the spec's `name`, and
+  the old human-facing `name` is `extensions["xyz.lvisai"].displayName`. A
+  plugin's runtime code is untouched — the host flattens the document back to
+  the same `PluginManifest` it always passed to `activate()`.
+
+- `author` is gone from `PluginManifest`. It had no reader, and its `string`
+  type contradicted the spec's `{ name, email, url }` object. Portable metadata
+  lives on the document and is not projected into the runtime manifest.
+
+- A document carrying unknown **top-level** fields is refused by this schema
+  (author-facing, so the mistake surfaces at authoring time). The host is
+  laxer by design: it reports and ignores them, per the spec's client rule.
+
+### Migration
+
+Republish every plugin **before** upgrading the host. A host on the new reader
+refuses an installed old-shape manifest — this is the reverse of the usual
+"host capability first" order.
+
 ## v12.9.0 — 2026-08-25
 
 ### Added
