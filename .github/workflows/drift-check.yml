@@ -98,6 +98,28 @@ jobs:
             `schemas/plugin-manifest.schema.json` before merging.
           base: main
           delete-branch: true
+      # Drift can also clear without this PR being merged: the same host change
+      # gets mirrored by hand, with the version bump, CHANGELOG entry, and tests
+      # the mechanical sync cannot write. When that happens the open PR keeps
+      # asserting "divergence detected" while holding an OLDER regeneration than
+      # main, so merging it REVERTS the hand-written mirror. Nothing closed it,
+      # so it sat open for weeks inviting exactly that merge. The PR's claim is
+      # only true while drift is true — so retract it when drift is false.
+      - name: Close the drift PR once drift has cleared
+        if: steps.diff.outputs.drift == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          number="$(gh pr list --head chore/auto-drift-sync --state open \
+            --json number --jq '.[0].number // empty')"
+          if [ -z "$number" ]; then
+            echo "No open drift PR to close."
+            exit 0
+          fi
+          gh pr comment "$number" --body \
+            "Drift has cleared — regenerating both mirrors from the host now reproduces \`main\` byte for byte. This branch holds an older regeneration than \`main\`, so merging it would revert the mirror that landed since. Closing; a fresh PR opens automatically if drift returns."
+          gh pr close "$number" --delete-branch
       - name: Open issue on workflow failure
         if: failure()
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
