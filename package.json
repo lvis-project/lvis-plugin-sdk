@@ -15,7 +15,7 @@
       "import": "./dist/build/tsup.js"
     },
     "./packages": {
-      "types": "./src/packages.ts",
+      "types": "./dist/packages.d.ts",
       "import": "./dist/packages.js"
     },
     "./schemas/plugin-manifest.schema.json": "./schemas/plugin-manifest.schema.json",

@@ -39,6 +39,11 @@ Compatibility: lvis-app >= 0.7.0.
     `validateAgentPackageManifest` / `validateSkillComponent` /
     `validateAgentComponent`, compiled from the schema files with the new
     optional `ajv` peer (same shape as the `tsup` peer behind `./build`).
+    Importing the subpath never needs `ajv`: the export's `types` point at
+    `dist/packages.d.ts`, which declares no `ajv` type, and the peer is
+    resolved on the first validator call — a consumer without it can import
+    the constants and types, and a validator call throws
+    `PackageValidatorDependencyError` naming the peer.
   - Acceptance is unchanged from the marketplace templates the files replace
     (same required set, patterns, bounds and `additionalProperties: false`),
     with the Agent Skills optional front matter fields (`license`,

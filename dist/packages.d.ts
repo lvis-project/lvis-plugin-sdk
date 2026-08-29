@@ -92,6 +92,16 @@ export type PackageValidationResult<T> = {
     valid: false;
     issues: PackageValidationIssue[];
 };
+/** The optional peer the validators need; the schema files and types do not. */
+export declare const PACKAGE_VALIDATOR_PEER = "ajv";
+/**
+ * Thrown by a validator call when the optional `ajv` peer is not installed.
+ * Importing this module never needs it: the constants, types and schema file
+ * paths are usable without it, and only a validator call resolves it.
+ */
+export declare class PackageValidatorDependencyError extends Error {
+    constructor(cause: unknown);
+}
 /** Validate a standalone skill package `plugin.json`. */
 export declare function validateSkillPackageManifest(document: unknown): PackageValidationResult<SkillPackageManifest>;
 /** Validate a standalone agent package `plugin.json`. */

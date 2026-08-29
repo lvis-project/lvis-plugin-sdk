@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://sdk.lvisai.xyz/schemas/agent.schema.json",
   "title": "LVIS Agent Package Manifest",
-  "description": "The plugin.json of a standalone agent package distributed through the LVIS marketplace. The package is a directory holding this manifest next to AGENTS.md. The agent profile itself — what AGENTS.md's front matter declares — is described once, in $defs/agentComponent, and the package manifest reuses the component's fields by $ref, so a profile shipped standalone and a profile bundled as a plugin component share one definition and cannot drift apart. Agent profiles are an LVIS component; Agent Plugins 1.0.0 defines no portable agent component of its own. This SDK owns the schema; the LVIS host never loads it, and the marketplace validates against a byte-identical snapshot of it.",
+  "description": "The plugin.json of a standalone agent package distributed through the LVIS marketplace. The package is a directory holding this manifest next to AGENTS.md. The agent profile itself — what AGENTS.md's front matter declares — is described once, in $defs/agentComponent, and the package manifest reuses the component's fields by $ref. Standalone packages are the only delivery path today — the LVIS plugin manifest declares no agents contribution kind and Agent Plugins 1.0.0 defines no portable agent component — so $defs/agentComponent is the definition a bundled agent component must reuse once the host adds one, and the two paths cannot drift apart. This SDK owns the schema; the LVIS host never loads it, and the marketplace validates against a byte-identical snapshot of it.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -75,7 +75,7 @@
   "$defs": {
     "agentComponent": {
       "title": "LVIS Agent Component",
-      "description": "The YAML front matter of an AGENTS.md file: the agent profile the LVIS host loads. One definition for both delivery paths: the AGENTS.md at the root of a standalone agent package, and an agent profile bundled as a plugin component.",
+      "description": "The YAML front matter of an AGENTS.md file: the agent profile the LVIS host loads. Today the only delivery path is the AGENTS.md at the root of a standalone agent package; the LVIS plugin manifest declares no agents contribution kind. This definition is where a bundled agent component must point once the host adds one, so the two paths start from one definition rather than converging on it later.",
       "type": "object",
       "additionalProperties": false,
       "required": [

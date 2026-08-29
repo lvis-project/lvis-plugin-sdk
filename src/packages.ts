@@ -17,7 +17,8 @@
  * one definition.
  */
 import { readFileSync } from "node:fs";
-import Ajv2020 from "ajv/dist/2020.js";
+import { createRequire } from "node:module";
+import type Ajv2020 from "ajv/dist/2020.js";
 import type { ErrorObject, ValidateFunction } from "ajv";
 import type { InstallPolicy } from "./index.js";
 
@@ -127,16 +128,50 @@ export type PackageValidationResult<T> =
   | { valid: true; value: T }
   | { valid: false; issues: PackageValidationIssue[] };
 
+/** The optional peer the validators need; the schema files and types do not. */
+export const PACKAGE_VALIDATOR_PEER = "ajv";
+
+/**
+ * Thrown by a validator call when the optional `ajv` peer is not installed.
+ * Importing this module never needs it: the constants, types and schema file
+ * paths are usable without it, and only a validator call resolves it.
+ */
+export class PackageValidatorDependencyError extends Error {
+  constructor(cause: unknown) {
+    super(
+      `@lvis/plugin-sdk/packages validators need the optional peer dependency ` +
+        `"${PACKAGE_VALIDATOR_PEER}" (>=8). Install it to call the validators; ` +
+        `the schema files and types are usable without it.`,
+      { cause },
+    );
+    this.name = "PackageValidatorDependencyError";
+  }
+}
+
 /**
  * Both schemas are registered on one AJV instance so an absolute component
- * `$ref` resolves without a network round trip. Compiled lazily: the file
- * read and the compile happen on first use, not at import time.
+ * `$ref` resolves without a network round trip. Nothing here runs at import
+ * time: the first validator call resolves `ajv` (an optional peer), reads the
+ * two schema files and compiles them. A consumer without `ajv` can import
+ * this module for its constants and types; only calling a validator throws,
+ * and it throws {@link PackageValidatorDependencyError}.
  */
 let registry: Ajv2020 | undefined;
 
+function loadAjv2020(): typeof Ajv2020 {
+  const require = createRequire(import.meta.url);
+  try {
+    return (require(`${PACKAGE_VALIDATOR_PEER}/dist/2020.js`) as { default: typeof Ajv2020 })
+      .default;
+  } catch (error) {
+    throw new PackageValidatorDependencyError(error);
+  }
+}
+
 function schemaRegistry(): Ajv2020 {
   if (registry === undefined) {
-    const ajv = new Ajv2020({ strict: true, allErrors: true });
+    const Ajv = loadAjv2020();
+    const ajv = new Ajv({ strict: true, allErrors: true });
     for (const file of [SKILL_PACKAGE_SCHEMA_FILE, AGENT_PACKAGE_SCHEMA_FILE]) {
       const url = new URL(`../${file}`, import.meta.url);
       ajv.addSchema(JSON.parse(readFileSync(url, "utf8")) as object);
@@ -152,7 +187,15 @@ function validator(ref: string): ValidateFunction {
   let fn = compiled.get(ref);
   if (fn === undefined) {
     const ajv = schemaRegistry();
-    fn = ref.includes("#") ? ajv.compile({ $ref: ref }) : ajv.getSchema(ref)!;
+    if (ref.includes("#")) {
+      fn = ajv.compile({ $ref: ref });
+    } else {
+      const registered = ajv.getSchema(ref);
+      if (registered === undefined) {
+        throw new Error(`package schema ${ref} is not registered; the schema files under schemas/ are out of step with this module`);
+      }
+      fn = registered;
+    }
     compiled.set(ref, fn);
   }
   return fn;

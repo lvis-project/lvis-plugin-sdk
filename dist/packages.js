@@ -1,6 +1,6 @@
 // src/packages.ts
 import { readFileSync } from "fs";
-import Ajv2020 from "ajv/dist/2020.js";
+import { createRequire } from "module";
 var SKILL_PACKAGE_SCHEMA_URL = "https://sdk.lvisai.xyz/schemas/skill.schema.json";
 var AGENT_PACKAGE_SCHEMA_URL = "https://sdk.lvisai.xyz/schemas/agent.schema.json";
 var SKILL_COMPONENT_POINTER = "#/$defs/skillComponent";
@@ -9,10 +9,29 @@ var SKILL_COMPONENT_REF = `${SKILL_PACKAGE_SCHEMA_URL}${SKILL_COMPONENT_POINTER}
 var AGENT_COMPONENT_REF = `${AGENT_PACKAGE_SCHEMA_URL}${AGENT_COMPONENT_POINTER}`;
 var SKILL_PACKAGE_SCHEMA_FILE = "schemas/skill-package.schema.json";
 var AGENT_PACKAGE_SCHEMA_FILE = "schemas/agent-package.schema.json";
+var PACKAGE_VALIDATOR_PEER = "ajv";
+var PackageValidatorDependencyError = class extends Error {
+  constructor(cause) {
+    super(
+      `@lvis/plugin-sdk/packages validators need the optional peer dependency "${PACKAGE_VALIDATOR_PEER}" (>=8). Install it to call the validators; the schema files and types are usable without it.`,
+      { cause }
+    );
+    this.name = "PackageValidatorDependencyError";
+  }
+};
 var registry;
+function loadAjv2020() {
+  const require2 = createRequire(import.meta.url);
+  try {
+    return require2(`${PACKAGE_VALIDATOR_PEER}/dist/2020.js`).default;
+  } catch (error) {
+    throw new PackageValidatorDependencyError(error);
+  }
+}
 function schemaRegistry() {
   if (registry === void 0) {
-    const ajv = new Ajv2020({ strict: true, allErrors: true });
+    const Ajv = loadAjv2020();
+    const ajv = new Ajv({ strict: true, allErrors: true });
     for (const file of [SKILL_PACKAGE_SCHEMA_FILE, AGENT_PACKAGE_SCHEMA_FILE]) {
       const url = new URL(`../${file}`, import.meta.url);
       ajv.addSchema(JSON.parse(readFileSync(url, "utf8")));
@@ -26,7 +45,15 @@ function validator(ref) {
   let fn = compiled.get(ref);
   if (fn === void 0) {
     const ajv = schemaRegistry();
-    fn = ref.includes("#") ? ajv.compile({ $ref: ref }) : ajv.getSchema(ref);
+    if (ref.includes("#")) {
+      fn = ajv.compile({ $ref: ref });
+    } else {
+      const registered = ajv.getSchema(ref);
+      if (registered === void 0) {
+        throw new Error(`package schema ${ref} is not registered; the schema files under schemas/ are out of step with this module`);
+      }
+      fn = registered;
+    }
     compiled.set(ref, fn);
   }
   return fn;
@@ -56,6 +83,8 @@ export {
   AGENT_COMPONENT_REF,
   AGENT_PACKAGE_SCHEMA_FILE,
   AGENT_PACKAGE_SCHEMA_URL,
+  PACKAGE_VALIDATOR_PEER,
+  PackageValidatorDependencyError,
   SKILL_COMPONENT_POINTER,
   SKILL_COMPONENT_REF,
   SKILL_PACKAGE_SCHEMA_FILE,
