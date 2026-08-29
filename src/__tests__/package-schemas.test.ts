@@ -213,7 +213,7 @@ describe("package schemas — standalone packages", () => {
       ...SKILL_FRONT_MATTER,
       license: "MIT",
       compatibility: "Requires network access to the Angular CLI registry.",
-      metadata: { author: "example", version: "1.1.0" },
+      metadata: { author: "example", locale: "ko-KR", requires: ["Chrome MCP"] },
       "allowed-tools": "Bash(git:*) Read",
     });
     expect(result.valid).toBe(true);

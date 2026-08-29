@@ -30,8 +30,8 @@ export interface SkillComponent {
     license?: string;
     /** Environment requirements (max 500 characters). @optional */
     compatibility?: string;
-    /** Arbitrary string-valued metadata. @optional */
-    metadata?: Record<string, string>;
+    /** Arbitrary key-value map; the Agent Skills specification assigns no shape to the values. @optional */
+    metadata?: Record<string, unknown>;
     /** Space-delimited tools the skill is pre-approved to use. @optional */
     "allowed-tools"?: string;
 }

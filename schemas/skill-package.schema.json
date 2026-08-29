@@ -108,10 +108,7 @@
         },
         "metadata": {
           "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "description": "Arbitrary key-value metadata"
+          "description": "Arbitrary key-value map for additional properties; the Agent Skills specification assigns no shape to the values"
         },
         "allowed-tools": {
           "type": "string",
