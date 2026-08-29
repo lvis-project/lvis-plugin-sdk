@@ -1,8 +1,8 @@
 {
   "name": "@lvis/plugin-sdk",
-  "version": "13.0.1",
+  "version": "13.1.0",
   "private": false,
-  "description": "SDK for authoring LVIS plugins. Type contracts (PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin) re-exported from the host as a single source of truth, plus a thin build helper (defineLvisPluginConfig) shared across plugin repos.",
+  "description": "SDK for authoring LVIS plugins. Type contracts (PluginManifest / PluginHostApi / PluginRuntimeContext / RuntimePlugin) re-exported from the host as a single source of truth, a thin build helper (defineLvisPluginConfig) shared across plugin repos, and the SDK-owned skill/agent package schemas the marketplace validates against.",
   "type": "module",
   "types": "./src/index.ts",
   "exports": {
@@ -14,7 +14,13 @@
       "types": "./src/build/tsup.ts",
       "import": "./dist/build/tsup.js"
     },
+    "./packages": {
+      "types": "./dist/packages.d.ts",
+      "import": "./dist/packages.js"
+    },
     "./schemas/plugin-manifest.schema.json": "./schemas/plugin-manifest.schema.json",
+    "./schemas/skill-package.schema.json": "./schemas/skill-package.schema.json",
+    "./schemas/agent-package.schema.json": "./schemas/agent-package.schema.json",
     "./schemas/*": "./schemas/*"
   },
   "files": [
@@ -36,9 +42,13 @@
   },
   "packageManager": "bun@1.1.38",
   "peerDependencies": {
+    "ajv": ">=8.0.0",
     "tsup": ">=8.0.0"
   },
   "peerDependenciesMeta": {
+    "ajv": {
+      "optional": true
+    },
     "tsup": {
       "optional": true
     }

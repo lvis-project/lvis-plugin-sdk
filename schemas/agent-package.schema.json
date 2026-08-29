@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sdk.lvisai.xyz/schemas/agent.schema.json",
+  "title": "LVIS Agent Package Manifest",
+  "description": "The plugin.json of a standalone agent package distributed through the LVIS marketplace. The package is a directory holding this manifest next to AGENTS.md. The agent profile itself — what AGENTS.md's front matter declares — is described once, in $defs/agentComponent, and the package manifest reuses the component's fields by $ref. Standalone packages are the only delivery path today — the LVIS plugin manifest declares no agents contribution kind and Agent Plugins 1.0.0 defines no portable agent component — so $defs/agentComponent is the definition a bundled agent component must reuse once the host adds one, and the two paths cannot drift apart. This SDK owns the schema; the LVIS host never loads it, and the marketplace validates against a byte-identical snapshot of it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "version",
+    "description"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://sdk.lvisai.xyz/schemas/agent.schema.json",
+      "description": "Schema URI used to classify agent packages. Pinned to this schema's $id."
+    },
+    "id": {
+      "$ref": "#/$defs/agentComponent/properties/name"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable agent name shown in the catalog. Distinct from the component name, which is the slug."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+      "not": {
+        "pattern": "[\\r\\n]"
+      },
+      "description": "Stable semantic version string"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 280,
+      "description": "Short human-readable summary shown on the catalog card. Bounded tighter than the component description, which may run to the Agent Skills ceiling."
+    },
+    "installPolicy": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "user"
+      ],
+      "description": "Install policy"
+    },
+    "author": {
+      "type": "string",
+      "description": "Package author name or email"
+    },
+    "model": {
+      "$ref": "#/$defs/agentComponent/properties/model"
+    },
+    "mode": {
+      "$ref": "#/$defs/agentComponent/properties/mode"
+    },
+    "tools": {
+      "$ref": "#/$defs/agentComponent/properties/tools"
+    },
+    "triggers": {
+      "$ref": "#/$defs/agentComponent/properties/triggers"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$",
+        "not": {
+          "pattern": "[\\r\\n]"
+        }
+      },
+      "description": "Catalog capability tags"
+    }
+  },
+  "$defs": {
+    "agentComponent": {
+      "title": "LVIS Agent Component",
+      "description": "The YAML front matter of an AGENTS.md file: the agent profile the LVIS host loads. Today the only delivery path is the AGENTS.md at the root of a standalone agent package; the LVIS plugin manifest declares no agents contribution kind. This definition is where a bundled agent component must point once the host adds one, so the two paths start from one definition rather than converging on it later.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+          "not": {
+            "pattern": "[\\r\\n]"
+          },
+          "minLength": 3,
+          "maxLength": 64,
+          "description": "Agent slug. Must equal the directory name the AGENTS.md lives in; for a standalone package it is also the marketplace slug and install directory name."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "description": "Short human-readable summary of what the agent does and when to hand work to it"
+        },
+        "model": {
+          "type": "string",
+          "description": "Optional preferred model hint for the agent profile"
+        },
+        "mode": {
+          "type": "string",
+          "description": "Optional execution/profile mode hint"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tool hints surfaced with the agent profile"
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Keyword trigger hints"
+        }
+      }
+    }
+  }
+}
