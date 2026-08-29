@@ -54,7 +54,7 @@ export const AGENT_PACKAGE_SCHEMA_FILE = "schemas/agent-package.schema.json";
 export interface SkillComponent {
   /** Slug; equals the directory name and, standalone, the marketplace slug. */
   name: string;
-  /** What the skill does and when to use it (max 280 characters). */
+  /** What the skill does and when to use it (max 1024 characters). */
   description: string;
   /** Keyword trigger hints. @optional */
   triggers?: string[];
@@ -76,7 +76,7 @@ export interface SkillComponent {
 export interface AgentComponent {
   /** Slug; equals the directory name and, standalone, the marketplace slug. */
   name: string;
-  /** What the agent does and when to hand work to it (max 280 characters). */
+  /** What the agent does and when to hand work to it (max 1024 characters). */
   description: string;
   /** Preferred model hint. @optional */
   model?: string;
@@ -98,7 +98,7 @@ interface PackageManifestEnvelope {
   name: string;
   /** Stable MAJOR.MINOR.PATCH. */
   version: string;
-  /** Same field as the component `description`. */
+  /** Catalog card summary (max 280 characters); the component keeps its own, longer description. */
   description: string;
   /** @optional */
   installPolicy?: InstallPolicy;

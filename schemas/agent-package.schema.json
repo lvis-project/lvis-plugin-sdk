@@ -34,7 +34,10 @@
       "description": "Stable semantic version string"
     },
     "description": {
-      "$ref": "#/$defs/agentComponent/properties/description"
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 280,
+      "description": "Short human-readable summary shown on the catalog card. Bounded tighter than the component description, which may run to the Agent Skills ceiling."
     },
     "installPolicy": {
       "type": "string",
@@ -96,7 +99,7 @@
         "description": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 280,
+          "maxLength": 1024,
           "description": "Short human-readable summary of what the agent does and when to hand work to it"
         },
         "model": {

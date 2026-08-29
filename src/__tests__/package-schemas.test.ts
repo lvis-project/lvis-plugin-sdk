@@ -161,14 +161,12 @@ describe("package schemas — `$ref` reuse of the component definition", () => {
     }
   };
 
-  it("skill manifest fields id/description/triggers are `$ref`s into $defs/skillComponent", () => {
-    refsInto(skillSchema, SKILL_COMPONENT_POINTER, ["id", "description", "triggers"]);
+  it("skill manifest fields id/triggers are `$ref`s into $defs/skillComponent", () => {
+    refsInto(skillSchema, SKILL_COMPONENT_POINTER, ["id", "triggers"]);
   });
 
-  it("agent manifest fields id/description/model/mode/tools/triggers are `$ref`s into $defs/agentComponent", () => {
-    refsInto(agentSchema, AGENT_COMPONENT_POINTER, [
-      "id", "description", "model", "mode", "tools", "triggers",
-    ]);
+  it("agent manifest fields id/model/mode/tools/triggers are `$ref`s into $defs/agentComponent", () => {
+    refsInto(agentSchema, AGENT_COMPONENT_POINTER, ["id", "model", "mode", "tools", "triggers"]);
   });
 
   it("the component definitions name the same fields the front matter files carry", () => {
@@ -241,7 +239,7 @@ describe("package schemas — standalone packages", () => {
       ["a pre-release version", { version: "1.1.0-beta.1" }],
       ["a version carrying a terminal CR", { version: "1.1.0\r" }],
       ["an empty description", { description: "" }],
-      ["a description over 280 characters", { description: "x".repeat(281) }],
+      ["a description over 280 characters (catalog card bound)", { description: "x".repeat(281) }],
       ["an unknown installPolicy", { installPolicy: "everyone" }],
       ["a non-string trigger", { triggers: ["angular", 7] }],
       ["a capability with an upper-case letter", { capabilities: ["Skill-Profile"] }],
@@ -327,10 +325,18 @@ describe("package schemas — the bundled path uses the same component definitio
   });
 
   it("a front matter change that breaks the bundled component breaks the standalone package the same way", () => {
-    const overlong = "x".repeat(281);
-    expect(validateSkillComponent({ ...SKILL_FRONT_MATTER, description: overlong }).valid).toBe(false);
-    expect(validateSkillPackageManifest({ ...SKILL_PACKAGE, description: overlong }).valid).toBe(false);
-    expect(validateAgentComponent({ ...AGENT_FRONT_MATTER, description: overlong }).valid).toBe(false);
-    expect(validateAgentPackageManifest({ ...AGENT_PACKAGE, description: overlong }).valid).toBe(false);
+    const badName = "Not A Slug";
+    expect(validateSkillComponent({ ...SKILL_FRONT_MATTER, name: badName }).valid).toBe(false);
+    expect(validateSkillPackageManifest({ ...SKILL_PACKAGE, id: badName }).valid).toBe(false);
+    expect(validateAgentComponent({ ...AGENT_FRONT_MATTER, name: badName }).valid).toBe(false);
+    expect(validateAgentPackageManifest({ ...AGENT_PACKAGE, id: badName }).valid).toBe(false);
+  });
+
+  it("the component description runs to the Agent Skills ceiling; the manifest keeps the catalog card bound", () => {
+    const long = "x".repeat(1024);
+    expect(validateSkillComponent({ ...SKILL_FRONT_MATTER, description: long }).valid).toBe(true);
+    expect(validateSkillComponent({ ...SKILL_FRONT_MATTER, description: `${long}x` }).valid).toBe(false);
+    expect(validateAgentComponent({ ...AGENT_FRONT_MATTER, description: long }).valid).toBe(true);
+    expect(validateSkillPackageManifest({ ...SKILL_PACKAGE, description: "x".repeat(281) }).valid).toBe(false);
   });
 });

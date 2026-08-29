@@ -26,8 +26,10 @@ Compatibility: lvis-app >= 0.7.0.
     component once, in `$defs` (`skillComponent` = `SKILL.md` front matter
     per the Agent Skills specification plus LVIS `triggers`;
     `agentComponent` = `AGENTS.md` front matter), and the package manifest
-    reuses those fields by `$ref` (`id` → component `name`, `description`,
-    `triggers`, and for agents `model` / `mode` / `tools`). A skill bundled
+    reuses those fields by `$ref` (`id` → component `name`, `triggers`, and
+    for agents `model` / `mode` / `tools`; the manifest `description` keeps
+    the 280-character catalog card bound while the component's runs to the
+    Agent Skills 1024 ceiling). A skill bundled
     through a plugin manifest's `skills[]` directory declaration and a skill
     shipped standalone therefore validate against the same definition.
   - The `$id`s are the wire identity every published package already
