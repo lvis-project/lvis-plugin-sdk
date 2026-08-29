@@ -7,6 +7,48 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v13.1.0 — 2026-08-29
+
+Compatibility: lvis-app >= 0.7.0.
+
+### Added
+
+- Skill and agent package schemas, SDK-owned (#65). Standalone skill / agent
+  packages and Agent Plugins 1.0.0 plugin components are both supported, so
+  the package contract needed one home the SDK exports and the marketplace
+  syncs from — the marketplace's two hand-written templates were the only
+  copies.
+
+  - `schemas/skill-package.schema.json` (`$id`
+    `https://sdk.lvisai.xyz/schemas/skill.schema.json`) and
+    `schemas/agent-package.schema.json` (`$id`
+    `https://sdk.lvisai.xyz/schemas/agent.schema.json`). Each describes the
+    component once, in `$defs` (`skillComponent` = `SKILL.md` front matter
+    per the Agent Skills specification plus LVIS `triggers`;
+    `agentComponent` = `AGENTS.md` front matter), and the package manifest
+    reuses those fields by `$ref` (`id` → component `name`, `description`,
+    `triggers`, and for agents `model` / `mode` / `tools`). A skill bundled
+    through a plugin manifest's `skills[]` directory declaration and a skill
+    shipped standalone therefore validate against the same definition.
+  - The `$id`s are the wire identity every published package already
+    carries; the marketplace's stored rows are validated against it, so it
+    stays as is rather than being renamed after the file.
+  - `@lvis/plugin-sdk/packages`: `SkillComponent`, `AgentComponent`,
+    `SkillPackageManifest`, `AgentPackageManifest`, the schema URLs and
+    component `$ref`s, and `validateSkillPackageManifest` /
+    `validateAgentPackageManifest` / `validateSkillComponent` /
+    `validateAgentComponent`, compiled from the schema files with the new
+    optional `ajv` peer (same shape as the `tsup` peer behind `./build`).
+  - Acceptance is unchanged from the marketplace templates the files replace
+    (same required set, patterns, bounds and `additionalProperties: false`),
+    with the Agent Skills optional front matter fields (`license`,
+    `compatibility`, `metadata`, `allowed-tools`) admitted on the skill
+    component.
+
+  Unlike `plugin-manifest.schema.json`, these files are not mirrors of the
+  host: the host never loads a standalone package manifest. Existing plugin
+  manifest exports are untouched.
+
 ## v13.0.1 — 2026-08-26
 
 Compatibility: lvis-app >= 0.7.0.
