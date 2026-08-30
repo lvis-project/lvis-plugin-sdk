@@ -229,6 +229,11 @@ describe("package schemas — standalone packages", () => {
       expect(validateSkillPackageManifest({ ...SKILL_PACKAGE, id: name }).valid, name).toBe(true);
       expect(validateAgentPackageManifest({ ...AGENT_PACKAGE, id: name }).valid, name).toBe(true);
     }
+    // The one length the relaxation did NOT touch: 64 is this schema's own
+    // ceiling, not a mirror of a host bound, and 65 is still refused.
+    const overlong = "a".repeat(65);
+    expect(validateSkillComponent({ ...SKILL_FRONT_MATTER, name: overlong }).valid).toBe(false);
+    expect(validateAgentComponent({ ...AGENT_FRONT_MATTER, name: overlong }).valid).toBe(false);
   });
 
   it("accept a manifest that omits `$schema` (classification is the marketplace's job)", () => {

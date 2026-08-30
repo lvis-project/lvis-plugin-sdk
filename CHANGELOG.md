@@ -13,21 +13,25 @@ Compatibility: lvis-app >= 0.7.0.
 
 ### Changed
 
-- The component `name` rule in `$defs/skillComponent` and
-  `$defs/agentComponent` is now the host's path-safe charset,
-  `^[a-zA-Z0-9_-]+$`, with a 64-character ceiling and the existing CR/LF
-  guard. The previous rule (`^[a-z][a-z0-9-]*[a-z0-9]$`, minimum three
-  characters) additionally demanded lower case, a leading letter, a
-  non-hyphen final character, and a length floor.
+- The component `name` charset in `$defs/skillComponent` and
+  `$defs/agentComponent` is now the host's, `^[a-zA-Z0-9_-]+$`. The existing
+  64-character ceiling and CR/LF guard are unchanged. The previous rule
+  (`^[a-z][a-z0-9-]*[a-z0-9]$`, minimum three characters) additionally
+  demanded lower case, a leading letter, a non-hyphen final character, and a
+  length floor.
 
   Those four extra demands were house style, not a contract. What actually
   constrains a component name is that it becomes a directory segment under
-  the host's skills / agents directory and a label in the picker: it has to
-  be path-safe and it has to be bounded. Case and spelling below that
-  ceiling are the author's choice, and the host has always accepted them —
-  it is the SDK that was the stricter of the two, rejecting names the host
-  admits (`My_Skill`, `UPPER`, `ab`, a trailing hyphen). One rule now, and
-  it names a real limit rather than a preference.
+  the host's skills / agents directory, so it has to be path-safe — and that
+  charset is the host's, `SKILL_NAME_ALLOWLIST` / `AGENT_NAME_ALLOWLIST`.
+  Case and spelling within it are the author's choice, and the host has
+  always accepted them; it is the SDK that was the stricter of the two,
+  rejecting names the host admits (`My_Skill`, `UPPER`, `ab`, a trailing
+  hyphen). One charset now, and it is the one that names a real limit.
+
+  The 64-character ceiling stays this schema's own bound rather than a
+  mirror of anything: it keeps the slug a viable path segment on every
+  target filesystem, and the host enforces no length of its own.
 
   This only relaxes what validates, so no published package becomes invalid
   and nothing installed on a host needs migrating. `id` on both package
