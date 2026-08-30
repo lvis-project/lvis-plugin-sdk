@@ -217,6 +217,20 @@ describe("package schemas — standalone packages", () => {
     expect(result.valid).toBe(true);
   });
 
+  it("accept the spellings an author may choose within the path-safe charset", () => {
+    // The name rule bounds what the host can put on disk and in the picker —
+    // path-safe characters, 64 of them at most. It does not legislate house
+    // style: case, digits, underscores and length below the ceiling are the
+    // author's call, and the same latitude reaches the manifest `id` through
+    // the `$ref`.
+    for (const name of ["My_Skill", "UPPER", "ab", "a", "-lead", "trail-", "7", "a".repeat(64)]) {
+      expect(validateSkillComponent({ ...SKILL_FRONT_MATTER, name }).valid, name).toBe(true);
+      expect(validateAgentComponent({ ...AGENT_FRONT_MATTER, name }).valid, name).toBe(true);
+      expect(validateSkillPackageManifest({ ...SKILL_PACKAGE, id: name }).valid, name).toBe(true);
+      expect(validateAgentPackageManifest({ ...AGENT_PACKAGE, id: name }).valid, name).toBe(true);
+    }
+  });
+
   it("accept a manifest that omits `$schema` (classification is the marketplace's job)", () => {
     const { $schema: _omitted, ...bare } = SKILL_PACKAGE;
     expect(validateSkillPackageManifest(bare).valid).toBe(true);
@@ -232,9 +246,11 @@ describe("package schemas — standalone packages", () => {
   describe("rejects", () => {
     const skillCases: Array<[string, Record<string, unknown>]> = [
       ["a foreign `$schema`", { $schema: AGENT_PACKAGE_SCHEMA_URL }],
-      ["an id with an upper-case letter", { id: "Angular-Architect" }],
-      ["an id shorter than three characters", { id: "ab" }],
-      ["an id ending in a hyphen", { id: "angular-" }],
+      ["an id carrying a path separator", { id: "angular/architect" }],
+      ["an id carrying a dot", { id: "angular.architect" }],
+      ["an id carrying a space", { id: "angular architect" }],
+      ["an id over 64 characters", { id: "a".repeat(65) }],
+      ["an empty id", { id: "" }],
       ["an id carrying a terminal newline", { id: "angular-architect\n" }],
       ["a pre-release version", { version: "1.1.0-beta.1" }],
       ["a version carrying a terminal CR", { version: "1.1.0\r" }],
@@ -278,9 +294,11 @@ describe("package schemas — standalone packages", () => {
       expect(validateAgentComponent({ name: "engineering-code-reviewer" }).valid).toBe(false);
     });
 
-    it("front matter whose name is not a slug", () => {
+    it("front matter whose name is not path-safe", () => {
       expect(validateSkillComponent({ ...SKILL_FRONT_MATTER, name: "Angular Architect" }).valid).toBe(false);
+      expect(validateSkillComponent({ ...SKILL_FRONT_MATTER, name: "../escape" }).valid).toBe(false);
       expect(validateAgentComponent({ ...AGENT_FRONT_MATTER, name: "Code Reviewer" }).valid).toBe(false);
+      expect(validateAgentComponent({ ...AGENT_FRONT_MATTER, name: "../escape" }).valid).toBe(false);
     });
   });
 });

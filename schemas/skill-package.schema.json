@@ -79,13 +79,12 @@
       "properties": {
         "name": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+          "pattern": "^[a-zA-Z0-9_-]+$",
           "not": {
             "pattern": "[\\r\\n]"
           },
-          "minLength": 3,
           "maxLength": 64,
-          "description": "Skill slug. Must equal the directory name the SKILL.md lives in; for a standalone package it is also the marketplace slug and install directory name."
+          "description": "Skill slug. Must equal the directory name the SKILL.md lives in; for a standalone package it is also the marketplace slug and install directory name. The charset and the 64-character ceiling are the host's: the slug becomes a path segment under the skills directory and a label in the picker, so a name must be path-safe and bounded. Beyond that the spelling is the author's — case, digits, underscores and hyphens are all theirs to choose."
         },
         "description": {
           "type": "string",

@@ -7,6 +7,34 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v13.2.0 — 2026-08-30
+
+Compatibility: lvis-app >= 0.7.0.
+
+### Changed
+
+- The component `name` rule in `$defs/skillComponent` and
+  `$defs/agentComponent` is now the host's path-safe charset,
+  `^[a-zA-Z0-9_-]+$`, with a 64-character ceiling and the existing CR/LF
+  guard. The previous rule (`^[a-z][a-z0-9-]*[a-z0-9]$`, minimum three
+  characters) additionally demanded lower case, a leading letter, a
+  non-hyphen final character, and a length floor.
+
+  Those four extra demands were house style, not a contract. What actually
+  constrains a component name is that it becomes a directory segment under
+  the host's skills / agents directory and a label in the picker: it has to
+  be path-safe and it has to be bounded. Case and spelling below that
+  ceiling are the author's choice, and the host has always accepted them —
+  it is the SDK that was the stricter of the two, rejecting names the host
+  admits (`My_Skill`, `UPPER`, `ab`, a trailing hyphen). One rule now, and
+  it names a real limit rather than a preference.
+
+  This only relaxes what validates, so no published package becomes invalid
+  and nothing installed on a host needs migrating. `id` on both package
+  manifests reaches the rule through its `$ref`, so it moves with it.
+
+---
+
 ## v13.1.0 — 2026-08-29
 
 Compatibility: lvis-app >= 0.7.0.

@@ -175,6 +175,12 @@ An agent package is the same envelope with the agent profile fields
 `id` is the component slug: it must equal the front matter `name` and the
 directory name. `name` on the manifest is the catalog display name.
 
+The slug rule is `^[a-zA-Z0-9_-]+$`, at most 64 characters. Both halves of it
+are the host's: the slug becomes a directory segment under the host's skills /
+agents directory and a label in the picker, so it has to be path-safe and it
+has to be bounded. Nothing else about the spelling is legislated — case,
+digits, underscores and hyphens are the author's choice.
+
 ## Trust And Release
 
 - `lvis-marketplace` validates and signs uploaded artifacts.
