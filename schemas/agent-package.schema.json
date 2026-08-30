@@ -88,13 +88,12 @@
       "properties": {
         "name": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+          "pattern": "^[a-zA-Z0-9_-]+$",
           "not": {
             "pattern": "[\\r\\n]"
           },
-          "minLength": 3,
           "maxLength": 64,
-          "description": "Agent slug. Must equal the directory name the AGENTS.md lives in; for a standalone package it is also the marketplace slug and install directory name."
+          "description": "Agent slug. Must equal the directory name the AGENTS.md lives in; for a standalone package it is also the marketplace slug and install directory name. The charset is the host's (`AGENT_NAME_ALLOWLIST`): the slug becomes a path segment under the agents directory, so a name must be path-safe. The 64-character ceiling is this schema's own bound, keeping the slug a viable path segment on every target filesystem; the host enforces no length of its own. Beyond those two the spelling is the author's — case, digits, underscores and hyphens are all theirs to choose."
         },
         "description": {
           "type": "string",
