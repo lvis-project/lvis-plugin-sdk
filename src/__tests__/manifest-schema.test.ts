@@ -126,6 +126,51 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
   });
 
+  /** One highlight whose accept moves the settings view to `path`. */
+  const settingsHighlight = (path: string) => ({
+    id: "open-the-switch",
+    copy: {
+      en: {
+        headline: "Turn the sandbox on",
+        body: "The switch lives on the permissions page.",
+        actionLabel: "Open it",
+      },
+    },
+    action: { kind: "settings", path },
+  });
+
+  it.each([
+    ["a bare tab id", "permissions"],
+    ["a tab and a section within it", "permissions/permissions-os-sandbox"],
+    ["hyphens on both halves", "remote-surfaces/remote-tailnet-observer"],
+  ])("accepts a settings highlight path naming %s", (_name, path) => {
+    const { valid, errors } = check({
+      ...BASE,
+      tools: [],
+      onboarding: { highlights: [settingsHighlight(path)] },
+    });
+    expect(valid, `Errors: ${errors.join(", ")}`).toBe(true);
+  });
+
+  it.each([
+    ["a third segment", "permissions/permissions-os-sandbox/on"],
+    ["a trailing separator", "permissions/"],
+    ["a leading separator", "/permissions"],
+    ["upper case", "Permissions"],
+    ["an underscore", "permissions/os_sandbox"],
+    ["a dot", "permissions.os-sandbox"],
+    ["whitespace", "permissions /os-sandbox"],
+    ["a trailing newline", "permissions\n"],
+  ])("rejects a settings highlight path with %s", (_name, path) => {
+    // The schema only shapes the string — membership is the host's call — but
+    // a shape it cannot parse should never reach the host in the first place.
+    expect(check({
+      ...BASE,
+      tools: [],
+      onboarding: { highlights: [settingsHighlight(path)] },
+    }).valid).toBe(false);
+  });
+
   it("rejects retired ui[] detached-window hints", () => {
     const { valid, rawErrors } = check({
       ...BASE,
