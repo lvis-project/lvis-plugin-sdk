@@ -7,6 +7,44 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v13.3.0 — 2026-09-03
+
+Compatibility: lvis-app >= 0.7.0.
+
+### Added
+
+- `onboarding.highlights[]` on the plugin manifest, beside the existing
+  `onboarding.firstTask`. A highlight is a capability introduction or a
+  new-feature promotion: a stable kebab-case `id`, an optional `priority`, a
+  per-locale `copy` block (`headline` / `body` / `actionLabel`, English
+  required), and an `action` saying what accepting it does — `composer` with a
+  prompt, `settings` with a tab id, or `none`. Ids must be unique within the
+  declaring plugin and a plugin may declare at most
+  `MAX_PLUGIN_ONBOARDING_HIGHLIGHTS` (5) of them; the schema enforces the
+  count and the host re-checks both at manifest load.
+
+  `firstTask` is unchanged and stays first-class — it is what a plugin
+  nominates as the thing to do right after the tour, and the host proposes it
+  ahead of that plugin's highlights.
+
+  The declaration is inert, as `firstTask` already was. The host asks each
+  proposal once as a card and remembers the answer, and accepting performs the
+  declared `action` and only that: text into the visible composer, or the
+  settings view onto a tab. Nothing auto-submits, starts a turn, or calls a
+  tool.
+
+- `MAX_PLUGIN_ONBOARDING_HIGHLIGHTS`, the host's own bound, so a plugin repo
+  can assert its manifest against the same number rather than copying it.
+
+### Changed
+
+- Re-synced `src/index.ts` and `schemas/plugin-manifest.schema.json` from the
+  host contract, which also brings across the `proposeWork` types
+  (`WorkProposal`, `WorkProposalInput`, `WorkProposalKind`, …) the mirror had
+  fallen behind on. No SDK-authored declarations were added.
+
+---
+
 ## v13.2.0 — 2026-08-30
 
 Compatibility: lvis-app >= 0.7.0.
