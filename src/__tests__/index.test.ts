@@ -975,6 +975,8 @@ describe("PluginHostApi — interface contract (structural)", () => {
       resolveMappedDriveRoot: async (_drive: string) => null,
       triggerConversation: async (_spec) => ({ accepted: true, source: _spec.source }),
       hasRoutineBySource: async (_source: string) => false,
+      proposeWork: async (_input) => ({ status: "cap_reached" as const }),
+      withdrawWorkProposal: async (_kind: string, _key: string) => false,
       agentApproval: {
         request: async (_input: { toolName: string; args: unknown; reason: string; scope: string }) =>
           "deny-once" as const,
@@ -1435,8 +1437,10 @@ describe("Tool surface — v6 MCP contract", () => {
     // helper, and the Agent Plugins manifest projection — the host owns where
     // each field lives in a `plugin.json` document, and plugin repos read their
     // own manifest in tests and scripts, so mirroring that projection is what
-    // stops each repo from writing its own and disagreeing. Anything else means
-    // the generated SDK contract grew independent behavior.
+    // stops each repo from writing its own and disagreeing — plus the declared
+    // bounds a manifest has to satisfy, which a plugin repo would otherwise
+    // hard-code its own copy of. Anything else means the generated SDK contract
+    // grew independent behavior.
     const valueExports = [...indexSrc.matchAll(/^export (?:function|const|let|var|class) (\w+)/gm)]
       .map((m) => m[1]);
     expect(valueExports.sort()).toEqual(
@@ -1453,6 +1457,7 @@ describe("Tool surface — v6 MCP contract", () => {
         "AGENT_PLUGINS_SCHEMA_URL",
         "LVIS_EXTENSION_NAMESPACE",
         "AGENT_PLUGINS_TOP_LEVEL_FIELDS",
+        "MAX_PLUGIN_ONBOARDING_HIGHLIGHTS",
         "foreignManifestTopLevelFields",
         "flattenAgentPluginsManifest",
       ].sort(),

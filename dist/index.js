@@ -42,6 +42,7 @@ function flattenAgentPluginsManifest(document) {
   if (displayName !== void 0) flat.name = displayName;
   return flat;
 }
+var MAX_PLUGIN_ONBOARDING_HIGHLIGHTS = 5;
 var MissingDependenciesError = class extends Error {
   missing;
   constructor(missing) {
@@ -103,6 +104,7 @@ export {
   INCOMPATIBLE_APP_VERSION_CODE,
   IncompatibleAppVersionError,
   LVIS_EXTENSION_NAMESPACE,
+  MAX_PLUGIN_ONBOARDING_HIGHLIGHTS,
   MissingDependenciesError,
   MissingPluginDependenciesError,
   PluginStorageEncryptionUnavailableError,
