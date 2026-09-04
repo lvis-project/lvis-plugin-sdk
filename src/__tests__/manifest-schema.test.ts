@@ -161,6 +161,12 @@ describe("plugin-manifest schema (v6) — compiles + validates", () => {
     ["a dot", "permissions.os-sandbox"],
     ["whitespace", "permissions /os-sandbox"],
     ["a trailing newline", "permissions\n"],
+    // Every segment opens with a letter. A digit- or hyphen-leading segment is
+    // not a tab or section id the host can carry, and the grammar rejects it in
+    // both halves — the earlier shape accepted all three.
+    ["a digit-leading tab", "2fa"],
+    ["a digit-leading section", "llm/2fa"],
+    ["a hyphen-leading tab", "-llm"],
   ])("rejects a settings highlight path with %s", (_name, path) => {
     // The schema only shapes the string — membership is the host's call — but
     // a shape it cannot parse should never reach the host in the first place.
