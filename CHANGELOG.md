@@ -7,6 +7,26 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v13.4.1 — 2026-09-04
+
+Compatibility: lvis-app >= 0.7.0.
+
+### Changed
+
+- Re-mirrored `schemas/plugin-manifest.schema.json` from the host after the
+  host tightened the `settings` action path grammar. Each segment must now
+  open with a letter, so paths the previous shape let through —
+  `2fa`, `llm/2fa`, `-llm`, and the degenerate `-` and `-/-` — are rejected
+  before they reach a host that could never resolve them anyway. No path any
+  shipping manifest can name changes meaning; this narrows the accepted shape
+  to what the host has always been able to carry.
+
+  The host owns the grammar in one place (`SETTINGS_PATH_PATTERN` in
+  `src/shared/settings-tabs.ts`, which its schema and tests are pinned to);
+  this package mirrors the schema and does not restate the regex.
+
+---
+
 ## v13.4.0 — 2026-09-03
 
 Compatibility: lvis-app >= 0.7.0.
@@ -19,12 +39,14 @@ Compatibility: lvis-app >= 0.7.0.
   section is where the switch is, so a highlight that says "turn this on" can
   now land the reader on the control instead of on a page holding ten of them.
 
-  The schema's part of this is the shape only — `^[a-z0-9-]+(/[a-z0-9-]+)?$`
-  in kebab-case, no third segment, no empty segment, no terminal newline. Which
-  tabs and sections exist is the host's to know and is not mirrored here: the
-  host validates both halves at manifest load against the pages its build
-  actually renders, and rejects a manifest naming one it does not have. A
-  path shaped for an older host stays valid — a bare tab id is still a bare
+  The schema's part of this is the shape only — kebab-case, no third segment,
+  no empty segment, no terminal newline. The grammar itself is not restated
+  here: it is the `pattern` on `onboarding.highlights[].action.path` in
+  `schemas/plugin-manifest.schema.json`, which is where it is written down.
+  Which tabs and sections exist is the host's to know and is not mirrored
+  here: the host validates both halves at manifest load against the pages its
+  build actually renders, and rejects a manifest naming one it does not have.
+  A path shaped for an older host stays valid — a bare tab id is still a bare
   tab id — so this widens what a manifest may say without invalidating
   anything already written.
 
