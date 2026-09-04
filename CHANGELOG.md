@@ -7,6 +7,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## v13.4.2 — 2026-09-04
+
+Compatibility: lvis-app >= 0.7.0.
+
+### Changed
+- `PluginWorkerSpec` / `SpawnedPluginWorker` docs: the worker's stdin is the host's liveness pipe — it carries no bytes and closes only when the host process is gone, so a long-lived worker must treat EOF on stdin as "exit now" (the one signal that survives a host crash or kill). Doc-only mirror of the host contract; no type changes.
+
 ## v13.4.1 — 2026-09-04
 
 Compatibility: lvis-app >= 0.7.0.
